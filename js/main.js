@@ -19,19 +19,21 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('scroll', updateHeaderScroll, { passive: true });
   updateHeaderScroll(); // Run immediately on load
 
-  // 2. Mobile Navigation Drawer Controls
+  // 2. Mobile Navigation Drawer Controls & Hamburger Morph
   const hamburgerBtn = document.getElementById('hamburger-btn');
   const closeDrawerBtn = document.getElementById('close-drawer-btn');
   const mobileDrawer = document.getElementById('mobile-drawer');
   const mobileOverlay = document.getElementById('mobile-drawer-overlay');
-  const mobileNavLinks = document.querySelectorAll('.mobile-nav-link, .mobile-portal-item');
 
   const openMobileMenu = () => {
     if (mobileDrawer && mobileOverlay) {
       mobileDrawer.classList.add('active');
       mobileOverlay.classList.add('active');
-      document.body.style.overflow = 'hidden';
-      if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'true');
+      document.body.classList.add('drawer-open');
+      if (hamburgerBtn) {
+        hamburgerBtn.classList.add('is-active');
+        hamburgerBtn.setAttribute('aria-expanded', 'true');
+      }
     }
   };
 
@@ -39,13 +41,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mobileDrawer && mobileOverlay) {
       mobileDrawer.classList.remove('active');
       mobileOverlay.classList.remove('active');
-      document.body.style.overflow = '';
-      if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('drawer-open');
+      if (hamburgerBtn) {
+        hamburgerBtn.classList.remove('is-active');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
+      }
+    }
+  };
+
+  const toggleMobileMenu = () => {
+    if (mobileDrawer && mobileDrawer.classList.contains('active')) {
+      closeMobileMenu();
+    } else {
+      openMobileMenu();
     }
   };
 
   if (hamburgerBtn) {
-    hamburgerBtn.addEventListener('click', openMobileMenu);
+    hamburgerBtn.addEventListener('click', toggleMobileMenu);
   }
 
   if (closeDrawerBtn) {
@@ -56,51 +69,105 @@ document.addEventListener('DOMContentLoaded', () => {
     mobileOverlay.addEventListener('click', closeMobileMenu);
   }
 
-  mobileNavLinks.forEach((link) => {
+  // Close mobile drawer when a standard navigation link or action is clicked
+  const mobileLinks = document.querySelectorAll(
+    '.mobile-nav-link:not(.mobile-portal-toggle), .mobile-sublink, .mobile-drawer-apply-btn'
+  );
+  mobileLinks.forEach((link) => {
     link.addEventListener('click', closeMobileMenu);
   });
 
-  // Close drawer on Escape key
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeMobileMenu();
-      closePortalDropdown();
-    }
-  });
+  // 3. Mobile Portal Accordion / Expandable Dropdown
+  const mobilePortalToggle = document.getElementById('mobile-portal-toggle');
+  const mobilePortalDropdown = document.getElementById('mobile-portal-dropdown');
 
-  // 3. Desktop Portals Dropdown
-  const portalToggleBtn = document.getElementById('portal-toggle-btn');
-  const portalMenu = document.getElementById('portal-menu');
+  if (mobilePortalToggle && mobilePortalDropdown) {
+    mobilePortalToggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const isOpen = mobilePortalDropdown.classList.toggle('is-open');
+      mobilePortalToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+  }
 
-  const togglePortalDropdown = (e) => {
+  // 4. Desktop Portals Dropdown
+  const desktopPortalToggle = document.getElementById('desktop-portal-toggle');
+  const desktopPortalWrapper = document.getElementById('desktop-portal-wrapper');
+
+  const toggleDesktopPortal = (e) => {
     e.stopPropagation();
-    if (!portalMenu) return;
-    const isShowing = portalMenu.classList.contains('show');
-    if (isShowing) {
-      closePortalDropdown();
-    } else {
-      portalMenu.classList.add('show');
-      if (portalToggleBtn) portalToggleBtn.setAttribute('aria-expanded', 'true');
+    if (!desktopPortalWrapper) return;
+    const isOpen = desktopPortalWrapper.classList.toggle('is-open');
+    if (desktopPortalToggle) {
+      desktopPortalToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     }
   };
 
-  const closePortalDropdown = () => {
-    if (portalMenu) {
-      portalMenu.classList.remove('show');
-      if (portalToggleBtn) portalToggleBtn.setAttribute('aria-expanded', 'false');
+  const closeDesktopPortal = () => {
+    if (desktopPortalWrapper) {
+      desktopPortalWrapper.classList.remove('is-open');
+      if (desktopPortalToggle) desktopPortalToggle.setAttribute('aria-expanded', 'false');
     }
   };
 
-  if (portalToggleBtn) {
-    portalToggleBtn.addEventListener('click', togglePortalDropdown);
+  if (desktopPortalToggle) {
+    desktopPortalToggle.addEventListener('click', toggleDesktopPortal);
   }
 
   // Close dropdown on outside click
   document.addEventListener('click', (e) => {
-    if (portalMenu && !portalMenu.contains(e.target) && e.target !== portalToggleBtn) {
-      closePortalDropdown();
+    if (desktopPortalWrapper && !desktopPortalWrapper.contains(e.target)) {
+      closeDesktopPortal();
     }
   });
+
+  // Close both mobile drawer and desktop dropdown on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeMobileMenu();
+      closeDesktopPortal();
+    }
+  });
+
+  // 5. Automatic Active Page Detection & Highlighting
+  const highlightActivePage = () => {
+    const rawPath = window.location.pathname.toLowerCase();
+    let currentFile = rawPath.substring(rawPath.lastIndexOf('/') + 1);
+    if (!currentFile || currentFile === '') {
+      currentFile = 'index.html';
+    }
+
+    // Clear any existing active states
+    document.querySelectorAll('.desktop-nav .nav-link, .mobile-nav-link').forEach((link) => {
+      link.classList.remove('active');
+    });
+
+    const isMatch = (href) => {
+      if (!href) return false;
+      const target = href.substring(href.lastIndexOf('/') + 1).split('#')[0].toLowerCase();
+      if (currentFile === target) return true;
+      if (currentFile === 'index.html' && (target === '' || target === 'index.html')) return true;
+      return false;
+    };
+
+    // Apply active to desktop links
+    document.querySelectorAll('.desktop-nav .nav-link').forEach((link) => {
+      const href = link.getAttribute('href');
+      if (isMatch(href)) {
+        link.classList.add('active');
+      }
+    });
+
+    // Apply active to mobile links
+    document.querySelectorAll('.mobile-drawer .mobile-nav-link:not(.mobile-portal-toggle)').forEach((link) => {
+      const href = link.getAttribute('href');
+      if (isMatch(href)) {
+        link.classList.add('active');
+      }
+    });
+  };
+
+  highlightActivePage();
 
   // 4. Quick Admissions Inquiry Form Toggle
   const openInquiryBtn = document.getElementById('open-inquiry-btn');

@@ -33,7 +33,7 @@
   <!-- ========================================================================
        HEADER
        ======================================================================== -->
-  <header class="site-header" role="banner">
+    <header class="site-header" role="banner">
     <div class="container header-container">
       <!-- Left: DIMABIN Branding -->
       <a href="index.html" class="brand-link" aria-label="Divine Mandate Bible Institute Home">
@@ -48,77 +48,60 @@
         </div>
       </a>
 
-      <!-- Center: Desktop Navigation -->
+      <!-- Center & Right: Desktop Navigation -->
       <nav class="desktop-nav" aria-label="Primary Navigation">
-        <a href="index.html" class="nav-link active">Home</a>
-        <a href="about.html" class="nav-link">About Us</a>
-        <a href="programs.html" class="nav-link">Programs</a>
-        <a href="admissions.html" class="nav-link">Admissions</a>
-        <a href="contact.html" class="nav-link">Contact Us</a>
-      </nav>
+        <a href="index.html" class="nav-link">HOME</a>
+        <a href="about.html" class="nav-link">ABOUT</a>
+        <a href="admissions.html" class="nav-link">ADMISSIONS</a>
 
-      <!-- Right: Actions (Desktop Portal + Apply Now / Mobile Controls) -->
-      <div class="header-actions">
-        <!-- Desktop Portal Dropdown -->
-        <div class="portal-dropdown-wrapper">
-          <button type="button" class="portal-toggle-btn" id="portal-toggle-btn" aria-expanded="false" aria-haspopup="true">
-            <span>Portals</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <!-- Desktop Portal Dropdown inside Nav -->
+        <div class="desktop-portal-wrapper" id="desktop-portal-wrapper">
+          <button type="button" class="nav-link portal-nav-toggle" id="desktop-portal-toggle" aria-expanded="false" aria-haspopup="true">
+            <span>PORTAL</span>
+            <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
           </button>
-          <div class="portal-menu" id="portal-menu" role="menu">
-            <div class="portal-menu-header">DIMABIN Portals</div>
-            <a href="portals.html" class="portal-menu-item" role="menuitem">
-              <span class="portal-item-title">Portal Gateway</span>
-              <span class="portal-item-desc">Central access for students, lecturers & staff</span>
-            </a>
-            <a href="portals.html#student" class="portal-menu-item" role="menuitem">
-              <span class="portal-item-title">Student Portal</span>
-              <span class="portal-item-desc">Course registration, notes & grades</span>
-            </a>
-            <a href="portals.html#lecturer" class="portal-menu-item" role="menuitem">
-              <span class="portal-item-title">Lecturer Portal</span>
-              <span class="portal-item-desc">Course management & grading sheets</span>
-            </a>
-            <a href="portals.html#admin" class="portal-menu-item" role="menuitem">
-              <span class="portal-item-title">Admin Portal</span>
-              <span class="portal-item-desc">Registry, admissions & institution setup</span>
-            </a>
+          <div class="desktop-portal-menu" id="desktop-portal-menu" role="menu">
+            <div class="desktop-portal-header">DIMABIN Portals</div>
+            <a href="portals.html#student" class="desktop-portal-item" role="menuitem">Student Portal</a>
+            <a href="portals.html#lecturer" class="desktop-portal-item" role="menuitem">Lecturer Portal</a>
+            <a href="portals.html#admin" class="desktop-portal-item" role="menuitem">Admin Portal</a>
           </div>
         </div>
 
-        <!-- Desktop Apply Now -->
+        <a href="contact.html" class="nav-link">CONTACT</a>
         <a href="admissions.html" class="btn btn-gold btn-sm desktop-apply-btn">APPLY NOW</a>
+      </nav>
 
-        <!-- Mobile Apply Now Button -->
+      <!-- Right: Mobile Header Controls (APPLY NOW + Hamburger) -->
+      <div class="mobile-header-actions">
         <a href="admissions.html" class="btn btn-gold btn-sm mobile-apply-btn">APPLY NOW</a>
 
-        <!-- Mobile Hamburger Button -->
-        <button type="button" class="hamburger-btn" id="hamburger-btn" aria-label="Open mobile menu" aria-expanded="false">
+        <button type="button" class="hamburger-btn" id="hamburger-btn" aria-label="Toggle navigation menu" aria-expanded="false">
           <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
+            <line class="h-line line-1" x1="3" y1="6" x2="21" y2="6"></line>
+            <line class="h-line line-2" x1="3" y1="12" x2="21" y2="12"></line>
+            <line class="h-line line-3" x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Mobile Slide-Out Navigation Drawer -->
+  <!-- Mobile Slide-Out Navigation Drawer (Dark Navy, Slide From Left) -->
   <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" aria-hidden="true"></div>
   <aside class="mobile-drawer" id="mobile-drawer" aria-label="Mobile Navigation Drawer">
     <div class="mobile-drawer-header">
-      <div class="brand-link">
-        <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Emblem" width="34" height="34">
-        <div class="brand-text">
-          <span class="brand-title" style="color: var(--dark-navy);">DIVINE MANDATE</span>
-          <span class="brand-subtitle-gold" style="color: var(--primary-blue);">BIBLE INSTITUTE</span>
+      <a href="index.html" class="drawer-brand-link">
+        <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Emblem" width="32" height="32">
+        <div class="drawer-brand-text">
+          <span class="drawer-brand-title">DIMABIN</span>
+          <span class="drawer-brand-sub">CITADEL OF LEARNING</span>
         </div>
-      </div>
+      </a>
       <button type="button" class="close-drawer-btn" id="close-drawer-btn" aria-label="Close navigation menu">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
@@ -126,41 +109,47 @@
     </div>
 
     <div class="mobile-drawer-body">
-      <div>
-        <span class="mobile-nav-group-title">Public Website</span>
-        <a href="index.html" class="mobile-nav-link active">Home</a>
-        <a href="about.html" class="mobile-nav-link">About Us</a>
-        <a href="programs.html" class="mobile-nav-link">Programs</a>
-        <a href="admissions.html" class="mobile-nav-link">Admissions</a>
-        <a href="contact.html" class="mobile-nav-link">Contact Us</a>
+      <!-- 1. HOME -->
+      <a href="index.html" class="mobile-nav-link">HOME</a>
+
+      <!-- 2. ABOUT -->
+      <a href="about.html" class="mobile-nav-link">ABOUT</a>
+
+      <!-- 3. ADMISSIONS -->
+      <a href="admissions.html" class="mobile-nav-link">ADMISSIONS</a>
+
+      <!-- 4. PORTAL (Expandable Dropdown) -->
+      <div class="mobile-portal-dropdown" id="mobile-portal-dropdown">
+        <button type="button" class="mobile-nav-link mobile-portal-toggle" id="mobile-portal-toggle" aria-expanded="false">
+          <span>PORTAL</span>
+          <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="mobile-portal-submenu" id="mobile-portal-submenu">
+          <a href="portals.html#student" class="mobile-sublink">
+            <span class="sublink-dot">›</span> Student Portal
+          </a>
+          <a href="portals.html#lecturer" class="mobile-sublink">
+            <span class="sublink-dot">›</span> Lecturer Portal
+          </a>
+          <a href="portals.html#admin" class="mobile-sublink">
+            <span class="sublink-dot">›</span> Admin Portal
+          </a>
+        </div>
       </div>
 
-      <div style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
-        <span class="mobile-nav-group-title">Institute Portals</span>
-        <a href="portals.html" class="mobile-portal-item">
-          <span class="mobile-portal-name">Portal Gateway</span>
-          <span class="mobile-portal-desc">Single sign-on gateway for students & staff</span>
-        </a>
-        <a href="portals.html#student" class="mobile-portal-item">
-          <span class="mobile-portal-name">Student Portal</span>
-          <span class="mobile-portal-desc">Course registration, exams & results</span>
-        </a>
-        <a href="portals.html#lecturer" class="mobile-portal-item">
-          <span class="mobile-portal-name">Lecturer Portal</span>
-          <span class="mobile-portal-desc">Syllabus, attendance & score submission</span>
-        </a>
-        <a href="portals.html#admin" class="mobile-portal-item">
-          <span class="mobile-portal-name">Admin Portal</span>
-          <span class="mobile-portal-desc">Institution registry & settings</span>
-        </a>
+      <!-- 5. CONTACT -->
+      <a href="contact.html" class="mobile-nav-link">CONTACT</a>
+
+      <!-- 6. APPLY NOW (Prominent Gold Button) -->
+      <div class="mobile-apply-wrapper">
+        <a href="admissions.html" class="btn btn-gold btn-block mobile-drawer-apply-btn">APPLY NOW</a>
       </div>
     </div>
 
     <div class="mobile-drawer-footer">
-      <a href="admissions.html" class="btn btn-gold btn-sm" style="width: 100%; margin-bottom: 0.5rem;">APPLY NOW</a>
-      <p style="text-align: center; font-size: 0.75rem; color: var(--text-secondary);">
-        CITADEL OF LEARNING
-      </p>
+      <p class="drawer-motto-gold">MOTTO: FEAR OF GOD WITHOUT A MESS</p>
     </div>
   </aside>
 
@@ -424,7 +413,7 @@
 
             <!-- Program CTA -->
             <div>
-              <a href="programs.html" class="btn btn-primary">
+              <a href="admissions.html" class="btn btn-primary">
                 <span>READ MORE &amp; APPLY</span>
                 <span aria-hidden="true">→</span>
               </a>
@@ -682,7 +671,6 @@
           <ul class="footer-links-list">
             <li><a href="index.html" class="footer-link">Home</a></li>
             <li><a href="about.html" class="footer-link">About Us</a></li>
-            <li><a href="programs.html" class="footer-link">Programs</a></li>
             <li><a href="admissions.html" class="footer-link">Admissions</a></li>
             <li><a href="contact.html" class="footer-link">Contact Us</a></li>
           </ul>
@@ -692,10 +680,10 @@
         <div>
           <h4 class="footer-col-title">Academic Studies</h4>
           <ul class="footer-links-list">
-            <li><a href="programs.html" class="footer-link">Diploma in Theology (Dipl.Th.)</a></li>
-            <li><a href="programs.html#certificate" class="footer-link">Certificate in Ministry</a></li>
-            <li><a href="programs.html#leadership" class="footer-link">Christian Leadership Studies</a></li>
-            <li><a href="programs.html#weekend" class="footer-link">Executive Weekend Cohorts</a></li>
+            <li><a href="admissions.html" class="footer-link">Diploma in Theology (Dipl.Th.)</a></li>
+            <li><a href="admissions.html" class="footer-link">Certificate in Ministry</a></li>
+            <li><a href="admissions.html" class="footer-link">Christian Leadership Studies</a></li>
+            <li><a href="admissions.html" class="footer-link">Executive Weekend Cohorts</a></li>
           </ul>
         </div>
 

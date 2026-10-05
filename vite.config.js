@@ -11,7 +11,6 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         about: resolve(__dirname, 'about.html'),
-        programs: resolve(__dirname, 'programs.html'),
         admissions: resolve(__dirname, 'admissions.html'),
         contact: resolve(__dirname, 'contact.html'),
         portals: resolve(__dirname, 'portals.html'),
