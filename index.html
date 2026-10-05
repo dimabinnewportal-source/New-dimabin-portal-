@@ -1,32 +1,738 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-    <title>Divine Mandate Bible Institute | DIMABIN</title>
-    <meta name="description" content="Divine Mandate Bible Institute (DIMABIN) - Equipping leaders through biblical scholarship, spiritual formation, and ministerial excellence." />
-    <meta name="theme-color" content="#1F3C82" />
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Divine Mandate Bible Institute (DIMABIN) | Interdenominational Citadel of Learning</title>
+  <meta name="description" content="Divine Mandate Bible Institute (DIMABIN) - Interdenominational Citadel of Learning. Motto: Fear of God without a Mess. Equipping saints for effective ministry and leadership.">
+  <meta name="theme-color" content="#122452">
 
-    <!-- Open Graph Metadata -->
-    <meta property="og:site_name" content="Divine Mandate Bible Institute (DIMABIN)" />
-    <meta property="og:title" content="Divine Mandate Bible Institute | DIMABIN" />
-    <meta property="og:description" content="Equipping leaders through biblical scholarship, spiritual formation, and ministerial excellence." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Divine Mandate Bible Institute | DIMABIN" />
-    <meta name="twitter:description" content="Equipping leaders through biblical scholarship, spiritual formation, and ministerial excellence." />
+  <!-- Open Graph Metadata -->
+  <meta property="og:site_name" content="Divine Mandate Bible Institute (DIMABIN)">
+  <meta property="og:title" content="Divine Mandate Bible Institute (DIMABIN) | Interdenominational Citadel of Learning">
+  <meta property="og:description" content="Motto: Fear of God without a Mess. Equipping saints for effective ministry, leadership, and professional excellence.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><rect width='48' height='48' rx='8' fill='%231F3C82'/><path d='M14 12h20a2 2 0 0 1 2 2v20a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2V14a2 2 0 0 1 2-2z' fill='%23122452'/><path d='M24 14v22M16 22h16' stroke='%23F5B800' stroke-width='3' stroke-linecap='round'/></svg>" />
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/logo/dimabin-emblem.svg">
 
-    <!-- Google Fonts: Poppins (300, 400, 500, 600, 700, 800) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet" />
-  </head>
-  <body class="bg-[#F6F7FB] text-[#122452] font-sans antialiased min-h-screen selection:bg-[#F5B800]/30 selection:text-[#122452]">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <!-- Google Fonts: Poppins (300, 400, 500, 600, 700, 800) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap" rel="stylesheet">
+
+  <!-- Pure Vanilla Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Accessible Skip Link -->
+  <a href="#main-content" class="sr-only">Skip to main content</a>
+
+  <!-- ========================================================================
+       HEADER
+       ======================================================================== -->
+  <header class="site-header" role="banner">
+    <div class="container header-container">
+      <!-- Left: DIMABIN Branding -->
+      <a href="index.html" class="brand-link" aria-label="Divine Mandate Bible Institute Home">
+        <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Seal" class="brand-emblem" width="38" height="38">
+        <div class="brand-text">
+          <span class="brand-title">DIVINE MANDATE</span>
+          <div class="brand-sub">
+            <span class="brand-subtitle-gold">BIBLE INSTITUTE</span>
+            <span class="brand-separator" aria-hidden="true">·</span>
+            <span class="brand-tagline">CITADEL OF LEARNING</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Center: Desktop Navigation -->
+      <nav class="desktop-nav" aria-label="Primary Navigation">
+        <a href="index.html" class="nav-link active">Home</a>
+        <a href="about.html" class="nav-link">About Us</a>
+        <a href="programs.html" class="nav-link">Programs</a>
+        <a href="admissions.html" class="nav-link">Admissions</a>
+        <a href="contact.html" class="nav-link">Contact Us</a>
+      </nav>
+
+      <!-- Right: Actions (Desktop Portal + Apply Now / Mobile Controls) -->
+      <div class="header-actions">
+        <!-- Desktop Portal Dropdown -->
+        <div class="portal-dropdown-wrapper">
+          <button type="button" class="portal-toggle-btn" id="portal-toggle-btn" aria-expanded="false" aria-haspopup="true">
+            <span>Portals</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="portal-menu" id="portal-menu" role="menu">
+            <div class="portal-menu-header">DIMABIN Portals</div>
+            <a href="portals.html" class="portal-menu-item" role="menuitem">
+              <span class="portal-item-title">Portal Gateway</span>
+              <span class="portal-item-desc">Central access for students, lecturers & staff</span>
+            </a>
+            <a href="portals.html#student" class="portal-menu-item" role="menuitem">
+              <span class="portal-item-title">Student Portal</span>
+              <span class="portal-item-desc">Course registration, notes & grades</span>
+            </a>
+            <a href="portals.html#lecturer" class="portal-menu-item" role="menuitem">
+              <span class="portal-item-title">Lecturer Portal</span>
+              <span class="portal-item-desc">Course management & grading sheets</span>
+            </a>
+            <a href="portals.html#admin" class="portal-menu-item" role="menuitem">
+              <span class="portal-item-title">Admin Portal</span>
+              <span class="portal-item-desc">Registry, admissions & institution setup</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Desktop Apply Now -->
+        <a href="admissions.html" class="btn btn-gold btn-sm desktop-apply-btn">APPLY NOW</a>
+
+        <!-- Mobile Apply Now Button -->
+        <a href="admissions.html" class="btn btn-gold btn-sm mobile-apply-btn">APPLY NOW</a>
+
+        <!-- Mobile Hamburger Button -->
+        <button type="button" class="hamburger-btn" id="hamburger-btn" aria-label="Open mobile menu" aria-expanded="false">
+          <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Slide-Out Navigation Drawer -->
+  <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" aria-hidden="true"></div>
+  <aside class="mobile-drawer" id="mobile-drawer" aria-label="Mobile Navigation Drawer">
+    <div class="mobile-drawer-header">
+      <div class="brand-link">
+        <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Emblem" width="34" height="34">
+        <div class="brand-text">
+          <span class="brand-title" style="color: var(--dark-navy);">DIVINE MANDATE</span>
+          <span class="brand-subtitle-gold" style="color: var(--primary-blue);">BIBLE INSTITUTE</span>
+        </div>
+      </div>
+      <button type="button" class="close-drawer-btn" id="close-drawer-btn" aria-label="Close navigation menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="mobile-drawer-body">
+      <div>
+        <span class="mobile-nav-group-title">Public Website</span>
+        <a href="index.html" class="mobile-nav-link active">Home</a>
+        <a href="about.html" class="mobile-nav-link">About Us</a>
+        <a href="programs.html" class="mobile-nav-link">Programs</a>
+        <a href="admissions.html" class="mobile-nav-link">Admissions</a>
+        <a href="contact.html" class="mobile-nav-link">Contact Us</a>
+      </div>
+
+      <div style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+        <span class="mobile-nav-group-title">Institute Portals</span>
+        <a href="portals.html" class="mobile-portal-item">
+          <span class="mobile-portal-name">Portal Gateway</span>
+          <span class="mobile-portal-desc">Single sign-on gateway for students & staff</span>
+        </a>
+        <a href="portals.html#student" class="mobile-portal-item">
+          <span class="mobile-portal-name">Student Portal</span>
+          <span class="mobile-portal-desc">Course registration, exams & results</span>
+        </a>
+        <a href="portals.html#lecturer" class="mobile-portal-item">
+          <span class="mobile-portal-name">Lecturer Portal</span>
+          <span class="mobile-portal-desc">Syllabus, attendance & score submission</span>
+        </a>
+        <a href="portals.html#admin" class="mobile-portal-item">
+          <span class="mobile-portal-name">Admin Portal</span>
+          <span class="mobile-portal-desc">Institution registry & settings</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="mobile-drawer-footer">
+      <a href="admissions.html" class="btn btn-gold btn-sm" style="width: 100%; margin-bottom: 0.5rem;">APPLY NOW</a>
+      <p style="text-align: center; font-size: 0.75rem; color: var(--text-secondary);">
+        CITADEL OF LEARNING
+      </p>
+    </div>
+  </aside>
+
+  <!-- ========================================================================
+       MAIN CONTENT
+       ======================================================================== -->
+  <main id="main-content">
+
+    <!-- 1. HERO SECTION -->
+    <section class="hero-section" id="hero" aria-label="Introduction and Hero Banner">
+      <div class="hero-bg-wrapper">
+        <img src="assets/images/hero-library.jpg" alt="Theological Seminary Library" class="hero-bg-img">
+        <div class="hero-overlay"></div>
+      </div>
+
+      <div class="container hero-content">
+        <!-- Gold Outlined Motto Label -->
+        <div class="hero-motto-label">
+          MOTTO: FEAR OF GOD WITHOUT A MESS
+        </div>
+
+        <!-- Main Institute Heading -->
+        <h1 class="hero-title">
+          DIVINE MANDATE BIBLE INSTITUTE <span class="hero-title-accent">(DIMABIN)</span>
+        </h1>
+
+        <!-- Gold Italic Subtitle -->
+        <p class="hero-subtitle">
+          Interdenominational Citadel of Learning
+        </p>
+
+        <!-- Descriptive Prose -->
+        <p class="hero-desc">
+          Equipping the saints for effective ministry, leadership, and professional excellence.
+          Discover an academically rigorous, spiritually enriching theological education designed to
+          empower your divine calling.
+        </p>
+
+        <!-- CTA Buttons -->
+        <div class="hero-cta-group">
+          <a href="admissions.html" class="btn btn-gold btn-lg">APPLY NOW</a>
+          <a href="portals.html" class="btn btn-outline-white btn-lg">STUDENT PORTAL</a>
+        </div>
+      </div>
+
+      <!-- Bottom Gold Accent Line -->
+      <div class="hero-bottom-accent" aria-hidden="true"></div>
+    </section>
+
+    <!-- 2. WELCOME SECTION -->
+    <section class="section section-white" id="welcome" aria-label="Welcome Message">
+      <div class="container">
+        <div class="welcome-prose">
+          <span class="section-eyebrow">WELCOME TO DIMABIN</span>
+          <h2 class="section-title">
+            Preparing Leaders with Spiritual Depth and Academic Integrity
+          </h2>
+          <div class="welcome-paragraphs">
+            <p>
+              Welcome to the Divine Mandate Bible Institute (DIMABIN), an interdenominational citadel
+              of learning dedicated to cultivating a deep theological understanding, uncompromised spiritual
+              devotion, and practical ministry capacity.
+            </p>
+            <p>
+              At DIMABIN, we hold the absolute authority of Scripture as our highest standard. Our dynamic
+              learning atmosphere bridges profound biblical study with realistic training, raising graduates
+              who are capable of responding effectively to modern global ministry challenges while maintaining
+              an unwavering moral stance.
+            </p>
+          </div>
+          <div style="margin-top: 2rem;">
+            <a href="about.html" class="btn btn-outline-blue">
+              <span>LEARN MORE ABOUT US</span>
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 3. FROM THE RECTOR'S DESK CARD -->
+        <div class="rector-card">
+          <div class="rector-card-top-accent" aria-hidden="true"></div>
+          <div class="rector-card-quote-mark" aria-hidden="true">“</div>
+
+          <div class="rector-card-inner">
+            <!-- Circular Initials / Profile Area -->
+            <div class="rector-profile">
+              <div class="rector-avatar-circle" aria-label="Rector Sorinola J.O. Initials">
+                <span>SJ</span>
+                <div class="rector-avatar-badge" aria-hidden="true">✦</div>
+              </div>
+              <div>
+                <span class="rector-info-name">Sorinola J.O.</span>
+                <span class="rector-info-title">Rector, Divine Mandate Bible Institute</span>
+              </div>
+            </div>
+
+            <!-- Quotation Block -->
+            <div class="rector-quote-block">
+              <h3 class="rector-heading">
+                <span class="rector-heading-dot" aria-hidden="true"></span>
+                <span>From the Rector's Desk</span>
+              </h3>
+              <blockquote class="rector-quote-text">
+                &ldquo;Our vision is simple yet profound: to establish a world-class training center that
+                balances deep scriptural analysis with uncompromising spiritual development. At DIMABIN,
+                we strive for 'Fear of God without a Mess'—maintaining pristine ethical standards alongside
+                rigorous academic discipline. We invite you to join us as we embark on this sacred journey
+                of learning and spiritual transformation.&rdquo;
+              </blockquote>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem;">
+                <span class="rector-footer-motto">MOTTO: FEAR OF GOD WITHOUT A MESS</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic;">Interdenominational Citadel</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. VISION & MISSION -->
+    <section class="section section-light" id="about" aria-label="Foundations, Vision and Mission">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">OUR FOUNDATIONS</span>
+          <h2 class="section-title">Vision &amp; Mission</h2>
+          <p class="section-subtitle">
+            The spiritual coordinates guiding our educational mandate
+          </p>
+        </div>
+
+        <div class="cards-grid-2">
+          <!-- VISION CARD -->
+          <div class="foundation-card">
+            <div class="card-accent-gold" aria-hidden="true"></div>
+            <div class="card-header-icon">
+              <div class="icon-box-blue" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </div>
+              <h3 class="card-title-blue">Our Vision</h3>
+            </div>
+            <p class="card-body-text">
+              To be a globally recognized interdenominational Bible institute, producing spiritually robust,
+              intellectually equipped, and morally sound Christian leaders who will propagate the Gospel of
+              Christ with absolute integrity and power across all nations.
+            </p>
+            <div class="card-checklist">
+              <span class="checklist-label">Strategic Revival Goals:</span>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Fostering global spiritual revivals</span>
+              </div>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Restoring ethical standards in church leadership</span>
+              </div>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Cultivating academic theological excellence</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- MISSION CARD -->
+          <div class="foundation-card">
+            <div class="card-accent-blue" aria-hidden="true"></div>
+            <div class="card-header-icon">
+              <div class="icon-box-gold" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                  <line x1="4" y1="22" x2="4" y2="15"></line>
+                </svg>
+              </div>
+              <h3 class="card-title-blue">Our Mission</h3>
+            </div>
+            <p class="card-body-text">
+              To deliver top-tier biblical and theological education through comprehensive training, mentoring,
+              and practical service, instilling the fear of God as the core foundation for a successful,
+              scandal-free Christian ministry and professional life.
+            </p>
+            <div class="card-checklist">
+              <span class="checklist-label">Action Pillars:</span>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Sound teaching based on biblical authority</span>
+              </div>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Hands-on ministerial apprenticeship programs</span>
+              </div>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Building standard, professional-level leadership skillsets</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. PROGRAMS OF STUDY -->
+    <section class="section section-white" id="programs" aria-label="Academic Programs of Study">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">ACADEMIC OFFERINGS</span>
+          <h2 class="section-title">Programs of Study</h2>
+          <p class="section-subtitle">
+            Dignified training courses mapped for immediate kingdom impact
+          </p>
+        </div>
+
+        <div class="program-feature-card">
+          <div class="program-card-top-blue" aria-hidden="true"></div>
+
+          <div class="program-card-main">
+            <div class="program-badge-row">
+              <span class="program-category-badge">DIPLOMA COURSE</span>
+              <span class="program-duration-label">Flexible Modular Schedules</span>
+            </div>
+
+            <h3 class="program-title">Diploma in Theology</h3>
+
+            <div class="program-split-grid">
+              <div class="program-paragraphs">
+                <p>
+                  Our flagship program provides an extensive biblical framework designed to establish
+                  a solid platform for theological, pastoral, or missionary journey. Students delve deeply
+                  into Christian history, systematic theology, hermeneutics, and modern church administration.
+                </p>
+                <p>
+                  This program is tailored specifically for aspiring ministers, evangelists, lay leaders,
+                  and any believer seeking an organized, deeper understanding of the Scriptures.
+                </p>
+              </div>
+              <div class="program-thumb-box">
+                <img src="assets/images/theology-study.jpg" alt="Theology Study Materials and Holy Bible" class="program-thumb-img" loading="lazy">
+              </div>
+            </div>
+
+            <!-- Features List -->
+            <div class="program-features-list">
+              <div class="feature-pill-item">
+                <span class="feature-pill-check" aria-hidden="true">✓</span>
+                <span>1-Year Flexible Program</span>
+              </div>
+              <div class="feature-pill-item">
+                <span class="feature-pill-check" aria-hidden="true">✓</span>
+                <span>Experienced Theological Staff</span>
+              </div>
+              <div class="feature-pill-item">
+                <span class="feature-pill-check" aria-hidden="true">✓</span>
+                <span>Interdenominational Focus</span>
+              </div>
+              <div class="feature-pill-item">
+                <span class="feature-pill-check" aria-hidden="true">✓</span>
+                <span>Practical Ministry Projects</span>
+              </div>
+            </div>
+
+            <!-- Program CTA -->
+            <div>
+              <a href="programs.html" class="btn btn-primary">
+                <span>READ MORE &amp; APPLY</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Bottom Scripture Panel -->
+          <div class="scripture-panel">
+            <div class="scripture-panel-inner">
+              <div>
+                <span class="scripture-degree">Dipl.Th.</span>
+                <p class="scripture-quote">
+                  &ldquo;Study to show thyself approved unto God, a workman that needeth not to be ashamed...&rdquo;
+                </p>
+              </div>
+              <div>
+                <span class="scripture-ref-badge">2 TIMOTHY 2:15</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. WHY CHOOSE DIMABIN -->
+    <section class="section section-light" id="advantage" aria-label="The DIMABIN Advantage">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">THE DIMABIN ADVANTAGE</span>
+          <h2 class="section-title">Why Choose DIMABIN</h2>
+          <p class="section-subtitle">
+            Developing outstanding Christian leaders for the global harvest
+          </p>
+        </div>
+
+        <div class="features-grid-6">
+          <!-- 1. Biblical Foundation -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Biblical Foundation</h3>
+            <p class="feature-desc">
+              Uncompromising adherence to the Word of God as the infallible source of truth and authority
+              for Christian living and doctrine.
+            </p>
+          </div>
+
+          <!-- 2. Experienced Teaching -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Experienced Teaching</h3>
+            <p class="feature-desc">
+              Learn from seasoned scholars, dynamic pastors, and active leaders with decades of fruitful
+              theological and pastoral excellence.
+            </p>
+          </div>
+
+          <!-- 3. Practical Ministry -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Practical Ministry</h3>
+            <p class="feature-desc">
+              Gain real-world experience through structured fieldwork, church internships, evangelistic campaigns,
+              and community service.
+            </p>
+          </div>
+
+          <!-- 4. Leadership Development -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            </div>
+            <h3 class="feature-title">Leadership Development</h3>
+            <p class="feature-desc">
+              Refine critical governance, emotional intelligence, and organizational management skills designed
+              to oversee modern global ministries.
+            </p>
+          </div>
+
+          <!-- 5. Spiritual Growth -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Spiritual Growth</h3>
+            <p class="feature-desc">
+              Enrich your personal prayer life, foster spiritual disciplines, and develop genuine,
+              scandal-free ministerial integrity.
+            </p>
+          </div>
+
+          <!-- 6. Academic Excellence -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Academic Excellence</h3>
+            <p class="feature-desc">
+              Participate in structured lectures, advanced theological research, and insightful peer debates
+              under a standardized university structure.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. ADMISSION CTA SECTION -->
+    <section class="admission-cta-section" id="admissions" aria-label="Admissions Call to Action">
+      <div class="admission-glow-top" aria-hidden="true"></div>
+      <div class="admission-glow-bottom" aria-hidden="true"></div>
+
+      <div class="container admission-content">
+        <span class="section-eyebrow" style="color: var(--gold);">ENROLLMENT IN PROGRESS</span>
+        <h2 class="section-title" style="color: var(--white); margin-bottom: 0.5rem;">
+          Answer the Call to Divine Service
+        </h2>
+        <p class="section-subtitle" style="color: var(--gold); font-size: 1.25rem;">
+          Admission is currently open for the academic session
+        </p>
+
+        <p class="admission-desc">
+          Take the bold step towards clarifying your spiritual calling and expanding your ministry
+          potential. Our simple online registration process is active and ready to guide you.
+        </p>
+
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;">
+          <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem;">
+            <button type="button" class="btn btn-gold btn-lg" id="open-inquiry-btn">
+              APPLY FOR ADMISSION
+            </button>
+            <a href="contact.html" class="btn btn-outline-white btn-lg">
+              INQUIRE AT CAMPUS
+            </a>
+          </div>
+        </div>
+
+        <!-- Interactive Quick Admission Inquiry Form Box -->
+        <div class="admission-inquiry-box" id="admission-inquiry-box" role="dialog" aria-labelledby="inquiry-title">
+          <div class="inquiry-header">
+            <div>
+              <h3 class="inquiry-title" id="inquiry-title">Quick Admissions Starter</h3>
+              <p class="inquiry-subtitle">Initiate your 2026 application for DIMABIN programs</p>
+            </div>
+            <button type="button" id="close-inquiry-btn" style="background: transparent; border: none; font-size: 1.25rem; color: #94A3B8; cursor: pointer;" aria-label="Close form">✕</button>
+          </div>
+
+          <form id="admission-inquiry-form">
+            <div class="form-group">
+              <label for="applicant-name" class="form-label">Full Legal Name *</label>
+              <input type="text" id="applicant-name" class="form-input" placeholder="e.g. John Emmanuel Adebayo" required>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="applicant-email" class="form-label">Email Address *</label>
+                <input type="email" id="applicant-email" class="form-input" placeholder="applicant@example.com" required>
+              </div>
+              <div class="form-group">
+                <label for="applicant-phone" class="form-label">Phone Number *</label>
+                <input type="tel" id="applicant-phone" class="form-input" placeholder="+234 (0) 800 000 0000" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="applicant-program" class="form-label">Select Desired Program *</label>
+              <select id="applicant-program" class="form-select" required>
+                <option value="diploma">Diploma in Theology (Dipl.Th.)</option>
+                <option value="certificate">Certificate in Christian Ministry</option>
+                <option value="leadership">Bachelor of Arts in Christian Leadership</option>
+                <option value="weekend">Executive Weekend Cohort</option>
+                <option value="online">Distance &amp; Online Learning</option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn btn-gold btn-sm" style="width: 100%; font-weight: 800;">
+              SUBMIT APPLICATION INQUIRY
+            </button>
+          </form>
+
+          <!-- Success Message -->
+          <div id="inquiry-success-msg" style="display: none; text-align: center; padding: 1.5rem 0;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: #DCFCE7; color: #15803D; font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto;">✓</div>
+            <h4 style="font-weight: 800; font-size: 1.125rem; color: var(--dark-navy); margin-bottom: 0.5rem;">Application Inquiry Received!</h4>
+            <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+              Thank you. Our admissions registry will contact you shortly with the complete prospectus and registration kit.
+            </p>
+            <button type="button" class="btn btn-primary btn-sm" id="reset-inquiry-btn">Close Window</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================================
+       FOOTER
+       ======================================================================== -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-grid">
+        <!-- Col 1: Institute Brand -->
+        <div class="footer-brand-col">
+          <div class="brand-link">
+            <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Seal" width="44" height="44">
+            <div class="brand-text">
+              <span class="brand-title" style="font-size: 1.15rem;">DIVINE MANDATE</span>
+              <span class="brand-subtitle-gold" style="font-size: 0.75rem;">BIBLE INSTITUTE</span>
+            </div>
+          </div>
+
+          <p class="footer-motto-gold">
+            MOTTO: FEAR OF GOD WITHOUT A MESS
+          </p>
+
+          <p class="footer-desc">
+            An Interdenominational Citadel of Learning built to raise equipped, biblically sound,
+            and ethically outstanding Christian leaders.
+          </p>
+
+          <!-- Social Links -->
+          <div class="footer-social-cluster">
+            <a href="https://facebook.com" class="social-icon-btn" aria-label="DIMABIN Facebook" target="_blank" rel="noopener noreferrer">F</a>
+            <a href="https://youtube.com" class="social-icon-btn" aria-label="DIMABIN YouTube" target="_blank" rel="noopener noreferrer">Y</a>
+            <a href="https://whatsapp.com" class="social-icon-btn" aria-label="DIMABIN WhatsApp" target="_blank" rel="noopener noreferrer">W</a>
+            <a href="https://instagram.com" class="social-icon-btn" aria-label="DIMABIN Instagram" target="_blank" rel="noopener noreferrer">I</a>
+          </div>
+        </div>
+
+        <!-- Col 2: Quick Links -->
+        <div>
+          <h4 class="footer-col-title">Quick Links</h4>
+          <ul class="footer-links-list">
+            <li><a href="index.html" class="footer-link">Home</a></li>
+            <li><a href="about.html" class="footer-link">About Us</a></li>
+            <li><a href="programs.html" class="footer-link">Programs</a></li>
+            <li><a href="admissions.html" class="footer-link">Admissions</a></li>
+            <li><a href="contact.html" class="footer-link">Contact Us</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 3: Academic Studies -->
+        <div>
+          <h4 class="footer-col-title">Academic Studies</h4>
+          <ul class="footer-links-list">
+            <li><a href="programs.html" class="footer-link">Diploma in Theology (Dipl.Th.)</a></li>
+            <li><a href="programs.html#certificate" class="footer-link">Certificate in Ministry</a></li>
+            <li><a href="programs.html#leadership" class="footer-link">Christian Leadership Studies</a></li>
+            <li><a href="programs.html#weekend" class="footer-link">Executive Weekend Cohorts</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 4: Portals & Contact Information -->
+        <div>
+          <h4 class="footer-col-title">Institute Portals</h4>
+          <ul class="footer-links-list">
+            <li><a href="portals.html" class="footer-link">› Portal Gateway</a></li>
+            <li><a href="portals.html#student" class="footer-link">› Student Portal</a></li>
+            <li><a href="portals.html#lecturer" class="footer-link">› Lecturer Portal</a></li>
+            <li><a href="portals.html#admin" class="footer-link">› Admin Portal</a></li>
+          </ul>
+
+          <div class="footer-contact-block" id="contact">
+            <h4 class="footer-col-title" style="margin-bottom: 0.5rem; margin-top: 0.5rem;">Contact Us</h4>
+            <p><span class="footer-contact-label">Address:</span> Divine Mandate Bible Institute Campus &amp; Study Centres (Official address placeholder)</p>
+            <p><span class="footer-contact-label">Phone:</span> +234 (0) 800-DIMABIN (Official phone placeholder)</p>
+            <p><span class="footer-contact-label">Email:</span> info@dimabin.org (Official email placeholder)</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Bottom Copyright & Legal -->
+      <div class="footer-bottom-bar">
+        <p>© 2026 Divine Mandate Bible Institute (DIMABIN). All Rights Reserved.</p>
+        <div class="footer-legal-links">
+          <a href="contact.html">Privacy Policy</a>
+          <span aria-hidden="true">·</span>
+          <a href="contact.html">Terms of Use</a>
+          <span aria-hidden="true">·</span>
+          <a href="portals.html" style="color: var(--gold);">Portal Access</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Pure Vanilla JavaScript -->
+  <script src="js/main.js"></script>
+</body>
 </html>
-
