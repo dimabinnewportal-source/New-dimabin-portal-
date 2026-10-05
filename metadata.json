@@ -1,0 +1,7 @@
+{
+  "name": "Divine Mandate Bible Institute",
+  "description": "Scalable web platform and institutional portal foundation for Divine Mandate Bible Institute (DIMABIN).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

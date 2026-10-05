@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* DIMABIN Core Brand Color Tokens */
+    --color-primary-blue: #1F3C82;
+    --color-primary-blue-hover: #172F68;
+    --color-primary-blue-subtle: #EEF3FD;
+
+    --color-dark-navy: #122452;
+    --color-dark-navy-deep: #0A1430;
+
+    --color-gold: #F5B800;
+    --color-gold-hover: #DF9B00;
+    --color-gold-subtle: #FEF8E7;
+
+    --color-white: #FFFFFF;
+    --color-bg-light: #F6F7FB;
+
+    /* Semantic Text Colors */
+    --color-text-primary: #122452;
+    --color-text-secondary: #5A6A85;
+    --color-text-muted: #8896AB;
+
+    /* Structural Borders & Dividers */
+    --color-border-subtle: #E2E8F0;
+    --color-border-strong: #CBD5E1;
+
+    /* Spatial Dimensions */
+    --container-max-width: 1280px;
+    --container-padding-mobile: 1rem;
+    --container-padding-tablet: 1.5rem;
+    --container-padding-desktop: 2rem;
+  }
+
+  html {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-light);
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Accessible focus indicators */
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+  }
+}
+
+/* Custom utility classes preserving DIMABIN design system */
+.dimabin-container {
+  width: 100%;
+  max-width: var(--container-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-padding-mobile);
+  padding-right: var(--container-padding-mobile);
+}
+
+@media (min-width: 640px) {
+  .dimabin-container {
+    padding-left: var(--container-padding-tablet);
+    padding-right: var(--container-padding-tablet);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dimabin-container {
+    padding-left: var(--container-padding-desktop);
+    padding-right: var(--container-padding-desktop);
+  }
+}
+
+/* Heading Utility Classes with Poppins */
+.font-poppins {
+  font-family: 'Poppins', sans-serif;
+}
