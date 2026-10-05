@@ -17,13 +17,12 @@ export interface NavSection {
   readonly items: readonly NavLinkItem[];
 }
 
-// Public Primary Navigation (Top Bar Contract: 4-6 links)
+// Public Primary Navigation
 export const MAIN_NAV_ITEMS: readonly NavLinkItem[] = [
   { label: 'Home', href: ROUTES.HOME },
   { label: 'About Us', href: ROUTES.ABOUT },
-  { label: 'Programmes', href: ROUTES.PROGRAMMES },
   { label: 'Admissions', href: ROUTES.ADMISSIONS },
-  { label: 'Contact', href: ROUTES.CONTACT },
+  { label: 'Contact Us', href: ROUTES.CONTACT },
 ] as const;
 
 // Portal Gateway Links for Header & Footer

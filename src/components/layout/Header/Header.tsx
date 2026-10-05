@@ -26,7 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 16);
+      setIsScrolled(window.scrollY > 20);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -37,29 +37,29 @@ export const Header: React.FC<HeaderProps> = ({
     <>
       <header
         className={`
-          sticky top-0 z-40 w-full transition-all duration-200
+          fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300
           ${
             isScrolled
-              ? 'bg-white/95 backdrop-blur-md shadow-sm border-b border-[#E2E8F0] py-3'
-              : 'bg-white border-b border-[#E2E8F0]/70 py-4'
+              ? 'bg-[#122452] shadow-md border-b border-[#F5B800]/40 py-2.5 sm:py-3'
+              : 'bg-[#122452]/85 backdrop-blur-sm border-b border-white/10 py-3 sm:py-4'
           }
           ${className}
         `.trim()}
       >
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            {/* Zone 1: Brand Lockup */}
+          <div className="flex items-center justify-between gap-3 sm:gap-4">
+            {/* Zone 1: Brand Lockup (Desktop & Mobile) */}
             <a
-              href={ROUTES.HOME}
-              className="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F5B800] rounded-lg"
-              aria-label="Divine Mandate Bible Institute - Return to Home"
+              href="/"
+              className="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F5B800] rounded-lg group"
+              aria-label="Divine Mandate Bible Institute - Home"
             >
-              <DimabinLogo emblemSize={isScrolled ? 36 : 42} />
+              <DimabinLogo variant="dark" emblemSize={isScrolled ? 34 : 38} />
             </a>
 
             {/* Zone 2: Navigation Links (Desktop) */}
             <nav
-              className="hidden lg:flex items-center gap-7"
+              className="hidden lg:flex items-center gap-7 xl:gap-8"
               aria-label="Primary Navigation"
             >
               {MAIN_NAV_ITEMS.map((item) => (
@@ -67,14 +67,15 @@ export const Header: React.FC<HeaderProps> = ({
                   key={item.href}
                   label={item.label}
                   href={item.href}
+                  isDarkTheme={true}
                   isActive={activePath === item.href}
                 />
               ))}
             </nav>
 
-            {/* Zone 3: Portal Access & Apply Now Actions */}
-            <div className="hidden sm:flex items-center gap-3">
-              {/* Portal Gateway Dropdown */}
+            {/* Zone 3: Desktop Portal Access & Apply Now Actions */}
+            <div className="hidden lg:flex items-center gap-3">
+              {/* Portal Access Dropdown */}
               <div className="relative">
                 <button
                   type="button"
@@ -82,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onBlur={() => setTimeout(() => setIsPortalDropdownOpen(false), 200)}
                   aria-expanded={isPortalDropdownOpen}
                   aria-haspopup="true"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[#1F3C82] hover:bg-[#EEF3FD] rounded-lg transition-colors cursor-pointer font-poppins"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-200 hover:text-[#F5B800] hover:bg-white/5 rounded-lg transition-colors cursor-pointer font-poppins"
                 >
                   <span>Portals</span>
                   <svg
@@ -106,10 +107,10 @@ export const Header: React.FC<HeaderProps> = ({
                 {/* Dropdown Menu */}
                 {isPortalDropdownOpen && (
                   <div
-                    className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-[#E2E8F0] p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                    className="absolute right-0 mt-2 w-64 bg-[#122452] rounded-xl shadow-xl border border-[#1F3C82] p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                     role="menu"
                   >
-                    <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#DF9B00] border-b border-slate-100 font-poppins">
+                    <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#F5B800] border-b border-white/10 font-poppins">
                       DIMABIN Portals
                     </div>
                     {PORTAL_NAV_ITEMS.map((portal) => (
@@ -117,12 +118,12 @@ export const Header: React.FC<HeaderProps> = ({
                         key={portal.href}
                         href={portal.href}
                         role="menuitem"
-                        className="block px-3 py-2 rounded-lg text-xs hover:bg-[#EEF3FD] transition-colors"
+                        className="block px-3 py-2 rounded-lg text-xs hover:bg-[#1F3C82] transition-colors"
                       >
-                        <div className="font-semibold text-[#1F3C82] font-poppins">
+                        <div className="font-semibold text-white font-poppins">
                           {portal.label}
                         </div>
-                        <div className="text-[11px] text-[#5A6A85] line-clamp-1">
+                        <div className="text-[11px] text-slate-300 line-clamp-1">
                           {portal.description}
                         </div>
                       </a>
@@ -135,32 +136,31 @@ export const Header: React.FC<HeaderProps> = ({
               <Button
                 variant="secondary"
                 size="sm"
-                href={ROUTES.ADMISSIONS}
-                className="shadow-xs"
+                href="#admissions"
+                className="font-bold tracking-wider uppercase text-xs px-4"
               >
-                Apply Now
+                APPLY NOW
               </Button>
             </div>
 
-            {/* Mobile Navigation Toggle Button */}
-            <div className="flex items-center gap-2 lg:hidden">
-              <Button
-                variant="secondary"
-                size="sm"
-                href={ROUTES.ADMISSIONS}
-                className="text-xs px-2.5 py-1.5 sm:hidden"
+            {/* Mobile Header Right Zone (APPLY NOW button + Hamburger menu) */}
+            <div className="flex items-center gap-2.5 lg:hidden">
+              <a
+                href="#admissions"
+                className="inline-flex items-center justify-center font-poppins text-xs font-bold px-3 py-1.5 min-h-[36px] rounded-md bg-[#F5B800] text-[#122452] shadow-xs active:scale-95 transition-all select-none uppercase tracking-wider"
               >
-                Apply
-              </Button>
+                APPLY NOW
+              </a>
+
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="p-2 rounded-lg text-[#122452] hover:bg-slate-100 transition-colors cursor-pointer"
+                className="p-2 rounded-lg text-white hover:bg-white/10 transition-colors cursor-pointer"
                 aria-label="Open navigation menu"
                 aria-expanded={isMobileMenuOpen}
               >
                 <svg
-                  className="w-6 h-6"
+                  className="w-6 h-6 text-white"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -169,7 +169,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth={2}
+                    strokeWidth={2.2}
                     d="M4 6h16M4 12h16M4 18h16"
                   />
                 </svg>

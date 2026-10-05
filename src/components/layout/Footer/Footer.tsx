@@ -36,11 +36,11 @@ export const Footer: React.FC<FooterProps> = ({ className = '' }) => {
             <DimabinLogo variant="dark" emblemSize={44} />
 
             <p className="font-poppins text-xs font-semibold uppercase tracking-wider text-[#F5B800]">
-              {INSTITUTE_CONFIG.motto}
+              MOTTO: {INSTITUTE_CONFIG.motto}
             </p>
 
             <p className="font-poppins text-sm text-slate-300 leading-relaxed max-w-sm">
-              {INSTITUTE_CONFIG.vision}
+              An Interdenominational Citadel of Learning built to raise equipped, biblically sound, and ethically outstanding Christian leaders.
             </p>
 
             {/* Social Links */}
@@ -71,16 +71,26 @@ export const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               Quick Links
             </h3>
             <ul className="space-y-2.5">
-              {FOOTER_NAVIGATION.quickLinks.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="font-poppins text-sm text-slate-300 hover:text-white transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
+              <li>
+                <a href="#hero" className="font-poppins text-sm text-slate-300 hover:text-white transition-colors">
+                  Home
+                </a>
+              </li>
+              <li>
+                <a href="#welcome" className="font-poppins text-sm text-slate-300 hover:text-white transition-colors">
+                  About Us
+                </a>
+              </li>
+              <li>
+                <a href="#admissions" className="font-poppins text-sm text-slate-300 hover:text-white transition-colors">
+                  Admissions
+                </a>
+              </li>
+              <li>
+                <a href="#contact" className="font-poppins text-sm text-slate-300 hover:text-white transition-colors">
+                  Contact Us
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -90,21 +100,31 @@ export const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               Academic Studies
             </h3>
             <ul className="space-y-2.5">
-              {FOOTER_NAVIGATION.academicLinks.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="font-poppins text-sm text-slate-300 hover:text-white transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
+              <li>
+                <a href="#programs" className="font-poppins text-sm text-slate-300 hover:text-white transition-colors">
+                  Diploma in Theology (Dipl.Th.)
+                </a>
+              </li>
+              <li>
+                <a href="#programs" className="font-poppins text-sm text-slate-300 hover:text-white transition-colors">
+                  Certificate in Ministry
+                </a>
+              </li>
+              <li>
+                <a href="#programs" className="font-poppins text-sm text-slate-300 hover:text-white transition-colors">
+                  Christian Leadership Studies
+                </a>
+              </li>
+              <li>
+                <a href="#programs" className="font-poppins text-sm text-slate-300 hover:text-white transition-colors">
+                  Executive Weekend Cohorts
+                </a>
+              </li>
             </ul>
           </div>
 
           {/* Column 4: Portals & Contact Info */}
-          <div className="space-y-4">
+          <div className="space-y-4" id="contact">
             <div>
               <h3 className="font-poppins text-xs font-bold uppercase tracking-widest text-[#F5B800] mb-3">
                 Institute Portals
@@ -124,15 +144,18 @@ export const Footer: React.FC<FooterProps> = ({ className = '' }) => {
               </ul>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 border-t border-white/10">
               <h3 className="font-poppins text-xs font-bold uppercase tracking-widest text-[#F5B800] mb-2">
-                Inquiries
+                Contact Us
               </h3>
               <p className="font-poppins text-xs text-slate-300">
-                {INSTITUTE_CONFIG.contact.email}
+                <span className="text-slate-400">Address:</span> Divine Mandate Bible Institute Campus & Study Centres (Official address placeholder)
               </p>
               <p className="font-poppins text-xs text-slate-300 mt-1">
-                {INSTITUTE_CONFIG.contact.phone}
+                <span className="text-slate-400">Phone:</span> +234 (0) 800-DIMABIN (Official phone placeholder)
+              </p>
+              <p className="font-poppins text-xs text-slate-300 mt-1">
+                <span className="text-slate-400">Email:</span> info@dimabin.org (Official email placeholder)
               </p>
             </div>
           </div>

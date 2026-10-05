@@ -4,6 +4,7 @@ interface NavItemProps {
   label: string;
   href: string;
   isActive?: boolean;
+  isDarkTheme?: boolean;
   onClick?: () => void;
   className?: string;
 }
@@ -16,16 +17,22 @@ export const NavItem: React.FC<NavItemProps> = ({
   label,
   href,
   isActive = false,
+  isDarkTheme = true,
   onClick,
   className = '',
 }) => {
+  const activeColor = isDarkTheme ? 'text-[#F5B800] font-semibold' : 'text-[#1F3C82] font-semibold';
+  const inactiveColor = isDarkTheme
+    ? 'text-slate-100 hover:text-[#F5B800]'
+    : 'text-[#122452] hover:text-[#1F3C82]';
+
   return (
     <a
       href={href}
       onClick={onClick}
       className={`
         relative py-2 text-sm font-poppins font-medium whitespace-nowrap transition-colors
-        ${isActive ? 'text-[#1F3C82] font-semibold' : 'text-[#122452] hover:text-[#1F3C82]'}
+        ${isActive ? activeColor : inactiveColor}
         ${className}
       `.trim()}
       aria-current={isActive ? 'page' : undefined}

@@ -4,14 +4,25 @@
  */
 
 export const INSTITUTE_CONFIG = {
-  name: 'Divine Mandate Bible Institute',
+  name: 'DIVINE MANDATE BIBLE INSTITUTE',
   shortName: 'DIMABIN',
   acronym: 'DIMABIN',
-  motto: 'Equipping Leaders for Kingdom Impact',
-  vision: 'To raise Christ-centered, scripture-grounded, and transformative leaders for the Church and society.',
-  mission: 'Providing sound biblical instruction, practical ministry formation, and ethical leadership development through flexible and accessible theological education.',
+  subtitle: 'CITADEL OF LEARNING',
+  heroSubtitle: 'Interdenominational Citadel of Learning',
+  motto: 'FEAR OF GOD WITHOUT A MESS',
+  rector: {
+    name: 'Sorinola J.O.',
+    title: 'Rector, Divine Mandate Bible Institute',
+    initials: 'SJ',
+    quote:
+      "Our vision is simple yet profound: to establish a world-class training center that balances deep scriptural analysis with uncompromising spiritual development. At DIMABIN, we strive for 'Fear of God without a Mess'—maintaining pristine ethical standards alongside rigorous academic discipline. We invite you to join us as we embark on this sacred journey of learning and spiritual transformation.",
+  },
+  vision:
+    'To be a globally recognized interdenominational Bible institute, producing spiritually robust, intellectually equipped, and morally sound Christian leaders who will propagate the Gospel of Christ with absolute integrity and power across all nations.',
+  mission:
+    'To deliver top-tier biblical and theological education through comprehensive training, mentoring, and practical service, instilling the fear of God as the core foundation for a successful, scandal-free Christian ministry and professional life.',
 
-  // Institutional contact placeholders (ready for official configuration)
+  // Institutional contact placeholders
   contact: {
     email: 'info@dimabin.org',
     admissionsEmail: 'admissions@dimabin.org',

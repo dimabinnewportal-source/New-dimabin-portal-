@@ -35,13 +35,13 @@ export const ASSET_REGISTRY: Record<string, ImageAssetRef> = {
     aspectRatio: '1:1',
   },
 
-  // Hero Image Slots (Defined for Future Phase 1)
+  // Hero Image Slots
   'hero-campus-banner': {
     id: 'hero-campus-banner',
     category: 'hero',
     altText: 'DIMABIN Students in Biblical Studies and Worship',
     storagePath: 'institute/heroes/campus_worship.webp',
-    fallbackUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="100%" height="100%" fill="%23122452"/><path d="M0 500 Q 640 400 1280 500 L 1280 720 L 0 720 Z" fill="%231F3C82" opacity="0.6"/><circle cx="640" cy="300" r="140" fill="%23F5B800" opacity="0.15"/></svg>',
+    fallbackUrl: '/src/assets/images/hero_theological_library_1791217754173.jpg',
     aspectRatio: '16:9',
   },
 
@@ -51,7 +51,7 @@ export const ASSET_REGISTRY: Record<string, ImageAssetRef> = {
     category: 'programmes',
     altText: 'Diploma in Theology & Christian Ministry',
     storagePath: 'institute/programmes/diploma_theology.webp',
-    fallbackUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="100%" height="100%" fill="%231F3C82"/><rect x="40" y="40" width="520" height="320" rx="8" fill="%23122452"/><path d="M300 120v160M240 180h120" stroke="%23F5B800" stroke-width="8" stroke-linecap="round"/></svg>',
+    fallbackUrl: '/src/assets/images/theology_diploma_study_1791217768692.jpg',
     aspectRatio: '4:3',
   },
   'programme-ministry-certificate': {

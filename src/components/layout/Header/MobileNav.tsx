@@ -138,14 +138,14 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           <Button
             variant="secondary"
             fullWidth
-            href={ROUTES.ADMISSIONS}
+            href="#admissions"
             onClick={onClose}
-            className="mb-3"
+            className="mb-3 font-bold tracking-wider uppercase"
           >
-            Apply for Admission
+            APPLY NOW
           </Button>
           <p className="text-center text-xs text-[#5A6A85] font-poppins">
-            Divine Mandate Bible Institute
+            CITADEL OF LEARNING
           </p>
         </div>
       </div>
