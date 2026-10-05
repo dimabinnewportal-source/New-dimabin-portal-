@@ -3,22 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>Admissions &amp; Apply | Divine Mandate Bible Institute (DIMABIN)</title>
-  <meta name="description" content="Apply for admission at Divine Mandate Bible Institute (DIMABIN). Learn about admission criteria, application steps, and enroll in upcoming cohorts.">
+  <title>Admissions &amp; Application | Divine Mandate Bible Institute (DIMABIN)</title>
+  <meta name="description" content="Online Admission Form and Workflow Guide for Divine Mandate Bible Institute (DIMABIN). Start your candidate application for upcoming theological cohorts.">
   <meta name="theme-color" content="#122452">
 
+  <!-- Open Graph Metadata -->
+  <meta property="og:site_name" content="Divine Mandate Bible Institute (DIMABIN)">
+  <meta property="og:title" content="Admissions &amp; Application | Divine Mandate Bible Institute (DIMABIN)">
+  <meta property="og:description" content="Discover the admission workflow and complete the multi-step online application form for DIMABIN programs.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="assets/logo/dimabin-emblem.svg">
+
+  <!-- Google Fonts: Poppins (300, 400, 500, 600, 700, 800) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap" rel="stylesheet">
+
+  <!-- Pure Vanilla Stylesheet -->
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+  <!-- Accessible Skip Link -->
   <a href="#main-content" class="sr-only">Skip to main content</a>
 
-  <!-- Header -->
+  <!-- ========================================================================
+       1. PAGE HEADER (Reused Exact System)
+       ======================================================================== -->
   <header class="site-header" role="banner">
     <div class="container header-container">
+      <!-- Left: DIMABIN Branding -->
       <a href="index.html" class="brand-link" aria-label="Divine Mandate Bible Institute Home">
         <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Seal" class="brand-emblem" width="38" height="38">
         <div class="brand-text">
@@ -31,6 +48,7 @@
         </div>
       </a>
 
+      <!-- Center: Desktop Navigation -->
       <nav class="desktop-nav" aria-label="Primary Navigation">
         <a href="index.html" class="nav-link">Home</a>
         <a href="about.html" class="nav-link">About Us</a>
@@ -39,12 +57,46 @@
         <a href="contact.html" class="nav-link">Contact Us</a>
       </nav>
 
+      <!-- Right: Actions (Desktop Portal + Apply Now / Mobile Controls) -->
       <div class="header-actions">
+        <!-- Desktop Portal Dropdown -->
+        <div class="portal-dropdown-wrapper">
+          <button type="button" class="portal-toggle-btn" id="portal-toggle-btn" aria-expanded="false" aria-haspopup="true">
+            <span>Portals</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="portal-menu" id="portal-menu" role="menu">
+            <div class="portal-menu-header">DIMABIN Portals</div>
+            <a href="portals.html" class="portal-menu-item" role="menuitem">
+              <span class="portal-item-title">Portal Gateway</span>
+              <span class="portal-item-desc">Central access for students, lecturers & staff</span>
+            </a>
+            <a href="portals.html#student" class="portal-menu-item" role="menuitem">
+              <span class="portal-item-title">Student Portal</span>
+              <span class="portal-item-desc">Course registration, notes & grades</span>
+            </a>
+            <a href="portals.html#lecturer" class="portal-menu-item" role="menuitem">
+              <span class="portal-item-title">Lecturer Portal</span>
+              <span class="portal-item-desc">Course management & grading sheets</span>
+            </a>
+            <a href="portals.html#admin" class="portal-menu-item" role="menuitem">
+              <span class="portal-item-title">Admin Portal</span>
+              <span class="portal-item-desc">Registry, admissions & institution setup</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Desktop Apply Now -->
         <a href="admissions.html" class="btn btn-gold btn-sm desktop-apply-btn">APPLY NOW</a>
+
+        <!-- Mobile Apply Now Button -->
         <a href="admissions.html" class="btn btn-gold btn-sm mobile-apply-btn">APPLY NOW</a>
 
+        <!-- Mobile Hamburger Button -->
         <button type="button" class="hamburger-btn" id="hamburger-btn" aria-label="Open mobile menu" aria-expanded="false">
-          <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -54,7 +106,7 @@
     </div>
   </header>
 
-  <!-- Mobile Drawer -->
+  <!-- Mobile Slide-Out Navigation Drawer -->
   <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" aria-hidden="true"></div>
   <aside class="mobile-drawer" id="mobile-drawer" aria-label="Mobile Navigation Drawer">
     <div class="mobile-drawer-header">
@@ -65,8 +117,14 @@
           <span class="brand-subtitle-gold" style="color: var(--primary-blue);">BIBLE INSTITUTE</span>
         </div>
       </div>
-      <button type="button" class="close-drawer-btn" id="close-drawer-btn" aria-label="Close navigation menu">✕</button>
+      <button type="button" class="close-drawer-btn" id="close-drawer-btn" aria-label="Close navigation menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
+
     <div class="mobile-drawer-body">
       <div>
         <span class="mobile-nav-group-title">Public Website</span>
@@ -76,139 +134,565 @@
         <a href="admissions.html" class="mobile-nav-link active">Admissions</a>
         <a href="contact.html" class="mobile-nav-link">Contact Us</a>
       </div>
+
       <div style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
-        <span class="mobile-nav-group-title">Portals</span>
+        <span class="mobile-nav-group-title">Institute Portals</span>
         <a href="portals.html" class="mobile-portal-item">
           <span class="mobile-portal-name">Portal Gateway</span>
-          <span class="mobile-portal-desc">Single sign-on access</span>
+          <span class="mobile-portal-desc">Single sign-on gateway for students & staff</span>
+        </a>
+        <a href="portals.html#student" class="mobile-portal-item">
+          <span class="mobile-portal-name">Student Portal</span>
+          <span class="mobile-portal-desc">Course registration, exams & results</span>
+        </a>
+        <a href="portals.html#lecturer" class="mobile-portal-item">
+          <span class="mobile-portal-name">Lecturer Portal</span>
+          <span class="mobile-portal-desc">Syllabus, attendance & score submission</span>
+        </a>
+        <a href="portals.html#admin" class="mobile-portal-item">
+          <span class="mobile-portal-name">Admin Portal</span>
+          <span class="mobile-portal-desc">Institution registry & settings</span>
         </a>
       </div>
     </div>
+
     <div class="mobile-drawer-footer">
-      <a href="admissions.html" class="btn btn-gold btn-sm" style="width: 100%;">APPLY NOW</a>
+      <a href="admissions.html" class="btn btn-gold btn-sm" style="width: 100%; margin-bottom: 0.5rem;">APPLY NOW</a>
+      <p style="text-align: center; font-size: 0.75rem; color: var(--text-secondary);">
+        CITADEL OF LEARNING
+      </p>
     </div>
   </aside>
 
+  <!-- ========================================================================
+       MAIN CONTENT
+       ======================================================================== -->
   <main id="main-content">
+
+    <!-- ADMISSIONS BANNER HERO -->
     <section class="section section-navy" style="padding-top: 7rem; padding-bottom: 3.5rem; text-align: center;">
       <div class="container">
         <span class="section-eyebrow">ENROLLMENT PORTAL</span>
         <h1 class="section-title">Admissions &amp; Application</h1>
         <p class="section-subtitle">
-          Begin your application for upcoming academic cohorts.
+          Begin your journey into sound theological scholarship and spiritual empowerment.
         </p>
       </div>
     </section>
 
-    <!-- Admission Application & Requirements Grid -->
-    <section class="section section-white">
+    <!-- ========================================================================
+         2. ADMISSION PROCESS SECTION (Clean White Background)
+         ======================================================================== -->
+    <section class="section section-white" id="admission-process" aria-label="Admission Workflow Guide">
       <div class="container">
-        <div class="cards-grid-2" style="max-width: 68rem;">
-          <!-- Left: Criteria and Requirements -->
-          <div>
-            <span class="section-eyebrow">ADMISSION CRITERIA</span>
-            <h2 class="section-title" style="font-size: 2rem;">Who Can Apply?</h2>
-            <div class="welcome-paragraphs" style="margin-bottom: 2rem;">
-              <p>
-                DIMABIN welcomes all genuine Christian believers with a verified testimony of faith in Jesus Christ,
-                hunger for theological understanding, and dedication to ethical leadership in accordance with the
-                motto: <em>"Fear of God without a Mess."</em>
-              </p>
-            </div>
+        <!-- Centered Header -->
+        <div class="section-header">
+          <span class="section-eyebrow">WORKFLOW GUIDE</span>
+          <h2 class="section-title">Admission Process</h2>
+          <p class="section-subtitle">
+            Our simple, robust steps towards full theological enrollment
+          </p>
+        </div>
 
-            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-              <div class="feature-box" style="padding: 1.25rem;">
-                <h4 style="font-weight: 700; color: var(--primary-blue); margin-bottom: 0.25rem;">1. Spiritual Foundation</h4>
-                <p style="font-size: 0.875rem; color: var(--text-secondary);">
-                  A personal confession of Christian faith and active participation in an orthodox local church assembly.
-                </p>
-              </div>
-
-              <div class="feature-box" style="padding: 1.25rem;">
-                <h4 style="font-weight: 700; color: var(--primary-blue); margin-bottom: 0.25rem;">2. Pastoral Recommendation</h4>
-                <p style="font-size: 0.875rem; color: var(--text-secondary);">
-                  Endorsement from a pastor, spiritual overseer, or recognized Christian mentor attesting to moral character.
-                </p>
-              </div>
-
-              <div class="feature-box" style="padding: 1.25rem;">
-                <h4 style="font-weight: 700; color: var(--primary-blue); margin-bottom: 0.25rem;">3. Academic Willingness</h4>
-                <p style="font-size: 0.875rem; color: var(--text-secondary);">
-                  Sufficient literacy to engage biblical research, lecture modules, systematic readings, and exam assessments.
-                </p>
-              </div>
-            </div>
+        <!-- 5 Admission Process Cards Grid -->
+        <div class="process-grid-5">
+          <!-- CARD 1: Application -->
+          <div class="process-card">
+            <div class="process-number-badge process-badge-blue">1</div>
+            <h3 class="process-card-title">Application</h3>
+            <p class="process-card-desc">
+              Complete the admission application form either online or at our physical registrar office with precise detail.
+            </p>
           </div>
 
-          <!-- Right: Official Application Form -->
-          <div class="foundation-card" style="padding: 2.25rem;">
-            <div class="card-accent-gold"></div>
-            <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--dark-navy); margin-bottom: 0.5rem;">
-              Online Application Form
-            </h3>
-            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-              Submit your preliminary details below. An admissions counselor will verify your application.
+          <!-- CARD 2: Documentation -->
+          <div class="process-card">
+            <div class="process-number-badge process-badge-blue">2</div>
+            <h3 class="process-card-title">Documentation</h3>
+            <p class="process-card-desc">
+              Submit required credentials, pastoral recommendation letters, passport photographs, and identification papers.
             </p>
+          </div>
 
-            <form id="standalone-application-form">
-              <div class="form-group">
-                <label for="app-fullname" class="form-label">Full Name (Surname First) *</label>
-                <input type="text" id="app-fullname" class="form-input" placeholder="e.g. Adebayo, Emmanuel John" required>
-              </div>
+          <!-- CARD 3: Review -->
+          <div class="process-card">
+            <div class="process-number-badge process-badge-blue">3</div>
+            <h3 class="process-card-title">Review</h3>
+            <p class="process-card-desc">
+              Our admissions committee evaluates your scriptural calling, character reports, and academic profiles.
+            </p>
+          </div>
 
-              <div class="form-row-2">
-                <div class="form-group">
-                  <label for="app-email" class="form-label">Email Address *</label>
-                  <input type="email" id="app-email" class="form-input" placeholder="john@example.com" required>
-                </div>
-                <div class="form-group">
-                  <label for="app-phone" class="form-label">WhatsApp / Phone *</label>
-                  <input type="tel" id="app-phone" class="form-input" placeholder="+234 800 000 0000" required>
-                </div>
-              </div>
+          <!-- CARD 4: Approval (Gold Badge) -->
+          <div class="process-card" style="border-color: rgba(245, 184, 0, 0.4);">
+            <div class="process-number-badge process-badge-gold">4</div>
+            <h3 class="process-card-title">Approval</h3>
+            <p class="process-card-desc">
+              Successful candidates receive their official provisional admission notification via their registered contact.
+            </p>
+          </div>
 
-              <div class="form-group">
-                <label for="app-program" class="form-label">Intended Study Program *</label>
-                <select id="app-program" class="form-select" required>
-                  <option value="diploma">Diploma in Theology (Dipl.Th.) — 1 Year</option>
-                  <option value="certificate">Certificate in Christian Ministry — 6 Months</option>
-                  <option value="leadership">Christian Leadership Practicum — 1 Year</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="app-church" class="form-label">Home Church / Ministry Affiliation *</label>
-                <input type="text" id="app-church" class="form-input" placeholder="Name of your church or ministry" required>
-              </div>
-
-              <div class="form-group">
-                <label for="app-testimony" class="form-label">Brief Statement of Calling / Salvation</label>
-                <textarea id="app-testimony" class="form-textarea" rows="3" placeholder="Share your experience and ministry objective..."></textarea>
-              </div>
-
-              <button type="submit" class="btn btn-gold btn-lg" style="width: 100%; font-weight: 800;">
-                SUBMIT COMPLETE APPLICATION
-              </button>
-            </form>
-
-            <div id="standalone-success" style="display: none; text-align: center; padding: 2rem 1rem;">
-              <div style="width: 52px; height: 52px; border-radius: 50%; background: #DCFCE7; color: #15803D; font-size: 1.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto;">✓</div>
-              <h4 style="font-weight: 800; font-size: 1.25rem; color: var(--dark-navy); margin-bottom: 0.5rem;">Application Successfully Submitted</h4>
-              <p style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6;">
-                Thank you for applying to Divine Mandate Bible Institute. Our admissions registry will review your details
-                and send your admission packet via email and WhatsApp.
-              </p>
-            </div>
+          <!-- CARD 5: Resumption -->
+          <div class="process-card">
+            <div class="process-number-badge process-badge-blue">5</div>
+            <h3 class="process-card-title">Resumption</h3>
+            <p class="process-card-desc">
+              Complete standard registration, clear administrative tuition frameworks, and resume theological lectures.
+            </p>
           </div>
         </div>
       </div>
     </section>
+
+    <!-- ========================================================================
+         3. ONLINE ADMISSION FORM SECTION (Light-Grey Background)
+         ======================================================================== -->
+    <section class="section section-light" id="admission-form-section" aria-label="Interactive Online Admission Form">
+      <div class="container">
+        <!-- Large Centered White Container -->
+        <div class="admissions-form-card">
+
+          <!-- Form Header -->
+          <div class="form-intro-header">
+            <span class="section-eyebrow">INTERACTIVE ONBOARDING</span>
+            <h2 class="section-title" style="font-size: 2rem;">Online Admission Form</h2>
+            <p class="section-subtitle">
+              Complete your multi-section candidate registration below. Your data is stored directly in our official registry.
+            </p>
+          </div>
+
+          <!-- 4. Multi-Step Horizontal Progress Indicator -->
+          <div class="step-progress-tracker" aria-label="Application Progress Tracker">
+            <div class="step-connector-line" aria-hidden="true"></div>
+            <div class="step-connector-fill" id="step-connector-fill" aria-hidden="true"></div>
+
+            <!-- Step 1: Personal (Active Initially) -->
+            <div class="step-indicator-item active" id="step-indicator-1">
+              <div class="step-circle">1</div>
+              <span class="step-label">PERSONAL</span>
+            </div>
+
+            <!-- Step 2: Academic -->
+            <div class="step-indicator-item" id="step-indicator-2">
+              <div class="step-circle">2</div>
+              <span class="step-label">ACADEMIC</span>
+            </div>
+
+            <!-- Step 3: Church -->
+            <div class="step-indicator-item" id="step-indicator-3">
+              <div class="step-circle">3</div>
+              <span class="step-label">CHURCH</span>
+            </div>
+
+            <!-- Step 4: Next of Kin -->
+            <div class="step-indicator-item" id="step-indicator-4">
+              <div class="step-circle">4</div>
+              <span class="step-label">NEXT OF KIN</span>
+            </div>
+
+            <!-- Step 5: Declaration -->
+            <div class="step-indicator-item" id="step-indicator-5">
+              <div class="step-circle">5</div>
+              <span class="step-label">DECLARATION</span>
+            </div>
+          </div>
+
+          <!-- 6. Prominent Pale-Red Error Panel -->
+          <div class="form-error-panel" id="form-error-panel" role="alert" aria-live="polite">
+            <div class="form-error-title">
+              <span aria-hidden="true">⚠️</span>
+              <span>Form Error:</span>
+            </div>
+            <p style="font-size: 0.8125rem; margin-bottom: 0.4rem;">
+              Please fill out the following required fields:
+            </p>
+            <ul class="form-error-list" id="form-error-list"></ul>
+          </div>
+
+          <!-- The Multi-Step Interactive Form -->
+          <form id="full-admissions-form" novalidate>
+
+            <!-- ==============================================================
+                 5. STEP 1 — PERSONAL DETAILS
+                 ============================================================== -->
+            <div class="form-step-pane active" id="step-1-pane">
+              <div class="step-pane-header">
+                <h3 class="step-pane-title">Personal Details</h3>
+                <p class="step-pane-sub">Provide your official legal parameters and digital contact indexes.</p>
+              </div>
+
+              <!-- Full Name (Full Width) -->
+              <div class="form-group">
+                <label for="app-fullname" class="form-label">FULL NAME (LAST NAME, FIRST NAME MIDDLE NAME) *</label>
+                <input type="text" id="app-fullname" class="form-input" placeholder="e.g. Adebayo, Samuel Tosin" required>
+              </div>
+
+              <!-- Intended Program Selection -->
+              <div class="form-group">
+                <label for="app-intended-program" class="form-label">INTENDED PROGRAM OF STUDY *</label>
+                <select id="app-intended-program" class="form-select" required>
+                  <option value="Diploma in Theology (Dipl.Th.)">Diploma in Theology (Dipl.Th.) — Flagship 1-Year</option>
+                  <option value="Certificate in Christian Ministry">Certificate in Christian Ministry — 6 Months</option>
+                  <option value="Christian Leadership Practicum">Christian Leadership Practicum — 1 Year</option>
+                  <option value="Executive Weekend Theological Cohort">Executive Weekend Theological Cohort</option>
+                  <option value="Distance & Online Learning Track">Distance &amp; Online Learning Track</option>
+                </select>
+              </div>
+
+              <!-- Gender & Date of Birth -->
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="app-gender" class="form-label">GENDER *</label>
+                  <select id="app-gender" class="form-select" required>
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="app-dob" class="form-label">DATE OF BIRTH *</label>
+                  <input type="date" id="app-dob" class="form-input" required>
+                </div>
+              </div>
+
+              <!-- Marital Status & Nationality -->
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="app-marital" class="form-label">MARITAL STATUS *</label>
+                  <select id="app-marital" class="form-select" required>
+                    <option value="">Select Status</option>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Divorced">Divorced</option>
+                    <option value="Widowed">Widowed</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="app-nationality" class="form-label">NATIONALITY *</label>
+                  <input type="text" id="app-nationality" class="form-input" placeholder="e.g. Nigerian" required>
+                </div>
+              </div>
+
+              <!-- State of Origin & LGA -->
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="app-state" class="form-label">STATE OF ORIGIN *</label>
+                  <input type="text" id="app-state" class="form-input" placeholder="e.g. Ogun State" required>
+                </div>
+                <div class="form-group">
+                  <label for="app-lga" class="form-label">LOCAL GOVERNMENT AREA (LGA) *</label>
+                  <input type="text" id="app-lga" class="form-input" placeholder="e.g. Abeokuta South" required>
+                </div>
+              </div>
+
+              <!-- Residential Address (Full Width) -->
+              <div class="form-group">
+                <label for="app-address" class="form-label">RESIDENTIAL ADDRESS *</label>
+                <input type="text" id="app-address" class="form-input" placeholder="e.g. 15, Divine Mandate Way, Mowe" required>
+              </div>
+
+              <!-- Phone, WhatsApp & Email -->
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="app-phone" class="form-label">PHONE NUMBER *</label>
+                  <input type="tel" id="app-phone" class="form-input" placeholder="e.g. 08031234567" required>
+                </div>
+                <div class="form-group">
+                  <label for="app-whatsapp" class="form-label">WHATSAPP NUMBER *</label>
+                  <input type="tel" id="app-whatsapp" class="form-input" placeholder="e.g. 08031234567" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="app-email" class="form-label">EMAIL ADDRESS *</label>
+                <input type="email" id="app-email" class="form-input" placeholder="e.g. samuel@example.com" required>
+              </div>
+
+              <!-- Form Navigation Buttons -->
+              <div class="form-actions-row" style="justify-content: flex-end;">
+                <button type="button" class="btn btn-primary" id="step-1-next">
+                  <span>NEXT</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- ==============================================================
+                 8. STEP 2 — ACADEMIC DETAILS
+                 ============================================================== -->
+            <div class="form-step-pane" id="step-2-pane">
+              <div class="step-pane-header">
+                <h3 class="step-pane-title">Academic Details</h3>
+                <p class="step-pane-sub">Provide your educational qualifications, previous study, and credentials.</p>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="academic-qualification" class="form-label">HIGHEST QUALIFICATION *</label>
+                  <select id="academic-qualification" class="form-select">
+                    <option value="SSCE / WASSCE / GCE">SSCE / WASSCE / NECO</option>
+                    <option value="OND / NCE / Diploma">OND / NCE / National Diploma</option>
+                    <option value="HND / Bachelor's Degree">HND / Bachelor's Degree</option>
+                    <option value="Postgraduate Diploma / Master's">Postgraduate Diploma / Master's</option>
+                    <option value="Doctorate Degree">Doctorate Degree</option>
+                    <option value="Other Certification">Other Certification</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="academic-year" class="form-label">GRADUATION YEAR *</label>
+                  <input type="text" id="academic-year" class="form-input" placeholder="e.g. 2021">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="academic-institution" class="form-label">INSTITUTION ATTENDED *</label>
+                <input type="text" id="academic-institution" class="form-input" placeholder="e.g. University of Lagos / Federal Polytechnic">
+              </div>
+
+              <div class="form-group">
+                <label for="academic-course" class="form-label">COURSE / FIELD OF STUDY *</label>
+                <input type="text" id="academic-course" class="form-input" placeholder="e.g. Business Administration / Arts / Sciences">
+              </div>
+
+              <div class="form-group">
+                <label for="academic-credentials" class="form-label">RELEVANT ACADEMIC CREDENTIALS / CERTIFICATES</label>
+                <input type="text" id="academic-credentials" class="form-input" placeholder="List certifications, diplomas, or degrees obtained">
+              </div>
+
+              <div class="form-group">
+                <label for="academic-previous-theology" class="form-label">PREVIOUS THEOLOGICAL TRAINING</label>
+                <textarea id="academic-previous-theology" class="form-textarea" rows="3" placeholder="Detail any prior Bible school, discipleship school, or ministry diploma completed (if applicable)..."></textarea>
+              </div>
+
+              <div class="form-actions-row">
+                <button type="button" class="btn btn-outline-blue" id="step-2-back">
+                  <span aria-hidden="true">←</span>
+                  <span>BACK</span>
+                </button>
+                <button type="button" class="btn btn-primary" id="step-2-next">
+                  <span>NEXT</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- ==============================================================
+                 9. STEP 3 — CHURCH & MINISTRY DETAILS
+                 ============================================================== -->
+            <div class="form-step-pane" id="step-3-pane">
+              <div class="step-pane-header">
+                <h3 class="step-pane-title">Church &amp; Ministry Details</h3>
+                <p class="step-pane-sub">Details of your local church assembly, denomination, and spiritual calling.</p>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="church-name" class="form-label">HOME CHURCH NAME *</label>
+                  <input type="text" id="church-name" class="form-input" placeholder="e.g. Living Word Assembly">
+                </div>
+                <div class="form-group">
+                  <label for="church-denomination" class="form-label">DENOMINATION *</label>
+                  <input type="text" id="church-denomination" class="form-input" placeholder="e.g. Apostolic / Pentecostal / Baptist / Interdenominational">
+                </div>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="church-role" class="form-label">CURRENT MINISTRY POSITION / ROLE *</label>
+                  <input type="text" id="church-role" class="form-input" placeholder="e.g. Youth Leader / Deacon / Sunday School Teacher / Member">
+                </div>
+                <div class="form-group">
+                  <label for="church-years" class="form-label">YEARS IN ACTIVE MINISTRY *</label>
+                  <input type="text" id="church-years" class="form-input" placeholder="e.g. 4 Years">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="church-pastor-name" class="form-label">PASTOR / SPIRITUAL OVERSEER NAME *</label>
+                <input type="text" id="church-pastor-name" class="form-input" placeholder="e.g. Pastor David Adebisi">
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="church-pastor-phone" class="form-label">PASTOR / OVERSEER PHONE *</label>
+                  <input type="tel" id="church-pastor-phone" class="form-input" placeholder="e.g. 08021234567">
+                </div>
+                <div class="form-group">
+                  <label for="church-pastor-email" class="form-label">PASTOR / OVERSEER EMAIL</label>
+                  <input type="email" id="church-pastor-email" class="form-input" placeholder="e.g. pastor@example.com">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="church-testimony" class="form-label">BRIEF TESTIMONY &amp; MINISTRY CALLING *</label>
+                <textarea id="church-testimony" class="form-textarea" rows="4" placeholder="Briefly share your salvation testimony, conviction of call into Christian service, and learning goals..."></textarea>
+              </div>
+
+              <div class="form-actions-row">
+                <button type="button" class="btn btn-outline-blue" id="step-3-back">
+                  <span aria-hidden="true">←</span>
+                  <span>BACK</span>
+                </button>
+                <button type="button" class="btn btn-primary" id="step-3-next">
+                  <span>NEXT</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- ==============================================================
+                 10. STEP 4 — NEXT OF KIN DETAILS
+                 ============================================================== -->
+            <div class="form-step-pane" id="step-4-pane">
+              <div class="step-pane-header">
+                <h3 class="step-pane-title">Next of Kin Details</h3>
+                <p class="step-pane-sub">Emergency contact and next of kin reference information.</p>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="kin-name" class="form-label">NEXT OF KIN FULL NAME *</label>
+                  <input type="text" id="kin-name" class="form-input" placeholder="e.g. Mrs. Adebayo Comfort">
+                </div>
+                <div class="form-group">
+                  <label for="kin-relationship" class="form-label">RELATIONSHIP *</label>
+                  <select id="kin-relationship" class="form-select">
+                    <option value="Spouse">Spouse</option>
+                    <option value="Parent">Parent</option>
+                    <option value="Sibling">Sibling</option>
+                    <option value="Child">Child</option>
+                    <option value="Guardian">Guardian</option>
+                    <option value="Other">Other Relative</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="kin-phone" class="form-label">PHONE NUMBER *</label>
+                  <input type="tel" id="kin-phone" class="form-input" placeholder="e.g. 08031234567">
+                </div>
+                <div class="form-group">
+                  <label for="kin-whatsapp" class="form-label">WHATSAPP NUMBER</label>
+                  <input type="tel" id="kin-whatsapp" class="form-input" placeholder="e.g. 08031234567">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="kin-email" class="form-label">EMAIL ADDRESS</label>
+                <input type="email" id="kin-email" class="form-input" placeholder="e.g. comfort@example.com">
+              </div>
+
+              <div class="form-group">
+                <label for="kin-address" class="form-label">RESIDENTIAL ADDRESS *</label>
+                <input type="text" id="kin-address" class="form-input" placeholder="e.g. 15, Divine Mandate Way, Mowe">
+              </div>
+
+              <div class="form-actions-row">
+                <button type="button" class="btn btn-outline-blue" id="step-4-back">
+                  <span aria-hidden="true">←</span>
+                  <span>BACK</span>
+                </button>
+                <button type="button" class="btn btn-primary" id="step-4-next">
+                  <span>NEXT</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- ==============================================================
+                 11. STEP 5 — DECLARATION
+                 ============================================================== -->
+            <div class="form-step-pane" id="step-5-pane">
+              <div class="step-pane-header">
+                <h3 class="step-pane-title">Declaration</h3>
+                <p class="step-pane-sub">Review terms and confirm candidate commitment.</p>
+              </div>
+
+              <div class="declaration-box">
+                <div class="declaration-terms-text">
+                  <p><strong>1. Truth &amp; Accuracy:</strong> I hereby declare that all information and bio-data supplied throughout this application form are strictly correct, accurate, and complete to the best of my knowledge.</p>
+                  <p><strong>2. Genuine Credentials:</strong> I confirm that all certificates, pastoral references, and educational records presented for this admission are authentic and unadulterated.</p>
+                  <p><strong>3. Institutional Standards:</strong> I agree to abide by the academic curriculum, institutional regulations, and study guidelines set forth by Divine Mandate Bible Institute.</p>
+                  <p><strong>4. Spiritual &amp; Ethical Conduct:</strong> I pledge to uphold the Institute's motto, <em>"Fear of God without a Mess,"</em> adhering to high moral discipline, sanctification, and Christian fellowship throughout my tenure as a student.</p>
+                </div>
+
+                <label class="declaration-check-label" for="declaration-checkbox">
+                  <input type="checkbox" id="declaration-checkbox" class="declaration-checkbox" required>
+                  <span>I confirm that the information provided is true and complete, and I agree to the terms and requirements of Divine Mandate Bible Institute.</span>
+                </label>
+              </div>
+
+              <div class="form-actions-row">
+                <button type="button" class="btn btn-outline-blue" id="step-5-back">
+                  <span aria-hidden="true">←</span>
+                  <span>BACK</span>
+                </button>
+                <button type="submit" class="btn btn-gold btn-lg" style="font-weight: 800;">
+                  SUBMIT APPLICATION
+                </button>
+              </div>
+            </div>
+
+          </form>
+
+          <!-- ==============================================================
+               12. SUBMISSION SUCCESS PANEL (For this Phase)
+               ============================================================== -->
+          <div class="admission-success-pane" id="admission-success-pane" role="region" aria-label="Application Submitted Notification">
+            <div class="success-circle-icon">✓</div>
+            <span class="success-badge-tag">PHASE 2 VALIDATION PASSED</span>
+            <h3 class="success-title">Application Ready</h3>
+            <p style="font-size: 1.0625rem; color: var(--text-secondary); max-w: 36rem; margin: 0 auto 1.5rem auto;">
+              Your admission application has been completed successfully and is ready for submission.
+            </p>
+
+            <div class="success-summary-card">
+              <div class="success-summary-row">
+                <span style="font-weight: 700; color: var(--dark-navy);">Candidate Name:</span>
+                <span id="summary-candidate-name" style="color: var(--primary-blue); font-weight: 600;">-</span>
+              </div>
+              <div class="success-summary-row">
+                <span style="font-weight: 700; color: var(--dark-navy);">Registered Email:</span>
+                <span id="summary-candidate-email">-</span>
+              </div>
+              <div class="success-summary-row">
+                <span style="font-weight: 700; color: var(--dark-navy);">Phone Number:</span>
+                <span id="summary-candidate-phone">-</span>
+              </div>
+              <div class="success-summary-row">
+                <span style="font-weight: 700; color: var(--dark-navy);">Selected Program:</span>
+                <span id="summary-candidate-program" style="font-weight: 700; color: var(--gold-hover);">-</span>
+              </div>
+              <div class="success-summary-row">
+                <span style="font-weight: 700; color: var(--dark-navy);">Application Status:</span>
+                <span style="color: #15803D; font-weight: 700;">Validated (Ready for Registry Sync)</span>
+              </div>
+            </div>
+
+            <p class="success-notice-note">
+              * Note: Your candidate data has been validated and compiled in your local session. The live database connection will be integrated during the admissions registry backend phase.
+            </p>
+
+            <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.75rem;">
+              <a href="index.html" class="btn btn-primary btn-sm">RETURN TO HOME</a>
+              <button type="button" class="btn btn-outline-blue btn-sm" id="restart-application-btn">START NEW FORM</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
   </main>
 
-  <!-- Footer -->
+  <!-- ========================================================================
+       15. FOOTER (Reused Exact DIMABIN System)
+       ======================================================================== -->
   <footer class="site-footer" role="contentinfo">
     <div class="container">
       <div class="footer-grid">
+        <!-- Col 1: Institute Brand -->
         <div class="footer-brand-col">
           <div class="brand-link">
             <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Seal" width="44" height="44">
@@ -217,10 +701,28 @@
               <span class="brand-subtitle-gold" style="font-size: 0.75rem;">BIBLE INSTITUTE</span>
             </div>
           </div>
-          <p class="footer-motto-gold">MOTTO: FEAR OF GOD WITHOUT A MESS</p>
+
+          <p class="footer-motto-gold">
+            MOTTO: FEAR OF GOD WITHOUT A MESS
+          </p>
+
+          <p class="footer-desc">
+            An Interdenominational Citadel of Learning built to raise equipped, biblically sound,
+            and ethically outstanding Christian leaders.
+          </p>
+
+          <!-- Social Links -->
+          <div class="footer-social-cluster">
+            <a href="https://facebook.com" class="social-icon-btn" aria-label="DIMABIN Facebook" target="_blank" rel="noopener noreferrer">F</a>
+            <a href="https://youtube.com" class="social-icon-btn" aria-label="DIMABIN YouTube" target="_blank" rel="noopener noreferrer">Y</a>
+            <a href="https://whatsapp.com" class="social-icon-btn" aria-label="DIMABIN WhatsApp" target="_blank" rel="noopener noreferrer">W</a>
+            <a href="https://instagram.com" class="social-icon-btn" aria-label="DIMABIN Instagram" target="_blank" rel="noopener noreferrer">I</a>
+          </div>
         </div>
+
+        <!-- Col 2: Quick Links -->
         <div>
-          <h4 class="footer-col-title">Navigation</h4>
+          <h4 class="footer-col-title">Quick Links</h4>
           <ul class="footer-links-list">
             <li><a href="index.html" class="footer-link">Home</a></li>
             <li><a href="about.html" class="footer-link">About Us</a></li>
@@ -229,43 +731,52 @@
             <li><a href="contact.html" class="footer-link">Contact Us</a></li>
           </ul>
         </div>
+
+        <!-- Col 3: Academic Studies -->
         <div>
-          <h4 class="footer-col-title">Portals</h4>
+          <h4 class="footer-col-title">Academic Studies</h4>
           <ul class="footer-links-list">
-            <li><a href="portals.html" class="footer-link">Portal Gateway</a></li>
-            <li><a href="portals.html#student" class="footer-link">Student Portal</a></li>
+            <li><a href="programs.html" class="footer-link">Diploma in Theology (Dipl.Th.)</a></li>
+            <li><a href="programs.html#certificate" class="footer-link">Certificate in Ministry</a></li>
+            <li><a href="programs.html#leadership" class="footer-link">Christian Leadership Studies</a></li>
+            <li><a href="programs.html#weekend" class="footer-link">Executive Weekend Cohorts</a></li>
           </ul>
         </div>
+
+        <!-- Col 4: Portals & Contact Information -->
         <div>
-          <h4 class="footer-col-title">Inquiries</h4>
-          <div class="footer-contact-block">
-            <p><span class="footer-contact-label">Email:</span> admissions@dimabin.org</p>
-            <p><span class="footer-contact-label">Phone:</span> +234 (0) 800-DIMABIN</p>
+          <h4 class="footer-col-title">Institute Portals</h4>
+          <ul class="footer-links-list">
+            <li><a href="portals.html" class="footer-link">› Portal Gateway</a></li>
+            <li><a href="portals.html#student" class="footer-link">› Student Portal</a></li>
+            <li><a href="portals.html#lecturer" class="footer-link">› Lecturer Portal</a></li>
+            <li><a href="portals.html#admin" class="footer-link">› Admin Portal</a></li>
+          </ul>
+
+          <div class="footer-contact-block" id="contact">
+            <h4 class="footer-col-title" style="margin-bottom: 0.5rem; margin-top: 0.5rem;">Contact Us</h4>
+            <p><span class="footer-contact-label">Address:</span> Divine Mandate Bible Institute Campus &amp; Study Centres (Official address placeholder)</p>
+            <p><span class="footer-contact-label">Phone:</span> +234 (0) 800-DIMABIN (Official phone placeholder)</p>
+            <p><span class="footer-contact-label">Email:</span> info@dimabin.org (Official email placeholder)</p>
           </div>
         </div>
       </div>
+
+      <!-- Footer Bottom Copyright & Legal -->
       <div class="footer-bottom-bar">
         <p>© 2026 Divine Mandate Bible Institute (DIMABIN). All Rights Reserved.</p>
         <div class="footer-legal-links">
           <a href="contact.html">Privacy Policy</a>
-          <span>·</span>
+          <span aria-hidden="true">·</span>
           <a href="contact.html">Terms of Use</a>
+          <span aria-hidden="true">·</span>
+          <a href="portals.html" style="color: var(--gold);">Portal Access</a>
         </div>
       </div>
     </div>
   </footer>
 
-  <script src="js/main.js"></script>
-  <script>
-    const appForm = document.getElementById('standalone-application-form');
-    const appSuccess = document.getElementById('standalone-success');
-    if (appForm && appSuccess) {
-      appForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        appForm.style.display = 'none';
-        appSuccess.style.display = 'block';
-      });
-    }
-  </script>
+  <!-- Pure Vanilla JavaScript -->
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

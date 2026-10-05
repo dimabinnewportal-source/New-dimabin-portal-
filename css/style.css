@@ -1983,6 +1983,440 @@ button, input, select, textarea {
   margin: 1.25rem 0;
 }
 
+/* ==========================================================================
+   ADMISSIONS PAGE STYLES — WORKFLOW CARDS & MULTI-STEP FORM
+   ========================================================================== */
+
+/* Admission Process 5-Step Cards Grid */
+.process-grid-5 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+@media (min-width: 540px) {
+  .process-grid-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .process-grid-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .process-grid-5 {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+.process-card {
+  background-color: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem 1.25rem;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.process-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(31, 60, 130, 0.2);
+}
+
+.process-number-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  font-weight: 800;
+  margin-bottom: 1.125rem;
+  flex-shrink: 0;
+}
+
+.process-badge-blue {
+  background-color: var(--primary-blue);
+  color: var(--white);
+  box-shadow: 0 2px 6px rgba(31, 60, 130, 0.25);
+}
+
+.process-badge-gold {
+  background-color: var(--gold);
+  color: var(--dark-navy);
+  box-shadow: 0 0 0 4px rgba(245, 184, 0, 0.22);
+}
+
+.process-card-title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+  margin-bottom: 0.5rem;
+}
+
+.process-card-desc {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+/* Multi-Step Admissions Form Container */
+.admissions-form-card {
+  background-color: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .admissions-form-card {
+    padding: 2.25rem 2rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .admissions-form-card {
+    padding: 2.75rem 2.5rem;
+  }
+}
+
+.form-intro-header {
+  text-align: center;
+  max-width: 40rem;
+  margin: 0 auto 2rem auto;
+}
+
+/* 5-Step Horizontal Progress Indicator */
+.step-progress-tracker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  margin-bottom: 2.5rem;
+  padding: 0 0.5rem;
+}
+
+.step-indicator-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  cursor: default;
+  flex: 1;
+}
+
+.step-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  background-color: var(--white);
+  border: 2px solid #CBD5E1;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  transition: all 0.25s ease;
+  margin-bottom: 0.35rem;
+}
+
+@media (min-width: 640px) {
+  .step-circle {
+    width: 38px;
+    height: 38px;
+    font-size: 0.875rem;
+  }
+}
+
+.step-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94A3B8;
+  text-align: center;
+  white-space: nowrap;
+  transition: color 0.25s ease;
+}
+
+@media (min-width: 640px) {
+  .step-label {
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+/* Step States */
+.step-indicator-item.active .step-circle {
+  background-color: var(--primary-blue);
+  border-color: var(--primary-blue);
+  color: var(--white);
+  box-shadow: 0 0 0 3px rgba(31, 60, 130, 0.2);
+}
+
+.step-indicator-item.active .step-label {
+  color: var(--primary-blue);
+  font-weight: 800;
+}
+
+.step-indicator-item.completed .step-circle {
+  background-color: var(--dark-navy);
+  border-color: var(--dark-navy);
+  color: var(--gold);
+}
+
+.step-indicator-item.completed .step-label {
+  color: var(--dark-navy);
+}
+
+.step-connector-line {
+  position: absolute;
+  top: 17px;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  background-color: #E2E8F0;
+  z-index: 1;
+}
+
+@media (min-width: 640px) {
+  .step-connector-line {
+    top: 19px;
+  }
+}
+
+.step-connector-fill {
+  position: absolute;
+  top: 17px;
+  left: 8%;
+  height: 2px;
+  background-color: var(--primary-blue);
+  z-index: 1;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+@media (min-width: 640px) {
+  .step-connector-fill {
+    top: 19px;
+  }
+}
+
+/* Validation Error Panel */
+.form-error-panel {
+  display: none;
+  background-color: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-left: 5px solid #DC2626;
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.75rem;
+  color: #991B1B;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.form-error-panel.show {
+  display: block;
+}
+
+.form-error-title {
+  font-weight: 800;
+  font-size: 0.9375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.form-error-list {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  padding-left: 1.25rem;
+}
+
+/* Step Content Panes */
+.form-step-pane {
+  display: none;
+}
+
+.form-step-pane.active {
+  display: block;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.step-pane-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.step-pane-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+  margin-bottom: 0.25rem;
+}
+
+.step-pane-sub {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+/* Input error highlight */
+.form-input.input-error, .form-select.input-error, .form-textarea.input-error {
+  border-color: #DC2626 !important;
+  background-color: #FFFDFD !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important;
+}
+
+/* Form Action Buttons Bar */
+.form-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Declaration Checkbox Style */
+.declaration-box {
+  background-color: var(--bg-light);
+  border: 1px solid #CBD5E1;
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.declaration-terms-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 1.25rem;
+}
+
+.declaration-terms-text p {
+  margin-bottom: 0.75rem;
+}
+
+.declaration-check-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--dark-navy);
+  line-height: 1.5;
+}
+
+.declaration-checkbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--primary-blue);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Submission Success Banner */
+.admission-success-pane {
+  display: none;
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.admission-success-pane.active {
+  display: block;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.success-circle-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  background-color: #DCFCE7;
+  color: #15803D;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 900;
+  margin: 0 auto 1.25rem auto;
+  border: 3px solid #BBF7D0;
+}
+
+.success-badge-tag {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--gold-subtle);
+  color: var(--gold-hover);
+  border: 1px solid rgba(245, 184, 0, 0.4);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.success-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+  margin-bottom: 0.75rem;
+}
+
+.success-summary-card {
+  background-color: var(--bg-light);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  text-align: left;
+  max-width: 32rem;
+  margin: 1.5rem auto;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.success-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed #CBD5E1;
+}
+
+.success-summary-row:last-child {
+  border-bottom: none;
+}
+
+.success-notice-note {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  max-width: 34rem;
+  margin: 1.25rem auto;
+  line-height: 1.6;
+}
+
 /* Keyframe Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
@@ -1997,4 +2431,5 @@ button, input, select, textarea {
     scroll-behavior: auto !important;
   }
 }
+
 

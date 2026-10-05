@@ -161,4 +161,232 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // 6. Admissions Multi-Step Application Form Controller
+  const fullAppForm = document.getElementById('full-admissions-form');
+  if (fullAppForm) {
+    let currentStep = 1;
+    const totalSteps = 5;
+    const formErrorPanel = document.getElementById('form-error-panel');
+    const formErrorList = document.getElementById('form-error-list');
+    const stepConnectorFill = document.getElementById('step-connector-fill');
+    const successPane = document.getElementById('admission-success-pane');
+    const formCard = document.querySelector('.admissions-form-card');
+
+    const updateStepUI = (step) => {
+      // Hide all step panes
+      document.querySelectorAll('.form-step-pane').forEach((pane) => {
+        pane.classList.remove('active');
+      });
+      const activePane = document.getElementById(`step-${step}-pane`);
+      if (activePane) activePane.classList.add('active');
+
+      // Update indicator tracker
+      for (let i = 1; i <= totalSteps; i++) {
+        const indicator = document.getElementById(`step-indicator-${i}`);
+        const circle = indicator ? indicator.querySelector('.step-circle') : null;
+        if (!indicator || !circle) continue;
+
+        if (i < step) {
+          indicator.classList.remove('active');
+          indicator.classList.add('completed');
+          circle.innerHTML = '✓';
+        } else if (i === step) {
+          indicator.classList.remove('completed');
+          indicator.classList.add('active');
+          circle.innerHTML = i.toString();
+        } else {
+          indicator.classList.remove('active', 'completed');
+          circle.innerHTML = i.toString();
+        }
+      }
+
+      // Update fill bar
+      if (stepConnectorFill) {
+        const progressPercent = ((step - 1) / (totalSteps - 1)) * 84;
+        stepConnectorFill.style.width = `${progressPercent}%`;
+      }
+
+      // Smooth scroll to top of form card
+      if (formCard) {
+        const headerHeight = header ? header.offsetHeight : 70;
+        const formTop = formCard.getBoundingClientRect().top + window.pageYOffset - headerHeight - 20;
+        window.scrollTo({ top: formTop, behavior: 'smooth' });
+      }
+    };
+
+    const validateStep1 = () => {
+      const missing = [];
+      const fields = [
+        { id: 'app-fullname', name: 'Full Name' },
+        { id: 'app-gender', name: 'Gender' },
+        { id: 'app-dob', name: 'Date of Birth' },
+        { id: 'app-marital', name: 'Marital Status' },
+        { id: 'app-nationality', name: 'Nationality' },
+        { id: 'app-state', name: 'State of Origin' },
+        { id: 'app-lga', name: 'Local Government Area (LGA)' },
+        { id: 'app-address', name: 'Residential Address' },
+        { id: 'app-phone', name: 'Phone Number' },
+        { id: 'app-whatsapp', name: 'WhatsApp Number' },
+        { id: 'app-email', name: 'Email Address' },
+      ];
+
+      fields.forEach((field) => {
+        const el = document.getElementById(field.id);
+        if (!el || !el.value.trim() || el.value === 'default' || el.value === '') {
+          missing.push(field.name);
+          if (el) el.classList.add('input-error');
+        } else {
+          if (el) el.classList.remove('input-error');
+        }
+      });
+
+      return missing;
+    };
+
+    // Remove input error state on typing or changing
+    fullAppForm.querySelectorAll('input, select, textarea').forEach((el) => {
+      el.addEventListener('input', () => el.classList.remove('input-error'));
+      el.addEventListener('change', () => el.classList.remove('input-error'));
+    });
+
+    // Step 1 Next Button
+    const step1Next = document.getElementById('step-1-next');
+    if (step1Next) {
+      step1Next.addEventListener('click', () => {
+        const missing = validateStep1();
+        if (missing.length > 0) {
+          if (formErrorList) {
+            formErrorList.innerHTML = missing.map((item) => `<li>${item}</li>`).join('');
+          }
+          if (formErrorPanel) formErrorPanel.classList.add('show');
+          return;
+        }
+        if (formErrorPanel) formErrorPanel.classList.remove('show');
+        currentStep = 2;
+        updateStepUI(currentStep);
+      });
+    }
+
+    // Step 2 Next & Back
+    const step2Back = document.getElementById('step-2-back');
+    const step2Next = document.getElementById('step-2-next');
+    if (step2Back) {
+      step2Back.addEventListener('click', () => {
+        currentStep = 1;
+        updateStepUI(currentStep);
+      });
+    }
+    if (step2Next) {
+      step2Next.addEventListener('click', () => {
+        currentStep = 3;
+        updateStepUI(currentStep);
+      });
+    }
+
+    // Step 3 Next & Back
+    const step3Back = document.getElementById('step-3-back');
+    const step3Next = document.getElementById('step-3-next');
+    if (step3Back) {
+      step3Back.addEventListener('click', () => {
+        currentStep = 2;
+        updateStepUI(currentStep);
+      });
+    }
+    if (step3Next) {
+      step3Next.addEventListener('click', () => {
+        currentStep = 4;
+        updateStepUI(currentStep);
+      });
+    }
+
+    // Step 4 Next & Back
+    const step4Back = document.getElementById('step-4-back');
+    const step4Next = document.getElementById('step-4-next');
+    if (step4Back) {
+      step4Back.addEventListener('click', () => {
+        currentStep = 3;
+        updateStepUI(currentStep);
+      });
+    }
+    if (step4Next) {
+      step4Next.addEventListener('click', () => {
+        currentStep = 5;
+        updateStepUI(currentStep);
+      });
+    }
+
+    // Step 5 Back & Submit
+    const step5Back = document.getElementById('step-5-back');
+    if (step5Back) {
+      step5Back.addEventListener('click', () => {
+        currentStep = 4;
+        updateStepUI(currentStep);
+      });
+    }
+
+    fullAppForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const decCheckbox = document.getElementById('declaration-checkbox');
+      if (decCheckbox && !decCheckbox.checked) {
+        if (formErrorList) {
+          formErrorList.innerHTML = '<li>You must accept and agree to the Declaration statement to complete your application.</li>';
+        }
+        if (formErrorPanel) formErrorPanel.classList.add('show');
+        return;
+      }
+      if (formErrorPanel) formErrorPanel.classList.remove('show');
+
+      // Collect candidate summary details
+      const candidateName = document.getElementById('app-fullname')?.value || 'Candidate';
+      const candidateEmail = document.getElementById('app-email')?.value || 'N/A';
+      const candidatePhone = document.getElementById('app-phone')?.value || 'N/A';
+      const candidateProgram = document.getElementById('app-intended-program')?.value || 'Diploma in Theology';
+
+      const sumName = document.getElementById('summary-candidate-name');
+      const sumEmail = document.getElementById('summary-candidate-email');
+      const sumPhone = document.getElementById('summary-candidate-phone');
+      const sumProgram = document.getElementById('summary-candidate-program');
+
+      if (sumName) sumName.textContent = candidateName;
+      if (sumEmail) sumEmail.textContent = candidateEmail;
+      if (sumPhone) sumPhone.textContent = candidatePhone;
+      if (sumProgram) sumProgram.textContent = candidateProgram;
+
+      // Hide form steps and show success pane
+      document.querySelectorAll('.form-step-pane').forEach((pane) => pane.classList.remove('active'));
+      const tracker = document.querySelector('.step-progress-tracker');
+      const intro = document.querySelector('.form-intro-header');
+      if (tracker) tracker.style.display = 'none';
+      if (intro) intro.style.display = 'none';
+      if (successPane) successPane.classList.add('active');
+
+      // Architectural hook for future Firebase / Firestore registry submission
+      window.submitAdmissionToRegistry = function(formData) {
+        console.log('[DIMABIN Registry Service Ready]: Candidate data compiled for future Firebase transmission.', formData);
+      };
+      window.submitAdmissionToRegistry({
+        name: candidateName,
+        email: candidateEmail,
+        phone: candidatePhone,
+        program: candidateProgram,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Reset button
+    const restartBtn = document.getElementById('restart-application-btn');
+    if (restartBtn) {
+      restartBtn.addEventListener('click', () => {
+        fullAppForm.reset();
+        currentStep = 1;
+        const tracker = document.querySelector('.step-progress-tracker');
+        const intro = document.querySelector('.form-intro-header');
+        if (tracker) tracker.style.display = 'flex';
+        if (intro) intro.style.display = 'block';
+        if (successPane) successPane.classList.remove('active');
+        updateStepUI(currentStep);
+      });
+    }
+  }
 });
