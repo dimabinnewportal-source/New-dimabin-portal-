@@ -3,22 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>About Us | Divine Mandate Bible Institute (DIMABIN)</title>
-  <meta name="description" content="Discover the history, vision, and leadership of Divine Mandate Bible Institute (DIMABIN) - An Interdenominational Citadel of Learning.">
+  <title>About DIMABIN | Interdenominational Citadel of Learning</title>
+  <meta name="description" content="About Divine Mandate Bible Institute (DIMABIN) - An Interdenominational Citadel of Learning. Motto: Fear of God without a Mess. Equipping saints for effective ministry and leadership.">
   <meta name="theme-color" content="#122452">
 
+  <!-- Open Graph Metadata -->
+  <meta property="og:site_name" content="Divine Mandate Bible Institute (DIMABIN)">
+  <meta property="og:title" content="About DIMABIN | Interdenominational Citadel of Learning">
+  <meta property="og:description" content="Discover the institutional mandate, vision, mission, and rector's desk of Divine Mandate Bible Institute.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="assets/logo/dimabin-emblem.svg">
+
+  <!-- Google Fonts: Poppins (300, 400, 500, 600, 700, 800) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap" rel="stylesheet">
+
+  <!-- Pure Vanilla Stylesheet -->
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+  <!-- Accessible Skip Link -->
   <a href="#main-content" class="sr-only">Skip to main content</a>
 
-  <!-- Header -->
+  <!-- ========================================================================
+       HEADER
+       ======================================================================== -->
   <header class="site-header" role="banner">
     <div class="container header-container">
+      <!-- Left: DIMABIN Branding -->
       <a href="index.html" class="brand-link" aria-label="Divine Mandate Bible Institute Home">
         <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Seal" class="brand-emblem" width="38" height="38">
         <div class="brand-text">
@@ -31,6 +48,7 @@
         </div>
       </a>
 
+      <!-- Center: Desktop Navigation -->
       <nav class="desktop-nav" aria-label="Primary Navigation">
         <a href="index.html" class="nav-link">Home</a>
         <a href="about.html" class="nav-link active">About Us</a>
@@ -39,7 +57,9 @@
         <a href="contact.html" class="nav-link">Contact Us</a>
       </nav>
 
+      <!-- Right: Actions (Desktop Portal + Apply Now / Mobile Controls) -->
       <div class="header-actions">
+        <!-- Desktop Portal Dropdown -->
         <div class="portal-dropdown-wrapper">
           <button type="button" class="portal-toggle-btn" id="portal-toggle-btn" aria-expanded="false" aria-haspopup="true">
             <span>Portals</span>
@@ -51,20 +71,32 @@
             <div class="portal-menu-header">DIMABIN Portals</div>
             <a href="portals.html" class="portal-menu-item" role="menuitem">
               <span class="portal-item-title">Portal Gateway</span>
-              <span class="portal-item-desc">Access student, lecturer & admin portals</span>
+              <span class="portal-item-desc">Central access for students, lecturers & staff</span>
             </a>
             <a href="portals.html#student" class="portal-menu-item" role="menuitem">
               <span class="portal-item-title">Student Portal</span>
-              <span class="portal-item-desc">Course registration & transcripts</span>
+              <span class="portal-item-desc">Course registration, notes & grades</span>
+            </a>
+            <a href="portals.html#lecturer" class="portal-menu-item" role="menuitem">
+              <span class="portal-item-title">Lecturer Portal</span>
+              <span class="portal-item-desc">Course management & grading sheets</span>
+            </a>
+            <a href="portals.html#admin" class="portal-menu-item" role="menuitem">
+              <span class="portal-item-title">Admin Portal</span>
+              <span class="portal-item-desc">Registry, admissions & institution setup</span>
             </a>
           </div>
         </div>
 
+        <!-- Desktop Apply Now -->
         <a href="admissions.html" class="btn btn-gold btn-sm desktop-apply-btn">APPLY NOW</a>
+
+        <!-- Mobile Apply Now Button -->
         <a href="admissions.html" class="btn btn-gold btn-sm mobile-apply-btn">APPLY NOW</a>
 
+        <!-- Mobile Hamburger Button -->
         <button type="button" class="hamburger-btn" id="hamburger-btn" aria-label="Open mobile menu" aria-expanded="false">
-          <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -74,7 +106,7 @@
     </div>
   </header>
 
-  <!-- Mobile Drawer -->
+  <!-- Mobile Slide-Out Navigation Drawer -->
   <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" aria-hidden="true"></div>
   <aside class="mobile-drawer" id="mobile-drawer" aria-label="Mobile Navigation Drawer">
     <div class="mobile-drawer-header">
@@ -85,8 +117,14 @@
           <span class="brand-subtitle-gold" style="color: var(--primary-blue);">BIBLE INSTITUTE</span>
         </div>
       </div>
-      <button type="button" class="close-drawer-btn" id="close-drawer-btn" aria-label="Close navigation menu">✕</button>
+      <button type="button" class="close-drawer-btn" id="close-drawer-btn" aria-label="Close navigation menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
+
     <div class="mobile-drawer-body">
       <div>
         <span class="mobile-nav-group-title">Public Website</span>
@@ -96,131 +134,423 @@
         <a href="admissions.html" class="mobile-nav-link">Admissions</a>
         <a href="contact.html" class="mobile-nav-link">Contact Us</a>
       </div>
+
       <div style="border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
-        <span class="mobile-nav-group-title">Portals</span>
+        <span class="mobile-nav-group-title">Institute Portals</span>
         <a href="portals.html" class="mobile-portal-item">
           <span class="mobile-portal-name">Portal Gateway</span>
-          <span class="mobile-portal-desc">Single sign-on access</span>
+          <span class="mobile-portal-desc">Single sign-on gateway for students & staff</span>
+        </a>
+        <a href="portals.html#student" class="mobile-portal-item">
+          <span class="mobile-portal-name">Student Portal</span>
+          <span class="mobile-portal-desc">Course registration, exams & results</span>
+        </a>
+        <a href="portals.html#lecturer" class="mobile-portal-item">
+          <span class="mobile-portal-name">Lecturer Portal</span>
+          <span class="mobile-portal-desc">Syllabus, attendance & score submission</span>
+        </a>
+        <a href="portals.html#admin" class="mobile-portal-item">
+          <span class="mobile-portal-name">Admin Portal</span>
+          <span class="mobile-portal-desc">Institution registry & settings</span>
         </a>
       </div>
     </div>
+
     <div class="mobile-drawer-footer">
-      <a href="admissions.html" class="btn btn-gold btn-sm" style="width: 100%;">APPLY NOW</a>
+      <a href="admissions.html" class="btn btn-gold btn-sm" style="width: 100%; margin-bottom: 0.5rem;">APPLY NOW</a>
+      <p style="text-align: center; font-size: 0.75rem; color: var(--text-secondary);">
+        CITADEL OF LEARNING
+      </p>
     </div>
   </aside>
 
+  <!-- ========================================================================
+       MAIN CONTENT
+       ======================================================================== -->
   <main id="main-content">
-    <!-- Page Header Banner -->
-    <section class="section section-navy" style="padding-top: 7rem; padding-bottom: 3.5rem; text-align: center;">
-      <div class="container">
-        <span class="section-eyebrow">ABOUT THE INSTITUTE</span>
-        <h1 class="section-title">An Interdenominational Citadel of Learning</h1>
-        <p class="section-subtitle">
-          Established upon the divine commission to train godly, competent, and ethical ministers.
+
+    <!-- 1. ABOUT HERO SECTION -->
+    <section class="hero-section" id="about-hero" aria-label="About DIMABIN Introduction and Hero">
+      <div class="hero-bg-wrapper">
+        <img src="assets/images/hero-library.jpg" alt="Theological Seminary Library" class="hero-bg-img">
+        <div class="hero-overlay"></div>
+      </div>
+
+      <div class="container hero-content">
+        <!-- Small Gold Outlined Label -->
+        <div class="hero-motto-label">
+          MOTTO: FEAR OF GOD WITHOUT A MESS
+        </div>
+
+        <!-- Main Heading -->
+        <h1 class="hero-title">
+          About DIMABIN
+        </h1>
+
+        <!-- Gold Italic Subtitle -->
+        <p class="hero-subtitle">
+          Interdenominational Citadel of Learning
+        </p>
+
+        <!-- Supporting Text -->
+        <p class="hero-desc">
+          Equipping the saints for effective ministry, leadership, and professional excellence through
+          uncompromised biblical research and spiritual training.
         </p>
       </div>
+
+      <!-- Thin Gold Accent Line Beneath Hero -->
+      <div class="hero-bottom-accent" aria-hidden="true"></div>
     </section>
 
-    <!-- Narrative Section -->
-    <section class="section section-white">
+    <!-- 2. OUR INSTITUTION -->
+    <section class="section section-white" id="institution" aria-label="Our Institution">
       <div class="container">
         <div class="welcome-prose">
-          <span class="section-eyebrow">OUR MANDATE</span>
-          <h2 class="section-title">A Higher Calling in Theological Instruction</h2>
+          <!-- Small Gold Eyebrow -->
+          <span class="section-eyebrow">OUR INSTITUTION</span>
+
+          <!-- Main Heading -->
+          <h2 class="section-title">
+            Equipping Believers for Spiritual Depth and Practical Impact
+          </h2>
+
+          <!-- Content Paragraphs -->
           <div class="welcome-paragraphs">
             <p>
-              Divine Mandate Bible Institute (DIMABIN) was birthed with a resolute burden: to establish an
-              institution where deep theological rigor and spiritual fervour walk hand-in-hand. Founded as an
-              interdenominational citadel, we open our doors to believers from diverse Christian backgrounds
-              who hunger for sound biblical teaching.
+              The Divine Mandate Bible Institute (DIMABIN) is a supreme interdenominational theological
+              training ground dedicated to raising men and women who possess sound biblical knowledge,
+              godly character, spiritual maturity, and practical ministry skills for effective Christian service.
             </p>
             <p>
-              Under our governing motto, <strong>"Fear of God without a Mess,"</strong> our core commitment is to
-              demonstrate that authentic Christian leadership requires both theological competence and pristine
-              moral integrity. We believe that modern ministry demands leaders who are not merely articulate,
-              but deeply sanctified and biblically grounded.
+              At DIMABIN, we understand that modern ministry requires not only strong academic insight
+              but also a fiery spiritual zeal and flawless moral posture. Our curriculum is tailored for
+              pastors, evangelists, counselors, and lay leaders who are determined to answer their divine
+              calling without compromise.
             </p>
           </div>
-        </div>
 
-        <!-- Rector's Desk Card -->
-        <div class="rector-card" style="margin-top: 3rem;">
-          <div class="rector-card-top-accent" aria-hidden="true"></div>
-          <div class="rector-card-inner">
-            <div class="rector-profile">
-              <div class="rector-avatar-circle">
-                <span>SJ</span>
-                <div class="rector-avatar-badge">✦</div>
-              </div>
-              <div>
-                <span class="rector-info-name">Sorinola J.O.</span>
-                <span class="rector-info-title">Rector, Divine Mandate Bible Institute</span>
-              </div>
+          <!-- Large Light-Background Card: Citadel of Divine Learning -->
+          <div class="citadel-card">
+            <div class="citadel-icon-box" aria-hidden="true">
+              <!-- Graduation / Education Icon -->
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+              </svg>
             </div>
-            <div class="rector-quote-block">
-              <h3 class="rector-heading">
-                <span class="rector-heading-dot"></span>
-                <span>From the Rector's Desk</span>
-              </h3>
-              <blockquote class="rector-quote-text">
-                &ldquo;Our vision is simple yet profound: to establish a world-class training center that
-                balances deep scriptural analysis with uncompromising spiritual development. At DIMABIN,
-                we strive for 'Fear of God without a Mess'—maintaining pristine ethical standards alongside
-                rigorous academic discipline.&rdquo;
-              </blockquote>
+            <div class="citadel-content">
+              <h4>Citadel of Divine Learning</h4>
+              <p>
+                Providing a balanced environment where scholarly biblical analysis meets uncompromised spiritual power.
+              </p>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Vision & Mission -->
-    <section class="section section-light">
+    <!-- 3. VISION & MISSION -->
+    <section class="section section-light" id="foundations" aria-label="Vision & Mission Foundations">
       <div class="container">
+        <!-- Section Header -->
         <div class="section-header">
-          <span class="section-eyebrow">GUIDING COORDINATES</span>
-          <h2 class="section-title">Vision, Mission &amp; Values</h2>
+          <span class="section-eyebrow">OUR FOUNDATIONS</span>
+          <h2 class="section-title">Vision &amp; Mission</h2>
+          <p class="section-subtitle">
+            The spiritual coordinates guiding our educational mandate
+          </p>
         </div>
+
+        <!-- 2 Large White Cards (Stack Vertically on Mobile) -->
         <div class="cards-grid-2">
+          <!-- Vision Card (Blue Accent at Top) -->
           <div class="foundation-card">
-            <div class="card-accent-gold"></div>
-            <h3 class="card-title-blue">Our Vision</h3>
+            <div class="card-accent-blue" aria-hidden="true"></div>
+            <div class="card-header-icon">
+              <div class="icon-box-blue" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </div>
+              <h3 class="card-title-blue">Our Vision</h3>
+            </div>
             <p class="card-body-text">
               To be a globally recognized interdenominational Bible institute, producing spiritually robust,
               intellectually equipped, and morally sound Christian leaders who will propagate the Gospel of
               Christ with absolute integrity and power across all nations.
             </p>
+            <div class="card-checklist">
+              <span class="checklist-label">Strategic Focus:</span>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Fostering global spiritual revivals</span>
+              </div>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Restoring ethical standards in church leadership</span>
+              </div>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Cultivating academic theological excellence</span>
+              </div>
+            </div>
           </div>
+
+          <!-- Mission Card (Gold Accent at Top) -->
           <div class="foundation-card">
-            <div class="card-accent-blue"></div>
-            <h3 class="card-title-blue">Our Mission</h3>
+            <div class="card-accent-gold" aria-hidden="true"></div>
+            <div class="card-header-icon">
+              <div class="icon-box-gold" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                  <line x1="4" y1="22" x2="4" y2="15"></line>
+                </svg>
+              </div>
+              <h3 class="card-title-blue">Our Mission</h3>
+            </div>
             <p class="card-body-text">
               To deliver top-tier biblical and theological education through comprehensive training, mentoring,
               and practical service, instilling the fear of God as the core foundation for a successful,
               scandal-free Christian ministry and professional life.
+            </p>
+            <div class="card-checklist">
+              <span class="checklist-label">Action Pillars:</span>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Sound teaching based on biblical authority</span>
+              </div>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Hands-on ministerial apprenticeship programs</span>
+              </div>
+              <div class="checklist-item">
+                <span class="check-glyph" aria-hidden="true">✓</span>
+                <span>Building standard, professional-level leadership skillsets</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. GUIDING MOTTO -->
+    <section class="motto-banner-section" aria-label="Our Guiding Motto">
+      <div class="motto-ambient-glow" aria-hidden="true"></div>
+      <div class="container motto-banner-inner">
+        <!-- Small Gold Eyebrow -->
+        <span class="section-eyebrow" style="color: var(--gold);">OUR GUIDING MOTTO</span>
+
+        <!-- Large Gold Heading -->
+        <h2 class="motto-large-heading">
+          FEAR OF GOD WITHOUT A MESS
+        </h2>
+
+        <!-- Description -->
+        <p class="motto-desc-text">
+          This motto encapsulates Divine Mandate Bible Institute's uncompromising commitment to spiritual integrity,
+          godly character, discipline, and absolute biblical truth. We believe that professional and theological leadership
+          must exist hand-in-hand with unblemished personal reputation, producing scandal-free Christian leaders who stand
+          upright before God and society.
+        </p>
+      </div>
+    </section>
+
+    <!-- 5. RECTOR'S DESK -->
+    <section class="rector-desk-section" id="rector" aria-label="From the Rector's Desk">
+      <div class="container">
+        <!-- Top Bio Area -->
+        <div class="rector-bio-header">
+          <span class="section-eyebrow">FROM THE RECTOR'S DESK</span>
+          <h2 class="rector-name-title">Sorinola J. O.</h2>
+          <span class="rector-designation">RECTOR, DIVINE MANDATE BIBLE INSTITUTE</span>
+          <p class="rector-bio-paragraph">
+            Serving under divine mandate to raise an outstanding generation of Christian leaders equipped with
+            standard intellectual and moral capabilities. Rector Sorinola J. O. provides overall spiritual
+            guardianship and strategic direction for the educational courses offered at DIMABIN.
+          </p>
+        </div>
+
+        <!-- Quotation / Message Card -->
+        <div class="rector-card">
+          <div class="rector-card-top-accent" aria-hidden="true"></div>
+          <div class="rector-card-quote-mark" aria-hidden="true">“</div>
+
+          <div class="rector-card-inner">
+            <!-- Circular Initials / Avatar Element -->
+            <div class="rector-profile">
+              <div class="rector-avatar-circle" aria-label="Rector Sorinola J. O. Initials">
+                <span>SJ</span>
+                <div class="rector-avatar-badge" aria-hidden="true">✦</div>
+              </div>
+              <div>
+                <span class="rector-info-name">Sorinola J. O.</span>
+                <span class="rector-info-title">Rector, Divine Mandate Bible Institute</span>
+              </div>
+            </div>
+
+            <!-- Quotation Block with Placeholder as Specified in Reference -->
+            <div class="rector-quote-block">
+              <h3 class="rector-heading">
+                <span class="rector-heading-dot" aria-hidden="true"></span>
+                <span>Rector's Official Message</span>
+              </h3>
+
+              <div class="rector-quote-placeholder">
+                [ The Rector's official welcome message is currently being compiled for the archives. This space will showcase the core spiritual values, theological perspectives, and personal greetings directly from the desk of Sorinola J. O. to all prospective students and facilitators of the Institute. ]
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle);">
+                <div>
+                  <span style="font-weight: 800; font-size: 0.875rem; color: var(--dark-navy); display: block;">Sorinola J. O.</span>
+                  <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Rector, Divine Mandate Bible Institute</span>
+                </div>
+                <span class="rector-footer-motto">CITADEL OF LEARNING</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. WHY CHOOSE DIMABIN -->
+    <section class="section section-light" id="standard" aria-label="The DIMABIN Standard">
+      <div class="container">
+        <!-- Section Header -->
+        <div class="section-header">
+          <span class="section-eyebrow">THE DIMABIN STANDARD</span>
+          <h2 class="section-title">Why Choose DIMABIN</h2>
+          <p class="section-subtitle">
+            Developing outstanding Christian leaders for the global harvest
+          </p>
+        </div>
+
+        <!-- Six Cards Grid -->
+        <div class="features-grid-6">
+          <!-- 1. Sound Biblical Teaching -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Sound Biblical Teaching</h3>
+            <p class="feature-desc">
+              Uncompromising adherence to the Word of God as the infallible source of truth and authority, delivering accurate systematic theology.
+            </p>
+          </div>
+
+          <!-- 2. Experienced Instructors -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Experienced Instructors</h3>
+            <p class="feature-desc">
+              Learn from seasoned theologians, pastors, and Christian mentors with decades of proven ministerial competence and teaching excellence.
+            </p>
+          </div>
+
+          <!-- 3. Practical Ministry Training -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Practical Ministry Training</h3>
+            <p class="feature-desc">
+              Hands-on clinical training, church apprenticeships, and direct missions exposure to translate classroom theories into immediate kingdom impact.
+            </p>
+          </div>
+
+          <!-- 4. Spiritual Growth -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Spiritual Growth</h3>
+            <p class="feature-desc">
+              Enrich your prayer life, cultivate mature spiritual disciplines, and foster genuine, scandal-free personal holiness.
+            </p>
+          </div>
+
+          <!-- 5. Leadership Development -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            </div>
+            <h3 class="feature-title">Leadership Development</h3>
+            <p class="feature-desc">
+              Refine critical administrative skills, organizational stewardship, emotional intelligence, and clean administrative governance.
+            </p>
+          </div>
+
+          <!-- 6. Interdenominational Environment -->
+          <div class="feature-box">
+            <div class="feature-icon-box" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Interdenominational Environment</h3>
+            <p class="feature-desc">
+              Engage with diverse Christian body members under a unified theological standard, building vast cross-denominational ministerial networks.
             </p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Admission CTA Banner -->
-    <section class="admission-cta-section">
+    <!-- 7. ADMISSION CTA -->
+    <section class="admission-cta-section" id="admission-cta" aria-label="Admission Call to Action">
+      <div class="admission-glow-top" aria-hidden="true"></div>
+      <div class="admission-glow-bottom" aria-hidden="true"></div>
+
       <div class="container admission-content">
-        <span class="section-eyebrow">ENROLL TODAY</span>
-        <h2 class="section-title" style="color: var(--white);">Join the Next Academic Cohort</h2>
-        <p class="admission-desc">
-          Step into your divine calling with a proven biblical foundation. Our admissions office is ready to assist you.
+        <h2 class="section-title" style="color: var(--white); margin-bottom: 0.5rem;">
+          Answer the Call to Divine Service
+        </h2>
+        <p class="section-subtitle" style="color: var(--gold); font-size: 1.25rem;">
+          Admission is currently open for the academic session
         </p>
-        <a href="admissions.html" class="btn btn-gold btn-lg">APPLY FOR ADMISSION</a>
+
+        <p class="admission-desc">
+          Take the bold step towards clarifying your spiritual calling and expanding your ministry potential.
+          Our simple online registration process is active and ready to guide you.
+        </p>
+
+        <div style="display: flex; justify-content: center; gap: 1rem;">
+          <a href="admissions.html" class="btn btn-gold btn-lg">
+            APPLY FOR ADMISSION
+          </a>
+        </div>
       </div>
     </section>
+
   </main>
 
-  <!-- Footer -->
+  <!-- ========================================================================
+       8. FOOTER
+       ======================================================================== -->
   <footer class="site-footer" role="contentinfo">
     <div class="container">
       <div class="footer-grid">
+        <!-- Col 1: Institute Brand -->
         <div class="footer-brand-col">
           <div class="brand-link">
             <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Seal" width="44" height="44">
@@ -229,12 +559,26 @@
               <span class="brand-subtitle-gold" style="font-size: 0.75rem;">BIBLE INSTITUTE</span>
             </div>
           </div>
-          <p class="footer-motto-gold">MOTTO: FEAR OF GOD WITHOUT A MESS</p>
+
+          <p class="footer-motto-gold">
+            MOTTO: FEAR OF GOD WITHOUT A MESS
+          </p>
+
           <p class="footer-desc">
             An Interdenominational Citadel of Learning built to raise equipped, biblically sound,
             and ethically outstanding Christian leaders.
           </p>
+
+          <!-- Social Links -->
+          <div class="footer-social-cluster">
+            <a href="https://facebook.com" class="social-icon-btn" aria-label="DIMABIN Facebook" target="_blank" rel="noopener noreferrer">F</a>
+            <a href="https://youtube.com" class="social-icon-btn" aria-label="DIMABIN YouTube" target="_blank" rel="noopener noreferrer">Y</a>
+            <a href="https://whatsapp.com" class="social-icon-btn" aria-label="DIMABIN WhatsApp" target="_blank" rel="noopener noreferrer">W</a>
+            <a href="https://instagram.com" class="social-icon-btn" aria-label="DIMABIN Instagram" target="_blank" rel="noopener noreferrer">I</a>
+          </div>
         </div>
+
+        <!-- Col 2: Quick Links -->
         <div>
           <h4 class="footer-col-title">Quick Links</h4>
           <ul class="footer-links-list">
@@ -245,34 +589,52 @@
             <li><a href="contact.html" class="footer-link">Contact Us</a></li>
           </ul>
         </div>
+
+        <!-- Col 3: Academic Studies -->
         <div>
-          <h4 class="footer-col-title">Studies</h4>
+          <h4 class="footer-col-title">Academic Studies</h4>
           <ul class="footer-links-list">
-            <li><a href="programs.html" class="footer-link">Diploma in Theology</a></li>
+            <li><a href="programs.html" class="footer-link">Diploma in Theology (Dipl.Th.)</a></li>
             <li><a href="programs.html#certificate" class="footer-link">Certificate in Ministry</a></li>
-            <li><a href="programs.html#leadership" class="footer-link">Leadership Practicum</a></li>
+            <li><a href="programs.html#leadership" class="footer-link">Christian Leadership Studies</a></li>
+            <li><a href="programs.html#weekend" class="footer-link">Executive Weekend Cohorts</a></li>
           </ul>
         </div>
+
+        <!-- Col 4: Portals & Contact Information -->
         <div>
-          <h4 class="footer-col-title">Contact Us</h4>
-          <div class="footer-contact-block">
-            <p><span class="footer-contact-label">Address:</span> Divine Mandate Bible Institute Campus &amp; Study Centres</p>
-            <p><span class="footer-contact-label">Phone:</span> +234 (0) 800-DIMABIN</p>
-            <p><span class="footer-contact-label">Email:</span> info@dimabin.org</p>
+          <h4 class="footer-col-title">Institute Portals</h4>
+          <ul class="footer-links-list">
+            <li><a href="portals.html" class="footer-link">› Portal Gateway</a></li>
+            <li><a href="portals.html#student" class="footer-link">› Student Portal</a></li>
+            <li><a href="portals.html#lecturer" class="footer-link">› Lecturer Portal</a></li>
+            <li><a href="portals.html#admin" class="footer-link">› Admin Portal</a></li>
+          </ul>
+
+          <div class="footer-contact-block" id="contact">
+            <h4 class="footer-col-title" style="margin-bottom: 0.5rem; margin-top: 0.5rem;">Contact Us</h4>
+            <p><span class="footer-contact-label">Address:</span> Divine Mandate Bible Institute Campus &amp; Study Centres (Official address placeholder)</p>
+            <p><span class="footer-contact-label">Phone:</span> +234 (0) 800-DIMABIN (Official phone placeholder)</p>
+            <p><span class="footer-contact-label">Email:</span> info@dimabin.org (Official email placeholder)</p>
           </div>
         </div>
       </div>
+
+      <!-- Footer Bottom Copyright & Legal -->
       <div class="footer-bottom-bar">
         <p>© 2026 Divine Mandate Bible Institute (DIMABIN). All Rights Reserved.</p>
         <div class="footer-legal-links">
           <a href="contact.html">Privacy Policy</a>
-          <span>·</span>
+          <span aria-hidden="true">·</span>
           <a href="contact.html">Terms of Use</a>
+          <span aria-hidden="true">·</span>
+          <a href="portals.html" style="color: var(--gold);">Portal Access</a>
         </div>
       </div>
     </div>
   </footer>
 
+  <!-- Pure Vanilla JavaScript -->
   <script src="js/main.js"></script>
 </body>
 </html>

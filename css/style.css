@@ -1802,6 +1802,187 @@ button, input, select, textarea {
   color: var(--white);
 }
 
+/* ==========================================================================
+   ABOUT US PAGE SPECIFIC STYLES
+   ========================================================================== */
+.citadel-card {
+  background-color: var(--bg-light);
+  border: 1px solid var(--border-subtle);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius-md);
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  margin-top: 2rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.citadel-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.citadel-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background-color: var(--primary-blue-subtle);
+  color: var(--primary-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(31, 60, 130, 0.15);
+}
+
+.citadel-content h4 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+  margin-bottom: 0.35rem;
+}
+
+.citadel-content p {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Guiding Motto Banner */
+.motto-banner-section {
+  position: relative;
+  background-color: var(--dark-navy);
+  color: var(--white);
+  padding: 4rem 1rem;
+  text-align: center;
+  overflow: hidden;
+  border-top: 1px solid var(--primary-blue);
+  border-bottom: 1px solid var(--primary-blue);
+}
+
+@media (min-width: 768px) {
+  .motto-banner-section {
+    padding: 5.5rem 2rem;
+  }
+}
+
+.motto-banner-inner {
+  position: relative;
+  z-index: 10;
+  max-width: 50rem;
+  margin: 0 auto;
+}
+
+.motto-large-heading {
+  font-size: 2.15rem;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+  line-height: 1.15;
+}
+
+@media (min-width: 640px) {
+  .motto-large-heading {
+    font-size: 2.85rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .motto-large-heading {
+    font-size: 3.25rem;
+  }
+}
+
+.motto-desc-text {
+  font-size: 1rem;
+  color: #E2E8F0;
+  line-height: 1.8;
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+@media (min-width: 640px) {
+  .motto-desc-text {
+    font-size: 1.0625rem;
+  }
+}
+
+.motto-ambient-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 500px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(245, 184, 0, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Rector's Desk Section Styles */
+.rector-desk-section {
+  background-color: var(--white);
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
+@media (min-width: 768px) {
+  .rector-desk-section {
+    padding-top: 5.5rem;
+    padding-bottom: 5.5rem;
+  }
+}
+
+.rector-bio-header {
+  max-width: 52rem;
+  margin: 0 auto 2.5rem auto;
+}
+
+.rector-name-title {
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+  margin-bottom: 0.25rem;
+}
+
+.rector-designation {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary-blue);
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.rector-bio-paragraph {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+@media (min-width: 640px) {
+  .rector-bio-paragraph {
+    font-size: 1rem;
+  }
+}
+
+.rector-quote-placeholder {
+  background-color: var(--bg-light);
+  border: 1px dashed #CBD5E1;
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem 1.5rem;
+  font-style: italic;
+  font-size: 0.9375rem;
+  color: #475569;
+  line-height: 1.7;
+  margin: 1.25rem 0;
+}
+
 /* Keyframe Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
@@ -1816,3 +1997,4 @@ button, input, select, textarea {
     scroll-behavior: auto !important;
   }
 }
+
