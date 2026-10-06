@@ -3157,4 +3157,451 @@ body.drawer-open {
   }
 }
 
+/* ==========================================================================
+   PORTAL LOGIN INTERFACES (Student, Lecturer, Administrator)
+   ========================================================================== */
+
+.portal-login-body {
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-color: var(--dark-navy);
+  background-image: 
+    linear-gradient(135deg, rgba(18, 36, 82, 0.94) 0%, rgba(31, 60, 130, 0.90) 100%),
+    url('../assets/images/hero-library.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text-primary);
+  position: relative;
+}
+
+.portal-login-topbar {
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
+}
+
+.portal-topbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: var(--white);
+}
+
+.portal-topbar-title {
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--white);
+  line-height: 1.2;
+}
+
+.portal-topbar-tag {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+  display: block;
+}
+
+.portal-topbar-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #E2E8F0;
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-md);
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+.portal-topbar-back-btn:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+  color: var(--gold);
+  border-color: var(--gold);
+  transform: translateX(-2px);
+}
+
+.portal-login-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 2rem 1rem;
+  width: 100%;
+  position: relative;
+  z-index: 5;
+}
+
+.portal-login-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  position: relative;
+  overflow: hidden;
+  padding: 2.5rem 2rem 2.25rem 2rem;
+  border-top: 4px solid var(--gold);
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.portal-login-card.admin-card-accent {
+  border-top: 4px solid #DC2626;
+}
+
+.portal-login-card.lecturer-card-accent {
+  border-top: 4px solid var(--primary-blue);
+}
+
+.portal-login-emblem-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.portal-institution-name {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--primary-blue);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.15rem;
+}
+
+.portal-motto-line {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--gold-hover);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+.portal-heading {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.35rem;
+  line-height: 1.2;
+}
+
+.portal-supporting-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 1.75rem;
+}
+
+/* Alert Notification Panes (Error and Info) */
+.portal-alert-box {
+  display: none;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  text-align: left;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.portal-alert-box.show {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.portal-alert-box.error {
+  background-color: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-left: 4px solid #DC2626;
+  color: #991B1B;
+}
+
+.portal-alert-box.info {
+  background-color: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-left: 4px solid var(--primary-blue);
+  color: #1E40AF;
+}
+
+.portal-alert-icon {
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Form Layout */
+.portal-form-group {
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.portal-form-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--dark-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.45rem;
+}
+
+.portal-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.portal-form-input {
+  width: 100%;
+  padding: 0.75rem 0.95rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  border: 1.5px solid #CBD5E1;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background-color: #FFFFFF;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  min-height: 46px;
+  box-sizing: border-box;
+}
+
+.portal-form-input:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(31, 60, 130, 0.12);
+}
+
+.portal-form-input.input-error {
+  border-color: #DC2626 !important;
+  background-color: #FFFDFD !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+
+.password-input-field {
+  padding-right: 2.75rem;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748B;
+  padding: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease;
+  line-height: 1;
+}
+
+.password-toggle-btn:hover {
+  color: var(--primary-blue);
+}
+
+.password-toggle-btn:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 1px;
+}
+
+/* Auxiliary Row: Forgot Password & Remember */
+.portal-form-aux-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: -0.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.forgot-password-link {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--primary-blue);
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.15s ease;
+}
+
+.forgot-password-link:hover {
+  color: var(--gold-hover);
+  text-decoration: underline;
+}
+
+/* Portal Login Action Buttons */
+.btn-portal-login {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.85rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-student-login {
+  background-color: var(--primary-blue);
+  color: var(--white);
+  border: 1px solid rgba(245, 184, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(31, 60, 130, 0.3);
+}
+
+.btn-student-login:hover {
+  background-color: var(--dark-navy);
+  border-color: var(--gold);
+  color: var(--gold);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(18, 36, 82, 0.4);
+}
+
+.btn-lecturer-login {
+  background-color: var(--primary-blue);
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(31, 60, 130, 0.3);
+}
+
+.btn-lecturer-login:hover {
+  background-color: var(--dark-navy);
+  color: var(--white);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(18, 36, 82, 0.4);
+}
+
+.btn-admin-login {
+  background-color: var(--dark-navy);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(18, 36, 82, 0.35);
+}
+
+.btn-admin-login:hover {
+  background-color: #0b1736;
+  border-color: var(--gold);
+  color: var(--gold);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+
+/* Back to Main Website Link inside Card */
+.portal-card-back-wrapper {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #F1F5F9;
+  text-align: center;
+}
+
+.portal-card-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.portal-card-back-link:hover {
+  color: var(--primary-blue);
+  transform: translateX(-2px);
+}
+
+.portal-switcher-box {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  color: #94A3B8;
+  line-height: 1.6;
+}
+
+.portal-switcher-box a {
+  color: var(--primary-blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.portal-switcher-box a:hover {
+  color: var(--gold-hover);
+  text-decoration: underline;
+}
+
+/* Security / Institutional Footer */
+.portal-login-footer {
+  width: 100%;
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+  color: #CBD5E1;
+  font-size: 0.75rem;
+  position: relative;
+  z-index: 10;
+}
+
+.portal-login-footer p {
+  margin: 0.25rem 0;
+}
+
+.portal-footer-motto {
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 480px) {
+  .portal-login-card {
+    padding: 2rem 1.25rem 1.75rem 1.25rem;
+    border-radius: var(--radius-md);
+  }
+
+  .portal-heading {
+    font-size: 1.45rem;
+  }
+
+  .portal-supporting-text {
+    font-size: 0.8125rem;
+    margin-bottom: 1.35rem;
+  }
+
+  .portal-login-topbar {
+    padding: 1rem 1rem 0.5rem 1rem;
+  }
+}
+
 
