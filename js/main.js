@@ -3,6 +3,8 @@
  * Master Client Script — Pure Vanilla JavaScript (Zero Framework Dependencies)
  */
 
+import './firebase-test.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Header Sticky / Scrolled State Handler
   const header = document.querySelector('.site-header');
