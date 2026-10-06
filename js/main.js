@@ -4,6 +4,7 @@
  */
 
 import './firebase-test.js';
+import { subscribeAdmissionSettings, formatAdmissionDate, DEFAULT_ADMISSION_SETTINGS } from './firebase-admissions.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Header Sticky / Scrolled State Handler
@@ -691,4 +692,118 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // =========================================================================
+  // 10. REAL-TIME ADMISSION AVAILABILITY CONTROLLER
+  // =========================================================================
+  const admissionStatusBanner = document.getElementById('admission-status-banner');
+  const admissionsClosedPane = document.getElementById('admissions-closed-pane');
+  const formIntroHeader = document.getElementById('form-intro-header');
+  const stepTracker = document.querySelector('.step-progress-tracker');
+  const admissionsForm = document.getElementById('full-admissions-form');
+
+  let currentAdmissionAvailability = { ...DEFAULT_ADMISSION_SETTINGS };
+
+  const formatFriendlyDate = (dateStr) => {
+    if (!dateStr) return 'TBA';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+      }
+    } catch (_) {}
+    return dateStr;
+  };
+
+  const handleAdmissionStateUpdate = (settings) => {
+    currentAdmissionAvailability = settings;
+    const isOpen = Boolean(settings.isOpen);
+    const sessionText = settings.academicSession || '2026/2027';
+    const closingDate = formatAdmissionDate(settings.closingDate) || '2026-11-30';
+    const friendlyDeadline = formatFriendlyDate(closingDate);
+
+    // 1. Update Admission Status Banner
+    if (admissionStatusBanner) {
+      const pill = document.getElementById('banner-status-pill');
+      const text = document.getElementById('banner-status-text');
+      const meta = document.getElementById('banner-status-meta');
+
+      if (isOpen) {
+        admissionStatusBanner.className = 'admission-status-banner open';
+        if (pill) {
+          pill.className = 'status-pill status-pill-open';
+          pill.textContent = '● ADMISSIONS OPEN';
+        }
+        if (text) {
+          text.innerHTML = `Applications are currently being accepted for the <strong id="banner-session-val">${sessionText}</strong> Academic Session.`;
+        }
+        if (meta) {
+          meta.innerHTML = `Submission Deadline: <strong id="banner-deadline-val">${friendlyDeadline}</strong>`;
+        }
+      } else {
+        admissionStatusBanner.className = 'admission-status-banner closed';
+        if (pill) {
+          pill.className = 'status-pill status-pill-closed';
+          pill.textContent = '● ADMISSIONS CLOSED';
+        }
+        if (text) {
+          text.innerHTML = `Application intake for the <strong id="banner-session-val">${sessionText}</strong> Academic Session is currently closed.`;
+        }
+        if (meta) {
+          meta.innerHTML = `Intake Status: <strong id="banner-deadline-val">Applications Paused</strong>`;
+        }
+      }
+    }
+
+    // 2. Update Application Form and Closed Pane visibility
+    if (admissionsClosedPane && admissionsForm) {
+      const successPane = document.getElementById('admission-success-pane');
+      const isAlreadySubmitted = successPane && successPane.classList.contains('active');
+
+      if (!isOpen) {
+        // Closed State: lock form and show registry closed pane
+        admissionsClosedPane.classList.add('active');
+        admissionsForm.style.display = 'none';
+        if (formIntroHeader) formIntroHeader.style.display = 'none';
+        if (stepTracker) stepTracker.style.display = 'none';
+
+        // Update closed pane labels
+        const closedSessionVal = document.getElementById('closed-pane-session-val');
+        const closedSessionChip = document.getElementById('closed-pane-session-chip');
+        const closedDeadlineChip = document.getElementById('closed-pane-deadline-chip');
+        if (closedSessionVal) closedSessionVal.textContent = sessionText;
+        if (closedSessionChip) closedSessionChip.textContent = sessionText;
+        if (closedDeadlineChip) closedDeadlineChip.textContent = friendlyDeadline;
+      } else {
+        // Open State: hide closed pane, reveal active form
+        admissionsClosedPane.classList.remove('active');
+        if (!isAlreadySubmitted) {
+          admissionsForm.style.display = 'block';
+          if (formIntroHeader) formIntroHeader.style.display = 'block';
+          if (stepTracker) stepTracker.style.display = 'flex';
+        }
+      }
+    }
+  };
+
+  // Connect closed pane "SEND INQUIRY" trigger to quick inquiry drawer
+  const closedInquiryTrigger = document.getElementById('closed-open-inquiry-btn');
+  if (closedInquiryTrigger) {
+    closedInquiryTrigger.addEventListener('click', () => {
+      const inquiryBox = document.getElementById('admission-inquiry-box');
+      if (inquiryBox) {
+        inquiryBox.classList.add('show');
+        inquiryBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+  }
+
+  // Subscribe to real-time admission settings across pages
+  if (admissionStatusBanner || admissionsClosedPane || admissionsForm) {
+    subscribeAdmissionSettings(handleAdmissionStateUpdate);
+  }
 });
+

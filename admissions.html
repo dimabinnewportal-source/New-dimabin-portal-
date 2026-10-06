@@ -241,8 +241,21 @@
         <!-- Large Centered White Container -->
         <div class="admissions-form-card">
 
+          <!-- Real-Time Admission Availability Status Banner -->
+          <div class="admission-status-banner open" id="admission-status-banner" role="status" aria-live="polite">
+            <div class="status-banner-content">
+              <span class="status-pill status-pill-open" id="banner-status-pill">● ADMISSIONS OPEN</span>
+              <span class="status-banner-text" id="banner-status-text">
+                Applications are currently being accepted for the <strong id="banner-session-val">2026/2027</strong> Academic Session.
+              </span>
+            </div>
+            <div class="status-banner-meta" id="banner-status-meta">
+              Submission Deadline: <strong id="banner-deadline-val">Nov 30, 2026</strong>
+            </div>
+          </div>
+
           <!-- Form Header -->
-          <div class="form-intro-header">
+          <div class="form-intro-header" id="form-intro-header">
             <span class="section-eyebrow">INTERACTIVE ONBOARDING</span>
             <h2 class="section-title" style="font-size: 2rem;">Online Admission Form</h2>
             <p class="section-subtitle">
@@ -666,6 +679,54 @@
             <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.75rem;">
               <a href="index.html" class="btn btn-primary btn-sm">RETURN TO HOME</a>
               <button type="button" class="btn btn-outline-blue btn-sm" id="restart-application-btn">START NEW FORM</button>
+            </div>
+          </div>
+
+          <!-- ==============================================================
+               13. ADMISSIONS CLOSED ANNOUNCEMENT PANE (Controlled by Administrator)
+               ============================================================== -->
+          <div class="admissions-closed-pane" id="admissions-closed-pane" role="region" aria-label="Admissions Closed Notification">
+            <div class="closed-seal-wrap">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #DC2626;">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </div>
+            <span class="placeholder-tag" style="color: #DC2626; background: #FEE2E2; border-color: #FCA5A5; margin-bottom: 0.75rem;">
+              ACADEMIC REGISTRY NOTICE
+            </span>
+            <h3 class="closed-title">Admissions Currently Closed</h3>
+            <p class="closed-desc">
+              Candidate application intake for the <strong id="closed-pane-session-val" style="color: var(--dark-navy);">2026/2027</strong> Academic Session is currently concluded. New submissions are paused while our admissions committee evaluates enrolled cohorts.
+            </p>
+
+            <div class="closed-info-card">
+              <div class="closed-info-grid">
+                <div>
+                  <span class="closed-info-label">Current Academic Session</span>
+                  <span class="closed-info-val" id="closed-pane-session-chip">2026/2027</span>
+                </div>
+                <div>
+                  <span class="closed-info-label">Intake Status</span>
+                  <span class="closed-info-val" style="color: #DC2626;">Applications Paused</span>
+                </div>
+                <div>
+                  <span class="closed-info-label">Application Deadline</span>
+                  <span class="closed-info-val" id="closed-pane-deadline-chip">Nov 30, 2026</span>
+                </div>
+              </div>
+
+              <div class="closed-contact-note">
+                <strong>Need Assistance or Prospective Registration?</strong><br>
+                For questions regarding upcoming theological intakes, executive cohorts, or pastoral sponsorship, contact the Admissions Desk at
+                <a href="mailto:info@dimabin.org">info@dimabin.org</a> or call <a href="tel:+2348003462246">+234 (0) 800-DIMABIN</a>.
+              </div>
+            </div>
+
+            <div class="closed-actions-row">
+              <a href="index.html" class="btn btn-primary btn-sm">RETURN TO HOME</a>
+              <a href="contact.html" class="btn btn-outline-blue btn-sm">CONTACT ADMISSIONS OFFICE</a>
+              <button type="button" class="btn btn-gold btn-sm" id="closed-open-inquiry-btn">SEND INQUIRY</button>
             </div>
           </div>
 

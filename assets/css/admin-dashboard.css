@@ -1102,3 +1102,131 @@ body.admin-body {
     gap: 0.75rem;
   }
 }
+
+/* ==========================================================================
+   9. ADMISSION AVAILABILITY & SESSION MANAGEMENT CONTROLS
+   ========================================================================== */
+
+.admission-status-toggle-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.status-option-label {
+  display: block;
+  cursor: pointer;
+  position: relative;
+}
+
+.status-option-label input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.status-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--admin-radius-md);
+  border: 2px solid var(--admin-border);
+  background: #FFFFFF;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  height: 100%;
+}
+
+.status-option-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.open-card .status-option-icon {
+  background: var(--admin-success-bg);
+  color: var(--admin-success);
+}
+
+.closed-card .status-option-icon {
+  background: var(--admin-danger-bg);
+  color: var(--admin-danger);
+}
+
+.status-option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.status-option-title {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--admin-navy);
+}
+
+.status-option-desc {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+  line-height: 1.45;
+}
+
+/* Active / Checked States */
+.status-option-label input[type="radio"]:checked + .open-card {
+  border-color: var(--admin-success);
+  background: #F0FDF4;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+}
+
+.status-option-label input[type="radio"]:checked + .closed-card {
+  border-color: var(--admin-danger);
+  background: #FEF2F2;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.status-indicator-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-indicator-dot.open {
+  background: var(--admin-success);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+  animation: pulseGreen 2s infinite;
+}
+
+.status-indicator-dot.closed {
+  background: var(--admin-danger);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+
+@keyframes pulseGreen {
+  0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); }
+  70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+
+.session-strip-badge.adm-open {
+  background: var(--admin-success-bg) !important;
+  color: var(--admin-success) !important;
+  border: 1px solid rgba(22, 163, 74, 0.3) !important;
+  font-weight: 700;
+}
+
+.session-strip-badge.adm-closed {
+  background: var(--admin-danger-bg) !important;
+  color: var(--admin-danger) !important;
+  border: 1px solid rgba(220, 38, 38, 0.3) !important;
+  font-weight: 700;
+}

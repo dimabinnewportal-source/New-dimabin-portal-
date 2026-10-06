@@ -5,6 +5,14 @@
  */
 
 import { auth, signOutUser, onAuthStateChange } from "./firebase-users.js";
+import {
+  getAdmissionSettings,
+  updateAdmissionSettings,
+  subscribeAdmissionSettings,
+  formatAuditDateTime,
+  formatAdmissionDate,
+  DEFAULT_ADMISSION_SETTINGS
+} from "./firebase-admissions.js";
 
 // Canonical Administrator Credentials
 export const ADMIN_CONFIG = Object.freeze({
@@ -295,6 +303,205 @@ export function initDashboard() {
         setTimeout(() => { feedback.style.display = "none"; }, 5000);
       }
       portalNotifForm.reset();
+    });
+  }
+
+  // 8. ADMISSION AVAILABILITY & SESSION MANAGEMENT CONTROLLER (Phase 1)
+  initAdmissionManagement();
+}
+
+/**
+ * Initialize Admission Management System
+ */
+let activeAdmissionSettings = { ...DEFAULT_ADMISSION_SETTINGS };
+
+export function initAdmissionManagement() {
+  console.log("[DIMABIN Dashboard] Initializing Admission Management Controller...");
+
+  const radioOpen = document.getElementById("radio-status-open");
+  const radioClosed = document.getElementById("radio-status-closed");
+  const sessionInput = document.getElementById("adm-academic-session");
+  const openDateInput = document.getElementById("adm-opening-date");
+  const closeDateInput = document.getElementById("adm-closing-date");
+  const updatedByInput = document.getElementById("adm-updated-by");
+  const feedbackBox = document.getElementById("admission-settings-feedback");
+  const form = document.getElementById("form-admission-settings");
+  const quickToggleBtn = document.getElementById("btn-quick-toggle-status");
+
+  // Form submission feedback helper
+  const showFeedback = (type, message) => {
+    if (!feedbackBox) return;
+    feedbackBox.style.display = "block";
+    if (type === "success") {
+      feedbackBox.style.background = "#DCFCE7";
+      feedbackBox.style.color = "#15803D";
+      feedbackBox.style.border = "1px solid #BBF7D0";
+    } else {
+      feedbackBox.style.background = "#FEE2E2";
+      feedbackBox.style.color = "#B91C1C";
+      feedbackBox.style.border = "1px solid #FECACA";
+    }
+    feedbackBox.innerHTML = `<strong>${type === "success" ? "✓" : "⚠️"}</strong> ${message}`;
+    setTimeout(() => {
+      if (feedbackBox) feedbackBox.style.display = "none";
+    }, 6000);
+  };
+
+  // Render admission state across dashboard elements
+  const syncDashboardUI = (settings) => {
+    activeAdmissionSettings = settings;
+    const isOpen = Boolean(settings.isOpen);
+    const session = settings.academicSession || "2026/2027";
+    const closingDate = settings.closingDate || "2026-11-30";
+    const openingDate = settings.openingDate || "2026-01-15";
+    const auditTime = formatAuditDateTime(settings.updatedAt);
+    const updatedBy = settings.updatedBy || ADMIN_CONFIG.ADMIN_ID;
+
+    // 1. Overview Session Strip
+    const sessionBadge = document.getElementById("dash-academic-session-badge");
+    const admStatusBadge = document.getElementById("dash-admission-status-badge");
+    if (sessionBadge) sessionBadge.textContent = session;
+    if (admStatusBadge) {
+      if (isOpen) {
+        admStatusBadge.className = "session-strip-badge adm-open";
+        admStatusBadge.textContent = "● OPEN";
+      } else {
+        admStatusBadge.className = "session-strip-badge adm-closed";
+        admStatusBadge.textContent = "● CLOSED";
+      }
+    }
+
+    // 2. Admission Control Live Banner
+    const liveDot = document.getElementById("control-live-dot");
+    const liveTitle = document.getElementById("control-live-status-title");
+    const liveTag = document.getElementById("control-live-status-tag");
+    const liveDesc = document.getElementById("control-live-status-desc");
+
+    if (liveDot) {
+      liveDot.className = `status-indicator-dot ${isOpen ? "open" : "closed"}`;
+    }
+    if (liveTitle) {
+      liveTitle.textContent = isOpen ? "ADMISSIONS CURRENTLY OPEN" : "ADMISSIONS CURRENTLY CLOSED";
+      liveTitle.style.color = isOpen ? "var(--admin-navy)" : "#DC2626";
+    }
+    if (liveTag) {
+      if (isOpen) {
+        liveTag.textContent = "ACTIVE INTAKE";
+        liveTag.style.color = "var(--admin-success)";
+        liveTag.style.background = "var(--admin-success-bg)";
+        liveTag.style.borderColor = "#86EFAC";
+      } else {
+        liveTag.textContent = "INTAKE CONCLUDED";
+        liveTag.style.color = "#DC2626";
+        liveTag.style.background = "#FEE2E2";
+        liveTag.style.borderColor = "#FCA5A5";
+      }
+    }
+    if (liveDesc) {
+      liveDesc.textContent = isOpen
+        ? "The online application portal on admissions.html is accepting new candidate submissions."
+        : "The online application portal on admissions.html is locked with an official registry closure notice.";
+    }
+
+    // 3. Form Input Values (do not overwrite while user is editing if activeElement is one of them)
+    if (document.activeElement !== sessionInput && sessionInput) sessionInput.value = session;
+    if (document.activeElement !== openDateInput && openDateInput) openDateInput.value = formatAdmissionDate(openingDate);
+    if (document.activeElement !== closeDateInput && closeDateInput) closeDateInput.value = formatAdmissionDate(closingDate);
+    if (updatedByInput) updatedByInput.value = updatedBy;
+
+    if (radioOpen && radioClosed) {
+      if (isOpen) {
+        radioOpen.checked = true;
+      } else {
+        radioClosed.checked = true;
+      }
+    }
+
+    // 4. Audit Metadata display
+    const auditTimeEl = document.getElementById("audit-timestamp");
+    const auditByEl = document.getElementById("audit-updated-by");
+    if (auditTimeEl) auditTimeEl.textContent = auditTime;
+    if (auditByEl) auditByEl.textContent = updatedBy;
+
+    // 5. Applications Section Header Strip
+    const appSectionDot = document.getElementById("app-section-status-dot");
+    const appSectionText = document.getElementById("app-section-status-text");
+    const appSectionSession = document.getElementById("app-section-session-text");
+    const appSectionDeadline = document.getElementById("app-section-deadline-text");
+
+    if (appSectionDot) appSectionDot.className = `status-indicator-dot ${isOpen ? "open" : "closed"}`;
+    if (appSectionText) {
+      appSectionText.textContent = isOpen ? "OPEN (Accepting Applications)" : "CLOSED (Intake Paused)";
+      appSectionText.style.color = isOpen ? "var(--admin-success)" : "#DC2626";
+    }
+    if (appSectionSession) appSectionSession.textContent = session;
+    if (appSectionDeadline) appSectionDeadline.textContent = formatAdmissionDate(closingDate);
+  };
+
+  // Subscribe to real-time admission updates from Firestore & local channel
+  subscribeAdmissionSettings(syncDashboardUI);
+
+  // Form Submit Handler
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById("btn-save-admission-settings");
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.style.opacity = "0.7";
+      }
+
+      try {
+        const isOpen = radioOpen ? radioOpen.checked : true;
+        const academicSession = sessionInput?.value?.trim() || "2026/2027";
+        const openingDate = openDateInput?.value || "2026-01-15";
+        const closingDate = closeDateInput?.value || "2026-11-30";
+        const updatedBy = ADMIN_CONFIG.ADMIN_ID;
+
+        const result = await updateAdmissionSettings({
+          isOpen,
+          academicSession,
+          openingDate,
+          closingDate,
+          updatedBy
+        });
+
+        showFeedback("success", result.message);
+      } catch (err) {
+        console.error("[DIMABIN Admissions] Save error:", err);
+        showFeedback("error", `Failed to save admission settings: ${err.message}`);
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.style.opacity = "1";
+        }
+      }
+    });
+  }
+
+  // Quick Toggle Button Handler
+  if (quickToggleBtn) {
+    quickToggleBtn.addEventListener("click", async () => {
+      try {
+        const newIsOpen = !activeAdmissionSettings.isOpen;
+        if (radioOpen && radioClosed) {
+          if (newIsOpen) radioOpen.checked = true;
+          else radioClosed.checked = true;
+        }
+
+        const result = await updateAdmissionSettings({
+          ...activeAdmissionSettings,
+          isOpen: newIsOpen,
+          updatedBy: ADMIN_CONFIG.ADMIN_ID
+        });
+
+        showFeedback(
+          "success",
+          `Admission status toggled to ${newIsOpen ? "OPEN" : "CLOSED"}. ${result.message}`
+        );
+      } catch (err) {
+        showFeedback("error", `Quick toggle warning: ${err.message}`);
+      }
     });
   }
 }
