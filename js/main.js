@@ -628,7 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Portal Login Forms: Empty field validation & friendly notification (strictly no auth, no backend)
-  document.querySelectorAll('.portal-login-form').forEach((form) => {
+  document.querySelectorAll('.portal-login-form:not(#admin-login-form)').forEach((form) => {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
 
@@ -681,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // "Forgot Password?" friendly click handler (UI only, no backend recovery)
-  document.querySelectorAll('.forgot-password-link').forEach((link) => {
+  document.querySelectorAll('.forgot-password-link:not(#admin-forgot-pass)').forEach((link) => {
     link.addEventListener('click', function (e) {
       e.preventDefault();
       const card = this.closest('.portal-login-card');
