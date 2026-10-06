@@ -456,4 +456,140 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   }
+
+  // 7. Contact Us Form Validation & Controller
+  const contactForm = document.getElementById('contact-inquiry-form');
+  if (contactForm) {
+    const errorBox = document.getElementById('contact-error-box');
+    const errorList = document.getElementById('contact-error-list');
+    const successPane = document.getElementById('contact-success-pane');
+    const resetContactBtn = document.getElementById('contact-reset-btn');
+
+    // Remove red error highlight as user types
+    contactForm.querySelectorAll('input, textarea, select').forEach((field) => {
+      field.addEventListener('input', () => field.classList.remove('input-error'));
+      field.addEventListener('change', () => field.classList.remove('input-error'));
+    });
+
+    contactForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nameInput = document.getElementById('contact-name');
+      const emailInput = document.getElementById('contact-email');
+      const phoneInput = document.getElementById('contact-phone');
+      const subjectInput = document.getElementById('contact-subject');
+      const messageInput = document.getElementById('contact-message');
+
+      const errors = [];
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const phoneDigits = phoneInput ? phoneInput.value.replace(/[^0-9]/g, '') : '';
+
+      if (!nameInput || !nameInput.value.trim()) {
+        errors.push('Full Name is required.');
+        if (nameInput) nameInput.classList.add('input-error');
+      }
+
+      if (!emailInput || !emailInput.value.trim()) {
+        errors.push('Email Address is required.');
+        if (emailInput) emailInput.classList.add('input-error');
+      } else if (!emailRegex.test(emailInput.value.trim())) {
+        errors.push('Please provide a valid email address (e.g. name@example.com).');
+        emailInput.classList.add('input-error');
+      }
+
+      if (!phoneInput || !phoneInput.value.trim()) {
+        errors.push('Phone Number is required.');
+        if (phoneInput) phoneInput.classList.add('input-error');
+      } else if (phoneDigits.length < 7) {
+        errors.push('Please provide a valid phone number (at least 7 digits).');
+        phoneInput.classList.add('input-error');
+      }
+
+      if (!subjectInput || !subjectInput.value.trim()) {
+        errors.push('Subject is required.');
+        if (subjectInput) subjectInput.classList.add('input-error');
+      }
+
+      if (!messageInput || !messageInput.value.trim()) {
+        errors.push('Message cannot be empty.');
+        if (messageInput) messageInput.classList.add('input-error');
+      } else if (messageInput.value.trim().length < 5) {
+        errors.push('Message is too short (minimum 5 characters).');
+        messageInput.classList.add('input-error');
+      }
+
+      if (errors.length > 0) {
+        if (errorList) {
+          errorList.innerHTML = errors.map((err) => `<li>${err}</li>`).join('');
+        }
+        if (errorBox) {
+          errorBox.classList.add('show');
+          errorBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        return;
+      }
+
+      // Valid: hide errors
+      if (errorBox) errorBox.classList.remove('show');
+
+      // Populate confirmation summary
+      const sumName = document.getElementById('contact-sum-name');
+      const sumEmail = document.getElementById('contact-sum-email');
+      const sumSubject = document.getElementById('contact-sum-subject');
+
+      if (sumName) sumName.textContent = nameInput.value.trim();
+      if (sumEmail) sumEmail.textContent = emailInput.value.trim();
+      if (sumSubject) sumSubject.textContent = subjectInput.value.trim();
+
+      // Switch to success card
+      contactForm.style.display = 'none';
+      if (successPane) {
+        successPane.classList.add('show');
+        successPane.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      console.log('[DIMABIN Contact Inquiry Logged]:', {
+        name: nameInput.value.trim(),
+        email: emailInput.value.trim(),
+        phone: phoneInput.value.trim(),
+        subject: subjectInput.value.trim(),
+        message: messageInput.value.trim(),
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    if (resetContactBtn) {
+      resetContactBtn.addEventListener('click', () => {
+        contactForm.reset();
+        contactForm.style.display = 'flex';
+        if (successPane) successPane.classList.remove('show');
+        if (errorBox) errorBox.classList.remove('show');
+      });
+    }
+  }
+
+  // 8. FAQ Accordion Controller
+  const faqItems = document.querySelectorAll('.faq-item');
+  if (faqItems.length > 0) {
+    faqItems.forEach((item) => {
+      const btn = item.querySelector('.faq-question-btn');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          const isOpen = item.classList.contains('is-open');
+
+          // Close all FAQ items (single-open policy)
+          faqItems.forEach((other) => {
+            other.classList.remove('is-open');
+            const otherBtn = other.querySelector('.faq-question-btn');
+            if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
+          });
+
+          // Toggle current
+          if (!isOpen) {
+            item.classList.add('is-open');
+            btn.setAttribute('aria-expanded', 'true');
+          }
+        });
+      }
+    });
+  }
 });

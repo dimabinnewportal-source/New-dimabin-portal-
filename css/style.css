@@ -2589,4 +2589,572 @@ body.drawer-open {
   }
 }
 
+/* ==========================================================================
+   CONTACT US PAGE SPECIFIC STYLES
+   ========================================================================== */
+
+/* 1. Contact Hero */
+.contact-hero {
+  position: relative;
+  background-color: var(--dark-navy);
+  background-image: linear-gradient(rgba(18, 36, 82, 0.88), rgba(18, 36, 82, 0.94)), url('../assets/images/hero-library.jpg');
+  background-size: cover;
+  background-position: center center;
+  padding-top: 8rem;
+  padding-bottom: 4.5rem;
+  text-align: center;
+  color: var(--white);
+  border-bottom: 3px solid var(--gold);
+}
+
+.hero-eyebrow-boxed {
+  display: inline-block;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1.125rem;
+  text-transform: uppercase;
+}
+
+.contact-hero-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--white);
+  margin-bottom: 0.75rem;
+  line-height: 1.2;
+}
+
+@media (min-width: 640px) {
+  .contact-hero-title {
+    font-size: 3rem;
+  }
+}
+
+.contact-hero-intro {
+  font-size: 1rem;
+  color: #E2E8F0;
+  max-width: 42rem;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+@media (min-width: 640px) {
+  .contact-hero-intro {
+    font-size: 1.0625rem;
+  }
+}
+
+/* 2. Contact Information Cards Grid */
+.contact-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 3.5rem;
+}
+
+@media (min-width: 900px) {
+  .contact-cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.contact-info-card {
+  background-color: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2.25rem 1.75rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-info-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(31, 60, 130, 0.25);
+}
+
+.contact-card-top-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--primary-blue);
+}
+
+.contact-info-card:nth-child(2) .contact-card-top-accent {
+  background: var(--gold);
+}
+
+.contact-info-card:nth-child(3) .contact-card-top-accent {
+  background: var(--dark-navy);
+}
+
+.contact-card-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-full);
+  background-color: var(--primary-blue-subtle);
+  color: var(--primary-blue);
+  border: 1px solid rgba(31, 60, 130, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  flex-shrink: 0;
+}
+
+.contact-card-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+  margin-bottom: 0.5rem;
+}
+
+.contact-card-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+  flex-grow: 1;
+}
+
+.contact-card-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #F1F5F9;
+}
+
+.contact-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--primary-blue);
+  text-decoration: none;
+  transition: color 0.15s ease, transform 0.15s ease;
+  word-break: break-all;
+}
+
+.contact-card-link:hover {
+  color: var(--gold-hover);
+  text-decoration: underline;
+  transform: translateX(2px);
+}
+
+.contact-address-text {
+  font-size: 0.9375rem;
+  color: var(--dark-navy);
+  line-height: 1.65;
+  font-weight: 500;
+  margin-bottom: 1.25rem;
+  font-style: normal;
+}
+
+.contact-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--primary-blue);
+  text-decoration: none;
+  border-bottom: 1.5px solid var(--gold);
+  padding-bottom: 2px;
+  width: fit-content;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.contact-map-link:hover {
+  color: var(--gold-hover);
+  border-color: var(--gold-hover);
+}
+
+/* 3. Inquiry & Message Portal Form */
+.inquiry-form-card {
+  background-color: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 2.25rem 1.5rem;
+  max-width: 54rem;
+  margin: 0 auto 3.5rem auto;
+}
+
+@media (min-width: 640px) {
+  .inquiry-form-card {
+    padding: 3rem 2.5rem;
+  }
+}
+
+.inquiry-form-header {
+  text-align: center;
+  max-width: 38rem;
+  margin: 0 auto 2.25rem auto;
+}
+
+.inquiry-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.contact-error-box {
+  display: none;
+  background-color: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-left: 5px solid #DC2626;
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  color: #991B1B;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.contact-error-box.show {
+  display: block;
+}
+
+.contact-error-title {
+  font-weight: 800;
+  font-size: 0.9375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.contact-error-list {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  padding-left: 1.25rem;
+}
+
+.contact-success-pane {
+  display: none;
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.contact-success-pane.show {
+  display: block;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.contact-submit-btn {
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 1rem 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  box-shadow: 0 4px 14px rgba(31, 60, 130, 0.25);
+}
+
+.contact-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(31, 60, 130, 0.35);
+}
+
+/* 4. Office Hours Card */
+.office-hours-card {
+  background-color: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 2.25rem 1.75rem;
+  max-width: 54rem;
+  margin: 0 auto 3.5rem auto;
+}
+
+@media (min-width: 640px) {
+  .office-hours-card {
+    padding: 2.75rem 2.5rem;
+  }
+}
+
+.office-hours-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.office-hours-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+  margin-bottom: 0.35rem;
+}
+
+.office-hours-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.office-hours-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.office-hours-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 0;
+  border-bottom: 1px dashed #E2E8F0;
+  font-size: 0.9375rem;
+}
+
+.office-hours-row:last-child {
+  border-bottom: none;
+}
+
+.hours-day {
+  font-weight: 700;
+  color: var(--dark-navy);
+}
+
+.hours-time {
+  font-weight: 600;
+  color: #475569;
+}
+
+.hours-closed {
+  color: var(--gold-hover);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: var(--gold-subtle);
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(245, 184, 0, 0.3);
+}
+
+/* 5. Map Container Card */
+.map-container-card {
+  background-color: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  max-width: 54rem;
+  margin: 0 auto 4.5rem auto;
+  overflow: hidden;
+}
+
+.map-header-bar {
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-color: #F8FAFC;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 640px) {
+  .map-header-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.map-address-display {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.map-pin-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--primary-blue);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.map-address-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--dark-navy);
+  line-height: 1.5;
+}
+
+.map-visual-placeholder {
+  position: relative;
+  height: 260px;
+  background: radial-gradient(circle at 50% 50%, #EEF2F6 0%, #E2E8F0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.map-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(31, 60, 130, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 60, 130, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.map-center-pin-badge {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1rem 1.5rem;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(31, 60, 130, 0.2);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  max-width: 20rem;
+}
+
+.map-badge-tag {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: var(--gold-hover);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.25rem;
+}
+
+.map-badge-title {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+}
+
+/* 6. FAQ Section */
+.faq-container {
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.faq-header {
+  text-align: center;
+  margin-bottom: 2.75rem;
+}
+
+.faq-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.faq-item {
+  background-color: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  overflow: hidden;
+}
+
+.faq-item.is-open {
+  border-color: var(--primary-blue);
+  box-shadow: var(--shadow-md);
+}
+
+.faq-question-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dark-navy);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s ease;
+}
+
+.faq-question-btn:hover {
+  color: var(--primary-blue);
+}
+
+.faq-chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--primary-blue);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.faq-item.is-open .faq-chevron {
+  transform: rotate(180deg);
+  color: var(--gold-hover);
+}
+
+.faq-answer {
+  display: none;
+  padding: 0 1.5rem 1.35rem 1.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  border-top: 1px solid #F1F5F9;
+  padding-top: 1rem;
+}
+
+.faq-item.is-open .faq-answer {
+  display: block;
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* 7. Connect CTA Section */
+.connect-cta-section {
+  background-color: var(--dark-navy);
+  color: var(--white);
+  padding: 5rem 1rem;
+  text-align: center;
+  border-top: 1px solid rgba(245, 184, 0, 0.3);
+}
+
+.connect-cta-inner {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.connect-cta-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+@media (min-width: 640px) {
+  .connect-cta-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
 
