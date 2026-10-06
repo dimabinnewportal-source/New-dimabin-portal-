@@ -5,6 +5,7 @@
 
 import './firebase-test.js';
 import { subscribeAdmissionSettings, formatAdmissionDate, DEFAULT_ADMISSION_SETTINGS } from './firebase-admissions.js';
+import { savePublicApplication } from './firebase-backend.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Header Sticky / Scrolled State Handler
@@ -407,11 +408,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (formErrorPanel) formErrorPanel.classList.remove('show');
 
-      // Collect candidate summary details
+      // Collect candidate details from form
       const candidateName = document.getElementById('app-fullname')?.value || 'Candidate';
-      const candidateEmail = document.getElementById('app-email')?.value || 'N/A';
-      const candidatePhone = document.getElementById('app-phone')?.value || 'N/A';
-      const candidateProgram = document.getElementById('app-intended-program')?.value || 'Diploma in Theology';
+      const candidateEmail = document.getElementById('app-email')?.value || '';
+      const candidatePhone = document.getElementById('app-phone')?.value || '';
+      const candidateProgram = document.getElementById('app-intended-program')?.value || 'Diploma in Theology (Dipl.Th.)';
+      const candidateGender = document.getElementById('app-gender')?.value || 'Male';
+      const candidateDob = document.getElementById('app-dob')?.value || '';
+      const candidateMarital = document.getElementById('app-marital')?.value || 'Single';
+      const candidateNationality = document.getElementById('app-nationality')?.value || 'Nigerian';
+      const candidateState = document.getElementById('app-state')?.value || 'Ogun State';
+      const candidateLga = document.getElementById('app-lga')?.value || 'Abeokuta South';
+      const candidateAddress = document.getElementById('app-address')?.value || '';
+      const candidateWhatsapp = document.getElementById('app-whatsapp')?.value || candidatePhone;
+      const candidateQual = document.getElementById('academic-qualification')?.value || '';
+      const candidateYear = document.getElementById('academic-year')?.value || '';
+      const candidateInst = document.getElementById('academic-institution')?.value || '';
 
       const sumName = document.getElementById('summary-candidate-name');
       const sumEmail = document.getElementById('summary-candidate-email');
@@ -419,8 +431,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const sumProgram = document.getElementById('summary-candidate-program');
 
       if (sumName) sumName.textContent = candidateName;
-      if (sumEmail) sumEmail.textContent = candidateEmail;
-      if (sumPhone) sumPhone.textContent = candidatePhone;
+      if (sumEmail) sumEmail.textContent = candidateEmail || 'N/A';
+      if (sumPhone) sumPhone.textContent = candidatePhone || 'N/A';
       if (sumProgram) sumProgram.textContent = candidateProgram;
 
       // Hide form steps and show success pane
@@ -431,16 +443,34 @@ document.addEventListener('DOMContentLoaded', () => {
       if (intro) intro.style.display = 'none';
       if (successPane) successPane.classList.add('active');
 
-      // Architectural hook for future Firebase / Firestore registry submission
-      window.submitAdmissionToRegistry = function(formData) {
-        console.log('[DIMABIN Registry Service Ready]: Candidate data compiled for future Firebase transmission.', formData);
-      };
-      window.submitAdmissionToRegistry({
-        name: candidateName,
+      // Real Firebase / Firestore submission to 'admissions' collection
+      savePublicApplication({
+        fullName: candidateName,
         email: candidateEmail,
         phone: candidatePhone,
-        program: candidateProgram,
-        timestamp: new Date().toISOString()
+        whatsapp: candidateWhatsapp,
+        programme: candidateProgram,
+        gender: candidateGender,
+        dob: candidateDob,
+        maritalStatus: candidateMarital,
+        nationality: candidateNationality,
+        stateOfOrigin: candidateState,
+        lga: candidateLga,
+        residentialAddress: candidateAddress,
+        qualification: candidateQual,
+        graduationYear: candidateYear,
+        institution: candidateInst,
+        academicSession: currentAdmissionAvailability?.academicSession || '2026/2027',
+        studyCentre: 'Goshen Central Campus, Abeokuta'
+      }).then((result) => {
+        console.log('[DIMABIN Registry Service]: Application recorded in Firestore.', result);
+        const statusEl = document.querySelector('#admission-success-pane .success-summary-row:last-child span:last-child');
+        if (statusEl) {
+          statusEl.textContent = `Submitted (${result.applicationId})`;
+          statusEl.style.color = '#15803D';
+        }
+      }).catch((err) => {
+        console.warn('[DIMABIN Registry Service]: Application submission warning:', err);
       });
     });
 

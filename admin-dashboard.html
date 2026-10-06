@@ -384,7 +384,7 @@
                   </svg>
                 </div>
               </div>
-              <div class="stat-val">0</div>
+              <div class="stat-val" id="stat-val-students">0</div>
               <span class="stat-foot">Enrolled Candidates</span>
             </div>
 
@@ -399,7 +399,7 @@
                   </svg>
                 </div>
               </div>
-              <div class="stat-val">0</div>
+              <div class="stat-val" id="stat-val-lecturers">0</div>
               <span class="stat-foot">Academic Faculty</span>
             </div>
 
@@ -414,7 +414,7 @@
                   </svg>
                 </div>
               </div>
-              <div class="stat-val">0</div>
+              <div class="stat-val" id="stat-val-applications">0</div>
               <span class="stat-foot">All Time Submissions</span>
             </div>
 
@@ -429,7 +429,7 @@
                   </svg>
                 </div>
               </div>
-              <div class="stat-val">0</div>
+              <div class="stat-val" id="stat-val-pending">0</div>
               <span class="stat-foot">Awaiting Review</span>
             </div>
 
@@ -444,7 +444,7 @@
                   </svg>
                 </div>
               </div>
-              <div class="stat-val">0</div>
+              <div class="stat-val" id="stat-val-approved">0</div>
               <span class="stat-foot">Issued Admission Slips</span>
             </div>
 
@@ -459,7 +459,7 @@
                   </svg>
                 </div>
               </div>
-              <div class="stat-val">0</div>
+              <div class="stat-val" id="stat-val-programmes">0</div>
               <span class="stat-foot">Dipl.Th., Cert, Cohorts</span>
             </div>
           </div>
@@ -559,7 +559,7 @@
                       <th>Action</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody id="dash-recent-applications-tbody">
                     <!-- Clean Empty State -->
                     <tr>
                       <td colspan="7">
@@ -580,11 +580,16 @@
               <div class="content-card" style="margin-bottom: 1.5rem;">
                 <div class="content-card-header">
                   <h3 class="content-card-title">Recent Administrative Activity</h3>
+                  <button type="button" class="btn-card-action" onclick="window.dimabinAdminDashboard?.navigateToSection('activity-logs')">
+                    View All Logs
+                  </button>
                 </div>
-                <div class="empty-state-box" style="padding: 2.25rem 1rem;">
-                  <div class="empty-icon">⚡</div>
-                  <div class="empty-state-text">No recent activity yet.</div>
-                  <div class="empty-state-sub">Security log and telemetry events will populate here.</div>
+                <div id="dash-recent-activity-container">
+                  <div class="empty-state-box" style="padding: 2.25rem 1rem;">
+                    <div class="empty-icon">⚡</div>
+                    <div class="empty-state-text">No recent activity yet.</div>
+                    <div class="empty-state-sub">Security log and telemetry events will populate here.</div>
+                  </div>
                 </div>
               </div>
 
@@ -592,23 +597,26 @@
               <div class="content-card">
                 <div class="content-card-header">
                   <h3 class="content-card-title">System Status</h3>
+                  <button type="button" class="btn-card-action" id="btn-refresh-system-status">
+                    Check Now
+                  </button>
                 </div>
                 <div class="system-status-list">
                   <div class="status-row">
                     <span class="service-name">Firebase Authentication</span>
-                    <span class="service-pill connected">● Connected</span>
+                    <span class="service-pill connected" id="status-pill-auth">● Connected</span>
                   </div>
                   <div class="status-row">
                     <span class="service-name">Firestore Database</span>
-                    <span class="service-pill pending">● Locked Mode</span>
+                    <span class="service-pill connected" id="status-pill-firestore">● Connected</span>
+                  </div>
+                  <div class="status-row">
+                    <span class="service-name">Admission Control</span>
+                    <span class="service-pill connected" id="status-pill-admissions">● Open</span>
                   </div>
                   <div class="status-row">
                     <span class="service-name">Public Website</span>
-                    <span class="service-pill connected">● Connected</span>
-                  </div>
-                  <div class="status-row">
-                    <span class="service-name">EmailJS Dispatcher</span>
-                    <span class="service-pill pending">● Pending Config</span>
+                    <span class="service-pill connected" id="status-pill-public">● Connected</span>
                   </div>
                 </div>
               </div>
@@ -1093,11 +1101,54 @@
             </div>
           </div>
 
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">📋</div>
-            <h3 class="placeholder-title">Admission Applications Registry</h3>
-            <p class="placeholder-desc">Candidate applications submitted through the Admissions portal will be aggregated here for administrative processing and vetting.</p>
-            <span class="placeholder-tag">Module Ready · Awaiting Submissions</span>
+          <!-- Applications Registry Content Card -->
+          <div class="content-card">
+            <div class="table-toolbar">
+              <div class="table-toolbar-left">
+                <div class="table-search-box">
+                  <span class="table-search-icon">🔍</span>
+                  <input type="text" class="table-search-input" id="search-applications-input" placeholder="Search applicant, ID, phone...">
+                </div>
+                <select class="table-filter-select" id="filter-applications-select">
+                  <option value="all">All Application Statuses</option>
+                  <option value="pending">Pending Review</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div class="table-toolbar-right">
+                <button type="button" class="btn-card-action" id="btn-refresh-applications">
+                  ↻ Refresh
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Applicant</th>
+                    <th>Application ID</th>
+                    <th>Programme</th>
+                    <th>Study Centre</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-all-applications-tbody">
+                  <tr>
+                    <td colspan="7">
+                      <div class="empty-state-box">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-state-text">No admission applications found.</div>
+                        <div class="empty-state-sub">New submissions through admissions.html will populate here live from Firestore.</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -1105,13 +1156,41 @@
         <section class="admin-section" id="section-pending-applications" aria-label="Pending Applications">
           <div class="section-heading-wrap">
             <h2 class="section-main-title">Pending Applications Queue</h2>
-            <p class="section-sub-title">Applications awaiting initial administrative review or background vetting.</p>
+            <p class="section-sub-title">Applications awaiting administrative review or academic committee clearance.</p>
           </div>
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">⏳</div>
-            <h3 class="placeholder-title">Pending Queue Empty</h3>
-            <p class="placeholder-desc">All candidate applications are currently up to date. New submissions will enter this queue automatically.</p>
-            <span class="placeholder-tag">Queue Clear</span>
+
+          <div class="content-card">
+            <div class="content-card-header">
+              <h3 class="content-card-title">Pending Candidates Vetting Desk</h3>
+              <span class="placeholder-tag" id="pending-queue-count-tag">0 PENDING</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Applicant</th>
+                    <th>Application ID</th>
+                    <th>Programme</th>
+                    <th>Contact</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-pending-applications-tbody">
+                  <tr>
+                    <td colspan="7">
+                      <div class="empty-state-box">
+                        <div class="empty-icon">⏳</div>
+                        <div class="empty-state-text">Pending queue is clear.</div>
+                        <div class="empty-state-sub">All received submissions have been cleared by the registry desk.</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -1119,27 +1198,83 @@
         <section class="admin-section" id="section-approved-admissions" aria-label="Approved Admissions">
           <div class="section-heading-wrap">
             <h2 class="section-main-title">Approved Admissions</h2>
-            <p class="section-sub-title">Candidates granted provisional or confirmed admission into DIMABIN.</p>
+            <p class="section-sub-title">Candidates granted confirmed admission into Divine Mandate Bible Institute.</p>
           </div>
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">🎓</div>
-            <h3 class="placeholder-title">Approved Candidates Archive</h3>
-            <p class="placeholder-desc">Approved applicant records, matriculation numbers, and offer slips will be generated and managed here.</p>
-            <span class="placeholder-tag">Module Ready</span>
+
+          <div class="content-card">
+            <div class="content-card-header">
+              <h3 class="content-card-title">Cleared Theological Candidates</h3>
+              <span class="placeholder-tag" id="approved-count-tag">0 APPROVED</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Candidate</th>
+                    <th>Application ID</th>
+                    <th>Programme</th>
+                    <th>Study Centre</th>
+                    <th>Date Cleared</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-approved-admissions-tbody">
+                  <tr>
+                    <td colspan="7">
+                      <div class="empty-state-box">
+                        <div class="empty-icon">🎓</div>
+                        <div class="empty-state-text">No approved admissions recorded yet.</div>
+                        <div class="empty-state-sub">Approved candidate records will be archived here.</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
         <!-- SECTION 5: REJECTED APPLICATIONS -->
         <section class="admin-section" id="section-rejected-applications" aria-label="Rejected Applications">
           <div class="section-heading-wrap">
-            <h2 class="section-main-title">Rejected Applications</h2>
-            <p class="section-sub-title">Candidates whose applications failed academic or pastoral clearance standards.</p>
+            <h2 class="section-main-title">Rejected Applications Archive</h2>
+            <p class="section-sub-title">Candidate submissions declined for academic or character clearance reasons.</p>
           </div>
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">🚫</div>
-            <h3 class="placeholder-title">Rejected Applications Archive</h3>
-            <p class="placeholder-desc">Records of declined submissions with administrative reasons for non-clearance.</p>
-            <span class="placeholder-tag">Zero Declined Records</span>
+
+          <div class="content-card">
+            <div class="content-card-header">
+              <h3 class="content-card-title">Declined Submissions Registry</h3>
+              <span class="placeholder-tag" id="rejected-count-tag">0 DECLINED</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Candidate</th>
+                    <th>Application ID</th>
+                    <th>Programme</th>
+                    <th>Reason / Notes</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-rejected-admissions-tbody">
+                  <tr>
+                    <td colspan="7">
+                      <div class="empty-state-box">
+                        <div class="empty-icon">🚫</div>
+                        <div class="empty-state-text">No declined applications on record.</div>
+                        <div class="empty-state-sub">Any declined admissions will appear here with re-evaluation options.</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
