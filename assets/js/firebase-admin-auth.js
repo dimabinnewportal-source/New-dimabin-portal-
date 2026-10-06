@@ -162,13 +162,40 @@ export async function authenticateAdministrator(rawAdminId, rawPassword, remembe
       }
     }
   } catch (firestoreErr) {
-    console.warn("[DIMABIN Admin] Firestore profile lookup notice:", firestoreErr.message);
+    console.warn("[DIMABIN Admin Login] Stage 3 Notice: Firestore profile lookup (Rules locked in Production Mode):", firestoreErr.message);
     profileVerificationMessage = "Firebase Authentication verified for dimabinnewportal@gmail.com (Firestore client access currently locked by Production security rules).";
+  }
+
+  // 7. Create & store authenticated admin session
+  const adminSession = {
+    uid: user.uid,
+    email: user.email,
+    adminId: AUTHORIZED_ADMIN_ID,
+    fullName: "DIMABIN Super Administrator",
+    role: USER_ROLES.ADMIN || "admin",
+    authenticatedAt: new Date().toISOString()
+  };
+
+  try {
+    sessionStorage.setItem("dimabin_admin_session", JSON.stringify(adminSession));
+    if (rememberMe) {
+      localStorage.setItem("dimabin_admin_session", JSON.stringify(adminSession));
+    }
+    console.log("[DIMABIN Admin Login] Stage 4: Admin session saved to storage successfully:", {
+      uid: adminSession.uid,
+      email: adminSession.email,
+      adminId: adminSession.adminId,
+      fullName: adminSession.fullName,
+      role: adminSession.role
+    });
+  } catch (storageErr) {
+    console.warn("[DIMABIN Admin Login] Session storage warning:", storageErr.message);
   }
 
   return {
     success: true,
     user,
+    session: adminSession,
     message: `Administrator authenticated successfully! ${profileVerificationMessage}`
   };
 }
@@ -283,11 +310,26 @@ export function initAdminAuthUI() {
       }
 
       try {
+        console.log("[DIMABIN Admin Login] Step 1: Submitting credentials for Administrator ID:", adminId);
         const result = await authenticateAdministrator(adminId, password, rememberMe);
-        displayAlert(alertBox, "success", result.message);
+
+        displayAlert(alertBox, "success", `${result.message} Opening Command Centre...`);
+        console.log("[DIMABIN Admin Login] Step 5: Authentication and session verification completed. Navigating to admin-dashboard.html...");
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = "<span>ENTERING COMMAND CENTRE...</span>";
+        }
+
+        // Navigate to dashboard using standard relative URL after authentication promise completes
+        setTimeout(() => {
+          console.log("[DIMABIN Admin Login] Step 6: Executing window.location.href = 'admin-dashboard.html'");
+          window.location.href = "admin-dashboard.html";
+        }, 400);
+
       } catch (err) {
+        console.error("[DIMABIN Admin Login] Authentication failed:", err.message);
         displayAlert(alertBox, "error", err.message);
-      } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerHTML = originalBtnText;

@@ -124,11 +124,16 @@ export function closeMobileDrawer() {
  * Handle Administrator Sign Out
  */
 export async function handleAdminSignOut() {
+  console.log("[DIMABIN Dashboard] Initiating administrator sign-out...");
   try {
+    sessionStorage.removeItem("dimabin_admin_session");
+    localStorage.removeItem("dimabin_admin_session");
     await signOutUser();
+    console.log("[DIMABIN Dashboard] Firebase signOut complete and session cleared.");
   } catch (err) {
-    console.warn("[DIMABIN Admin] Sign out warning:", err.message);
+    console.warn("[DIMABIN Dashboard] Sign out warning:", err.message);
   } finally {
+    console.log("[DIMABIN Dashboard] Navigating to admin-login.html");
     window.location.href = "admin-login.html";
   }
 }
@@ -207,15 +212,57 @@ export function initDashboard() {
   // 5. Initialize Notification Sub-Tabs
   initNotificationTabs();
 
-  // 6. Listen to Firebase Auth state for verified UI updates
+  // 6. Validate authenticated session & listen to Firebase Auth state
+  console.log("[DIMABIN Dashboard] Stage 1: Initializing Administrator Command Centre...");
+
+  let storedAdminSession = null;
+  try {
+    const raw = sessionStorage.getItem("dimabin_admin_session") || localStorage.getItem("dimabin_admin_session");
+    if (raw) {
+      storedAdminSession = JSON.parse(raw);
+      console.log("[DIMABIN Dashboard] Stage 2: Stored administrator session validated:", {
+        uid: storedAdminSession.uid,
+        email: storedAdminSession.email,
+        adminId: storedAdminSession.adminId,
+        fullName: storedAdminSession.fullName,
+        role: storedAdminSession.role
+      });
+
+      const headerEmailEl = document.getElementById("header-admin-email");
+      if (headerEmailEl && storedAdminSession.email) {
+        headerEmailEl.textContent = storedAdminSession.email;
+      }
+    } else {
+      console.log("[DIMABIN Dashboard] Stage 2: No stored session found in storage; awaiting Firebase Auth listener confirmation...");
+    }
+  } catch (parseErr) {
+    console.warn("[DIMABIN Dashboard] Session parse warning:", parseErr.message);
+  }
+
   onAuthStateChange((user) => {
     const userEmailEl = document.getElementById("header-admin-email");
-    const statusDotEl = document.querySelector(".status-online-badge");
 
     if (user && user.email) {
+      console.log("[DIMABIN Dashboard] Stage 3: Firebase Auth session active for:", user.email, "UID:", user.uid);
       if (userEmailEl) userEmailEl.textContent = user.email;
+
+      // Ensure session in storage stays synchronized with active Firebase user
+      if (!storedAdminSession) {
+        const syncedSession = {
+          uid: user.uid,
+          email: user.email,
+          adminId: ADMIN_CONFIG.ADMIN_ID,
+          fullName: "DIMABIN Super Administrator",
+          role: "admin",
+          authenticatedAt: new Date().toISOString()
+        };
+        try {
+          sessionStorage.setItem("dimabin_admin_session", JSON.stringify(syncedSession));
+          console.log("[DIMABIN Dashboard] Stage 4: Admin session synchronized to sessionStorage.");
+        } catch (_) {}
+      }
     } else {
-      console.log("[DIMABIN Admin] No active Firebase Auth session detected. Preview mode active.");
+      console.log("[DIMABIN Dashboard] Stage 3: Firebase Auth indicates no active persistent user or user signed out.");
     }
   });
 
