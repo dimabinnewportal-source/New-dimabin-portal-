@@ -17,6 +17,7 @@ export default defineConfig({
         studentLogin: resolve(__dirname, 'student-login.html'),
         lecturerLogin: resolve(__dirname, 'lecturer-login.html'),
         adminLogin: resolve(__dirname, 'admin-login.html'),
+        adminDashboard: resolve(__dirname, 'admin-dashboard.html'),
       },
     },
   },

@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Command Centre | DIMABIN Administrator Dashboard</title>
+  <meta name="description" content="Official administrative Command Centre for Divine Mandate Bible Institute (DIMABIN). Institutional coordination, admissions, academic management, and communications.">
+  <meta name="theme-color" content="#122452">
+
+  <!-- Open Graph Metadata -->
+  <meta property="og:site_name" content="Divine Mandate Bible Institute (DIMABIN)">
+  <meta property="og:title" content="Command Centre | DIMABIN Administrator Dashboard">
+  <meta property="og:description" content="Super Administrator Command Centre for Divine Mandate Bible Institute.">
+  <meta property="og:type" content="website">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/logo/dimabin-emblem.svg">
+
+  <!-- Google Fonts: Poppins (300, 400, 500, 600, 700, 800) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap" rel="stylesheet">
+
+  <!-- Dashboard Stylesheet -->
+  <link rel="stylesheet" href="assets/css/admin-dashboard.css">
+</head>
+<body class="admin-body">
+
+  <div class="admin-layout">
+
+    <!-- ======================================================================
+         1. ADMINISTRATION SIDEBAR (DESKTOP & MOBILE DRAWER)
+         ====================================================================== -->
+    <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+    <aside class="admin-sidebar" id="admin-sidebar" aria-label="Administrator Navigation Sidebar">
+      <!-- Sidebar Header -->
+      <div class="admin-sidebar-header">
+        <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Seal" class="admin-brand-icon">
+        <div class="admin-brand-text">
+          <span class="admin-brand-name">DIMABIN COMMAND</span>
+          <span class="admin-brand-motto">CITADEL OF LEARNING</span>
+        </div>
+        <button type="button" class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Close navigation drawer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="admin-sidebar-nav" role="navigation">
+
+        <!-- CATEGORY: OVERVIEW -->
+        <div class="nav-category">
+          <div class="nav-category-title">OVERVIEW</div>
+          <button type="button" class="nav-item active" data-section="dashboard">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            <span>Dashboard</span>
+          </button>
+        </div>
+
+        <!-- CATEGORY: ADMISSIONS -->
+        <div class="nav-category">
+          <div class="nav-category-title">ADMISSIONS</div>
+          <button type="button" class="nav-item" data-section="applications">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span>Applications</span>
+          </button>
+          <button type="button" class="nav-item" data-section="pending-applications">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Pending Applications</span>
+          </button>
+          <button type="button" class="nav-item" data-section="approved-admissions">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span>Approved Admissions</span>
+          </button>
+          <button type="button" class="nav-item" data-section="rejected-applications">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            <span>Rejected Applications</span>
+          </button>
+        </div>
+
+        <!-- CATEGORY: STUDENTS -->
+        <div class="nav-category">
+          <div class="nav-category-title">STUDENTS</div>
+          <button type="button" class="nav-item" data-section="student-directory">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Student Directory</span>
+          </button>
+        </div>
+
+        <!-- CATEGORY: ACADEMIC MANAGEMENT -->
+        <div class="nav-category">
+          <div class="nav-category-title">ACADEMIC MANAGEMENT</div>
+          <button type="button" class="nav-item" data-section="lecturer-management">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Lecturer Management</span>
+          </button>
+          <button type="button" class="nav-item" data-section="course-management">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            <span>Course Management</span>
+          </button>
+          <button type="button" class="nav-item" data-section="course-allocation">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 3 21 3 21 8"></polyline>
+              <line x1="4" y1="20" x2="21" y2="3"></line>
+              <polyline points="21 16 21 21 16 21"></polyline>
+              <line x1="15" y1="15" x2="21" y2="21"></line>
+              <line x1="4" y1="4" x2="9" y2="9"></line>
+            </svg>
+            <span>Course Allocation</span>
+          </button>
+          <button type="button" class="nav-item" data-section="study-centres">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>Study Centres</span>
+          </button>
+          <button type="button" class="nav-item" data-section="result-approval">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <polyline points="9 15 11 17 15 13"></polyline>
+            </svg>
+            <span>Result Approval</span>
+          </button>
+        </div>
+
+        <!-- CATEGORY: COMMUNICATION -->
+        <div class="nav-category">
+          <div class="nav-category-title">COMMUNICATION</div>
+          <button type="button" class="nav-item" data-section="public-notifications">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+            <span>Public Notifications</span>
+          </button>
+          <button type="button" class="nav-item" data-section="portal-notifications">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span>Portal Notifications</span>
+          </button>
+          <button type="button" class="nav-item" data-section="announcements">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <span>Announcements</span>
+          </button>
+        </div>
+
+        <!-- CATEGORY: ADMINISTRATION -->
+        <div class="nav-category">
+          <div class="nav-category-title">ADMINISTRATION</div>
+          <button type="button" class="nav-item" data-section="user-accounts">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="8.5" cy="7" r="4"></circle>
+              <line x1="20" y1="8" x2="20" y2="14"></line>
+              <line x1="23" y1="11" x2="17" y2="11"></line>
+            </svg>
+            <span>User Accounts</span>
+          </button>
+          <button type="button" class="nav-item" data-section="activity-logs">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            <span>Activity Logs</span>
+          </button>
+          <button type="button" class="nav-item" data-section="administration">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            <span>Administration</span>
+          </button>
+          <button type="button" class="nav-item" data-section="settings">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>EmailJS &amp; Settings</span>
+          </button>
+        </div>
+
+        <!-- CATEGORY: ACCOUNT -->
+        <div class="nav-category">
+          <div class="nav-category-title">ACCOUNT</div>
+          <button type="button" class="nav-item" data-section="admin-profile">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Administrator Profile</span>
+          </button>
+          <button type="button" class="nav-item" id="sidebar-signout-btn" style="color: #F87171;">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span>Sign Out</span>
+          </button>
+        </div>
+
+      </nav>
+    </aside>
+
+    <!-- ======================================================================
+         2. MAIN CONTENT WRAPPER
+         ====================================================================== -->
+    <div class="admin-main-wrapper">
+
+      <!-- TOP HEADER -->
+      <header class="admin-header" role="banner">
+        <div class="admin-header-left">
+          <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="Toggle navigation sidebar">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+
+          <div class="admin-header-title-box">
+            <h1 id="header-current-section">Dashboard</h1>
+            <span class="admin-header-badge">DIMABIN ADMIN PORTAL</span>
+          </div>
+        </div>
+
+        <div class="admin-header-right">
+          <!-- Notification Bell -->
+          <button type="button" class="header-action-btn" aria-label="Notifications" onclick="window.dimabinAdminDashboard?.navigateToSection('portal-notifications')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="notification-indicator"></span>
+          </button>
+
+          <!-- Administrator Profile Badge -->
+          <div class="admin-profile-pill">
+            <div class="admin-avatar">SA</div>
+            <div class="admin-meta">
+              <span class="admin-name">DIMABIN Super Administrator</span>
+              <span class="admin-role-tag">SUPER ADMINISTRATOR</span>
+            </div>
+          </div>
+
+          <!-- Sign Out Button -->
+          <button type="button" class="admin-header-signout-btn" id="header-signout-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- MAIN CONTAINER -->
+      <main class="admin-main" id="admin-main" role="main">
+
+        <!-- ==================================================================
+             SECTION 1: DASHBOARD (OVERVIEW)
+             ================================================================== -->
+        <section class="admin-section active" id="section-dashboard" aria-label="Main Command Centre Overview">
+
+          <!-- Administrator Status Banner -->
+          <div class="admin-status-banner">
+            <div class="admin-status-grid">
+              <div class="status-identity">
+                <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Seal" class="status-emblem">
+                <div class="status-title-box">
+                  <h2>DIMABIN Super Administrator</h2>
+                  <div class="status-online-badge">
+                    <span class="status-dot"></span>
+                    <span>Online Command</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="status-credentials">
+                <div class="cred-chip">
+                  <span class="cred-label">Administrator ID</span>
+                  <span class="cred-val">DIMABIN/ADM/2026/01</span>
+                </div>
+                <div class="cred-chip">
+                  <span class="cred-label">Authorized Email</span>
+                  <span class="cred-val" id="header-admin-email">dimabinnewportal@gmail.com</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Compact Academic Session Strip -->
+          <div class="session-info-strip">
+            <div class="session-strip-group">
+              <div class="session-strip-item">
+                <span class="session-strip-label">CURRENT SESSION:</span>
+                <span class="session-strip-badge">2026/2027</span>
+              </div>
+              <div class="session-strip-item">
+                <span class="session-strip-label">CURRENT SEMESTER:</span>
+                <span class="session-strip-badge">First Semester</span>
+              </div>
+            </div>
+            <div class="session-live-tag">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 14 14"></polyline>
+              </svg>
+              <span>Academic Registry Live Synchronization Ready</span>
+            </div>
+          </div>
+
+          <!-- Command Overview (Stats Grid) -->
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Command Overview</h2>
+            <p class="section-sub-title">Real-time coordination parameters of Divine Mandate Bible Institute.</p>
+          </div>
+
+          <div class="stats-grid-6">
+            <!-- 1. Total Students -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Students</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val">0</div>
+              <span class="stat-foot">Enrolled Candidates</span>
+            </div>
+
+            <!-- 2. Total Lecturers -->
+            <div class="stat-card gold-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Lecturers</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val">0</div>
+              <span class="stat-foot">Academic Faculty</span>
+            </div>
+
+            <!-- 3. Total Applications -->
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Applications</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val">0</div>
+              <span class="stat-foot">All Time Submissions</span>
+            </div>
+
+            <!-- 4. Pending Applications -->
+            <div class="stat-card warning-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Pending Applications</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val">0</div>
+              <span class="stat-foot">Awaiting Review</span>
+            </div>
+
+            <!-- 5. Approved Admissions -->
+            <div class="stat-card success-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Approved Admissions</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val">0</div>
+              <span class="stat-foot">Issued Admission Slips</span>
+            </div>
+
+            <!-- 6. Active Programmes -->
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Active Programmes</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val">0</div>
+              <span class="stat-foot">Dipl.Th., Cert, Cohorts</span>
+            </div>
+          </div>
+
+          <!-- Quick Commands Section -->
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Quick Commands</h2>
+            <p class="section-sub-title">Rapid administrative navigation across primary theological modules.</p>
+          </div>
+
+          <div class="quick-commands-grid">
+            <button type="button" class="cmd-btn" data-target-section="applications">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              </svg>
+              <span>Review Applications</span>
+            </button>
+            <button type="button" class="cmd-btn" data-target-section="student-directory">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              </svg>
+              <span>Student Directory</span>
+            </button>
+            <button type="button" class="cmd-btn" data-target-section="lecturer-management">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              </svg>
+              <span>Lecturer Management</span>
+            </button>
+            <button type="button" class="cmd-btn" data-target-section="course-management">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              </svg>
+              <span>Course Management</span>
+            </button>
+            <button type="button" class="cmd-btn" data-target-section="course-allocation">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 3 21 3 21 8"></polyline>
+              </svg>
+              <span>Course Allocation</span>
+            </button>
+            <button type="button" class="cmd-btn" data-target-section="result-approval">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 15 11 17 15 13"></polyline>
+              </svg>
+              <span>Result Approval</span>
+            </button>
+            <button type="button" class="cmd-btn" data-target-section="public-notifications">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+              </svg>
+              <span>Public Notifications</span>
+            </button>
+            <button type="button" class="cmd-btn" data-target-section="portal-notifications">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              </svg>
+              <span>Portal Notifications</span>
+            </button>
+            <button type="button" class="cmd-btn" data-target-section="announcements">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              </svg>
+              <span>Announcements</span>
+            </button>
+          </div>
+
+          <!-- Dual Column Operational Grid (Recent Admissions & Activity) -->
+          <div class="dashboard-dual-grid">
+
+            <!-- Recent Admission Applications -->
+            <div class="content-card">
+              <div class="content-card-header">
+                <h3 class="content-card-title">Recent Admission Applications</h3>
+                <button type="button" class="btn-card-action" onclick="window.dimabinAdminDashboard?.navigateToSection('applications')">
+                  View All Applications
+                </button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Applicant</th>
+                      <th>Application ID</th>
+                      <th>Programme</th>
+                      <th>Study Centre</th>
+                      <th>Date</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Clean Empty State -->
+                    <tr>
+                      <td colspan="7">
+                        <div class="empty-state-box">
+                          <div class="empty-icon">📋</div>
+                          <div class="empty-state-text">No admission applications to display yet.</div>
+                          <div class="empty-state-sub">New submissions through the online Admissions page will appear here once submitted.</div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Recent Administrative Activity & System Health -->
+            <div>
+              <div class="content-card" style="margin-bottom: 1.5rem;">
+                <div class="content-card-header">
+                  <h3 class="content-card-title">Recent Administrative Activity</h3>
+                </div>
+                <div class="empty-state-box" style="padding: 2.25rem 1rem;">
+                  <div class="empty-icon">⚡</div>
+                  <div class="empty-state-text">No recent activity yet.</div>
+                  <div class="empty-state-sub">Security log and telemetry events will populate here.</div>
+                </div>
+              </div>
+
+              <!-- System Status Card -->
+              <div class="content-card">
+                <div class="content-card-header">
+                  <h3 class="content-card-title">System Status</h3>
+                </div>
+                <div class="system-status-list">
+                  <div class="status-row">
+                    <span class="service-name">Firebase Authentication</span>
+                    <span class="service-pill connected">● Connected</span>
+                  </div>
+                  <div class="status-row">
+                    <span class="service-name">Firestore Database</span>
+                    <span class="service-pill pending">● Locked Mode</span>
+                  </div>
+                  <div class="status-row">
+                    <span class="service-name">Public Website</span>
+                    <span class="service-pill connected">● Connected</span>
+                  </div>
+                  <div class="status-row">
+                    <span class="service-name">EmailJS Dispatcher</span>
+                    <span class="service-pill pending">● Pending Config</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- ==================================================================
+             SECTION 12: PUBLIC NOTIFICATIONS (AUDIENCE: PUBLIC)
+             ================================================================== -->
+        <section class="admin-section" id="section-public-notifications" aria-label="Public Notifications Management">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Public Website Notifications</h2>
+            <p class="section-sub-title">Institutional announcements and admission deadlines displayed openly to visitors of the public website.</p>
+          </div>
+
+          <div class="architecture-notice-box">
+            <strong>Architecture Notice — Audience: PUBLIC</strong><br>
+            Public Notifications are displayed openly across public website areas (Homepage, Admissions, About, Contact).
+            Visitors do <em>not</em> need to authenticate to view them.
+          </div>
+
+          <div class="content-card">
+            <!-- Tabs Navigation -->
+            <div class="notif-tab-nav">
+              <button type="button" class="notif-tab-btn active" data-tab="pub-tab-create">Create Public Notification</button>
+              <button type="button" class="notif-tab-btn" data-tab="pub-tab-active">Active Public Notifications (0)</button>
+              <button type="button" class="notif-tab-btn" data-tab="pub-tab-scheduled">Scheduled Notifications (0)</button>
+              <button type="button" class="notif-tab-btn" data-tab="pub-tab-archived">Archived Notifications (0)</button>
+            </div>
+
+            <!-- Tab 1: Create Public Notification -->
+            <div class="notif-tab-pane active" id="pub-tab-create">
+              <div class="notif-creator-card">
+                <h3 style="font-size: 1rem; font-weight: 800; color: var(--admin-navy); margin-bottom: 1rem;">
+                  Compose Public Website Broadcast
+                </h3>
+
+                <div id="pub-notif-feedback" style="display: none; padding: 0.75rem 1rem; background: #DCFCE7; color: #15803D; border: 1px solid #BBF7D0; border-radius: var(--admin-radius-sm); margin-bottom: 1rem; font-size: 0.8125rem;"></div>
+
+                <form id="form-create-public-notif" novalidate>
+                  <div class="notif-form-grid">
+                    <div>
+                      <label for="pub-notif-title" class="admin-form-label">Notification Title *</label>
+                      <input type="text" id="pub-notif-title" class="admin-form-input" placeholder="e.g. 2026/2027 Admission Applications Now Open" required>
+                    </div>
+
+                    <div>
+                      <label for="pub-notif-category" class="admin-form-label">Category</label>
+                      <select id="pub-notif-category" class="admin-form-select">
+                        <option value="admissions">Admission Opening &amp; Deadlines</option>
+                        <option value="academic">Academic Notice</option>
+                        <option value="institutional">Institutional Announcement</option>
+                        <option value="event">Public Institute Event</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label for="pub-notif-pages" class="admin-form-label">Target Website Area</label>
+                      <select id="pub-notif-pages" class="admin-form-select">
+                        <option value="all">All Public Pages (Global Banner)</option>
+                        <option value="homepage">Homepage Hero Notice</option>
+                        <option value="admissions">Admissions Portal Page</option>
+                        <option value="about">About Us Page</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label for="pub-notif-status" class="admin-form-label">Initial Status</label>
+                      <select id="pub-notif-status" class="admin-form-select">
+                        <option value="draft">Save as Draft</option>
+                        <option value="published">Ready to Publish</option>
+                        <option value="scheduled">Schedule for Later</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group-full">
+                      <label for="pub-notif-message" class="admin-form-label">Announcement Message *</label>
+                      <textarea id="pub-notif-message" class="admin-form-textarea" rows="4" placeholder="Enter the official announcement text to display on the public website..." required></textarea>
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 1.25rem;">
+                    <button type="submit" class="btn-admin-primary">
+                      <span>Save Public Notification</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Tab 2: Active Public Notifications -->
+            <div class="notif-tab-pane" id="pub-tab-active">
+              <div class="empty-state-box">
+                <div class="empty-icon">📢</div>
+                <div class="empty-state-text">No active public notifications.</div>
+                <div class="empty-state-sub">Published public notices will appear here and sync with the public website.</div>
+              </div>
+            </div>
+
+            <!-- Tab 3: Scheduled Notifications -->
+            <div class="notif-tab-pane" id="pub-tab-scheduled">
+              <div class="empty-state-box">
+                <div class="empty-icon">⏱️</div>
+                <div class="empty-state-text">No scheduled public notifications.</div>
+                <div class="empty-state-sub">Notices configured with future release dates will be listed here.</div>
+              </div>
+            </div>
+
+            <!-- Tab 4: Archived Notifications -->
+            <div class="notif-tab-pane" id="pub-tab-archived">
+              <div class="empty-state-box">
+                <div class="empty-icon">📦</div>
+                <div class="empty-state-text">No archived public notifications.</div>
+                <div class="empty-state-sub">Expired or closed public notices will be preserved here.</div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SECTION 13: PORTAL NOTIFICATIONS (AUDIENCE: PORTAL USERS ONLY)
+             ================================================================== -->
+        <section class="admin-section" id="section-portal-notifications" aria-label="Portal Notifications Management">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Portal Notifications (Internal / Role-Based)</h2>
+            <p class="section-sub-title">Private communications strictly confined to authenticated portal accounts. Never shown on the public website.</p>
+          </div>
+
+          <div class="architecture-notice-box" style="background: #FDF2F8; border-color: #FBCFE8; border-left-color: #DB2777; color: #9D174D;">
+            <strong>Architecture Notice — Audience: PORTAL USERS (STUDENT, LECTURER, ADMIN)</strong><br>
+            Portal Notifications are strictly internal and private to authenticated portal accounts.
+            They are partitioned by role and must <em>never</em> be displayed on the public website.
+          </div>
+
+          <div class="content-card">
+            <!-- Tabs Navigation -->
+            <div class="notif-tab-nav">
+              <button type="button" class="notif-tab-btn active" data-tab="port-tab-create">Create Portal Notification</button>
+              <button type="button" class="notif-tab-btn" data-tab="port-tab-student">Student Notifications (0)</button>
+              <button type="button" class="notif-tab-btn" data-tab="port-tab-lecturer">Lecturer Notifications (0)</button>
+              <button type="button" class="notif-tab-btn" data-tab="port-tab-admin">Admin Notifications (0)</button>
+              <button type="button" class="notif-tab-btn" data-tab="port-tab-scheduled">Scheduled (0)</button>
+              <button type="button" class="notif-tab-btn" data-tab="port-tab-history">Notification History</button>
+            </div>
+
+            <!-- Tab 1: Create Portal Notification -->
+            <div class="notif-tab-pane active" id="port-tab-create">
+              <div class="notif-creator-card">
+                <h3 style="font-size: 1rem; font-weight: 800; color: var(--admin-navy); margin-bottom: 1rem;">
+                  Dispatch Role-Specific Portal Notification
+                </h3>
+
+                <div id="portal-notif-feedback" style="display: none; padding: 0.75rem 1rem; background: #DCFCE7; color: #15803D; border: 1px solid #BBF7D0; border-radius: var(--admin-radius-sm); margin-bottom: 1rem; font-size: 0.8125rem;"></div>
+
+                <form id="form-create-portal-notif" novalidate>
+                  <div class="notif-form-grid">
+                    <div>
+                      <label for="portal-notif-audience" class="admin-form-label">Target Audience Role *</label>
+                      <select id="portal-notif-audience" class="admin-form-select" required>
+                        <option value="student">STUDENT — Enrolled theological candidates</option>
+                        <option value="lecturer">LECTURER — Faculty &amp; academic instructors</option>
+                        <option value="admin">ADMIN — Administrative registry personnel</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label for="portal-notif-title" class="admin-form-label">Notice Subject *</label>
+                      <input type="text" id="portal-notif-title" class="admin-form-input" placeholder="e.g. Examination Timetable Dispatch" required>
+                    </div>
+
+                    <div>
+                      <label for="portal-notif-priority" class="admin-form-label">Priority Level</label>
+                      <select id="portal-notif-priority" class="admin-form-select">
+                        <option value="normal">Normal — Standard informational notice</option>
+                        <option value="urgent">Urgent — Requires immediate candidate action</option>
+                        <option value="critical">Critical — Administrative alert</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label for="portal-notif-status" class="admin-form-label">Status</label>
+                      <select id="portal-notif-status" class="admin-form-select">
+                        <option value="draft">Save as Draft</option>
+                        <option value="published">Dispatch Immediately</option>
+                        <option value="scheduled">Schedule Dispatch</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group-full">
+                      <label for="portal-notif-message" class="admin-form-label">Message Details *</label>
+                      <textarea id="portal-notif-message" class="admin-form-textarea" rows="4" placeholder="Enter the private portal notification message..." required></textarea>
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 1.25rem;">
+                    <button type="submit" class="btn-admin-primary">
+                      <span>Dispatch Portal Notice</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Tab 2: Student Notifications -->
+            <div class="notif-tab-pane" id="port-tab-student">
+              <div class="empty-state-box">
+                <div class="empty-icon">🎓</div>
+                <div class="empty-state-text">No student notifications active.</div>
+                <div class="empty-state-sub">Notices sent to enrolled candidates will appear here.</div>
+              </div>
+            </div>
+
+            <!-- Tab 3: Lecturer Notifications -->
+            <div class="notif-tab-pane" id="port-tab-lecturer">
+              <div class="empty-state-box">
+                <div class="empty-icon">📚</div>
+                <div class="empty-state-text">No lecturer notifications active.</div>
+                <div class="empty-state-sub">Course assignment and faculty notices will be archived here.</div>
+              </div>
+            </div>
+
+            <!-- Tab 4: Admin Notifications -->
+            <div class="notif-tab-pane" id="port-tab-admin">
+              <div class="empty-state-box">
+                <div class="empty-icon">🏛️</div>
+                <div class="empty-state-text">No administrative system alerts.</div>
+                <div class="empty-state-sub">Registry operational notices will appear here.</div>
+              </div>
+            </div>
+
+            <!-- Tab 5: Scheduled -->
+            <div class="notif-tab-pane" id="port-tab-scheduled">
+              <div class="empty-state-box">
+                <div class="empty-icon">⏱️</div>
+                <div class="empty-state-text">No scheduled portal notifications.</div>
+                <div class="empty-state-sub">Queued notifications will be dispatched automatically at scheduled timestamps.</div>
+              </div>
+            </div>
+
+            <!-- Tab 6: History -->
+            <div class="notif-tab-pane" id="port-tab-history">
+              <div class="empty-state-box">
+                <div class="empty-icon">📜</div>
+                <div class="empty-state-text">No notification history records.</div>
+                <div class="empty-state-sub">Dispatched portal communication records will be logged here.</div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SECTION 19: ADMINISTRATOR PROFILE
+             ================================================================== -->
+        <section class="admin-section" id="section-admin-profile" aria-label="Administrator Profile">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Administrator Profile</h2>
+            <p class="section-sub-title">Credentials and authorization record of the DIMABIN Super Administrator.</p>
+          </div>
+
+          <div class="content-card" style="max-width: 48rem;">
+            <div class="content-card-header">
+              <h3 class="content-card-title">Super Administrator Registry Clearance</h3>
+              <span class="placeholder-tag">AUTHORIZED COMMAND</span>
+            </div>
+
+            <div style="padding: 2rem;">
+              <div style="display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                <div style="width: 72px; height: 72px; border-radius: 50%; background: var(--admin-navy); color: var(--admin-gold); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; border: 3px solid var(--admin-gold);">
+                  SA
+                </div>
+                <div>
+                  <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--admin-navy);">DIMABIN Super Administrator</h3>
+                  <p style="font-size: 0.8125rem; color: var(--admin-text-muted);">Chief Registrar &amp; Central Academic Controller</p>
+                  <span class="status-online-badge" style="margin-top: 0.35rem;">
+                    <span class="status-dot"></span>
+                    <span>Active Clearance Status</span>
+                  </span>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; padding-top: 1.5rem; border-top: 1px solid var(--admin-border);">
+                <div>
+                  <span class="cred-label" style="color: var(--admin-text-muted);">Administrator ID</span>
+                  <span style="font-size: 0.9375rem; font-weight: 700; color: var(--admin-navy);">DIMABIN/ADM/2026/01</span>
+                </div>
+                <div>
+                  <span class="cred-label" style="color: var(--admin-text-muted);">Institutional Role</span>
+                  <span style="font-size: 0.9375rem; font-weight: 700; color: var(--admin-blue);">SUPER ADMINISTRATOR</span>
+                </div>
+                <div>
+                  <span class="cred-label" style="color: var(--admin-text-muted);">Official Email</span>
+                  <span style="font-size: 0.9375rem; font-weight: 700; color: var(--admin-navy);">dimabinnewportal@gmail.com</span>
+                </div>
+                <div>
+                  <span class="cred-label" style="color: var(--admin-text-muted);">Security Standard</span>
+                  <span style="font-size: 0.9375rem; font-weight: 700; color: var(--admin-success);">Firebase Auth Multi-Factor Ready</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             OTHER PLACEHOLDER SECTIONS (Clean UI Foundation)
+             ================================================================== -->
+
+        <!-- SECTION 2: APPLICATIONS -->
+        <section class="admin-section" id="section-applications" aria-label="Admissions Applications">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">All Admission Applications</h2>
+            <p class="section-sub-title">Complete registry of candidates applying for theological study.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">📋</div>
+            <h3 class="placeholder-title">Admission Applications Registry</h3>
+            <p class="placeholder-desc">Candidate applications submitted through the Admissions portal will be aggregated here for administrative processing and vetting.</p>
+            <span class="placeholder-tag">Module Ready · Awaiting Submissions</span>
+          </div>
+        </section>
+
+        <!-- SECTION 3: PENDING APPLICATIONS -->
+        <section class="admin-section" id="section-pending-applications" aria-label="Pending Applications">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Pending Applications Queue</h2>
+            <p class="section-sub-title">Applications awaiting initial administrative review or background vetting.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">⏳</div>
+            <h3 class="placeholder-title">Pending Queue Empty</h3>
+            <p class="placeholder-desc">All candidate applications are currently up to date. New submissions will enter this queue automatically.</p>
+            <span class="placeholder-tag">Queue Clear</span>
+          </div>
+        </section>
+
+        <!-- SECTION 4: APPROVED ADMISSIONS -->
+        <section class="admin-section" id="section-approved-admissions" aria-label="Approved Admissions">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Approved Admissions</h2>
+            <p class="section-sub-title">Candidates granted provisional or confirmed admission into DIMABIN.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">🎓</div>
+            <h3 class="placeholder-title">Approved Candidates Archive</h3>
+            <p class="placeholder-desc">Approved applicant records, matriculation numbers, and offer slips will be generated and managed here.</p>
+            <span class="placeholder-tag">Module Ready</span>
+          </div>
+        </section>
+
+        <!-- SECTION 5: REJECTED APPLICATIONS -->
+        <section class="admin-section" id="section-rejected-applications" aria-label="Rejected Applications">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Rejected Applications</h2>
+            <p class="section-sub-title">Candidates whose applications failed academic or pastoral clearance standards.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">🚫</div>
+            <h3 class="placeholder-title">Rejected Applications Archive</h3>
+            <p class="placeholder-desc">Records of declined submissions with administrative reasons for non-clearance.</p>
+            <span class="placeholder-tag">Zero Declined Records</span>
+          </div>
+        </section>
+
+        <!-- SECTION 6: STUDENT DIRECTORY -->
+        <section class="admin-section" id="section-student-directory" aria-label="Student Directory">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Student Directory</h2>
+            <p class="section-sub-title">Comprehensive database of active, matriculated, and graduated students.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">👥</div>
+            <h3 class="placeholder-title">Student Directory Database</h3>
+            <p class="placeholder-desc">Browse students by study centre, programme (Dipl.Th., Certificate, Cohorts), and academic standing.</p>
+            <span class="placeholder-tag">Directory Ready</span>
+          </div>
+        </section>
+
+        <!-- SECTION 7: LECTURER MANAGEMENT -->
+        <section class="admin-section" id="section-lecturer-management" aria-label="Lecturer Management">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Lecturer Management</h2>
+            <p class="section-sub-title">Faculty credentials, assigned departments, and instructor access controls.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">👨‍🏫</div>
+            <h3 class="placeholder-title">Faculty Roster &amp; Profiles</h3>
+            <p class="placeholder-desc">Manage ordained tutors, pastoral educators, and academic facilitators across all study centres.</p>
+            <span class="placeholder-tag">Faculty Registry Ready</span>
+          </div>
+        </section>
+
+        <!-- SECTION 8: COURSE MANAGEMENT -->
+        <section class="admin-section" id="section-course-management" aria-label="Course Management">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Course Management</h2>
+            <p class="section-sub-title">Syllabus definitions, course codes, credit units, and curriculum standards.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">📖</div>
+            <h3 class="placeholder-title">Academic Curriculum Catalogue</h3>
+            <p class="placeholder-desc">Configure foundational theological courses, biblical hermeneutics, homiletics, and ministry practicums.</p>
+            <span class="placeholder-tag">Curriculum Matrix Ready</span>
+          </div>
+        </section>
+
+        <!-- SECTION 9: COURSE ALLOCATION -->
+        <section class="admin-section" id="section-course-allocation" aria-label="Course Allocation">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Course Allocation</h2>
+            <p class="section-sub-title">Assign specific academic modules to verified faculty instructors.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">🔀</div>
+            <h3 class="placeholder-title">Teaching Assignment Matrix</h3>
+            <p class="placeholder-desc">Pair course modules with qualified instructors for the active academic semester.</p>
+            <span class="placeholder-tag">Allocation Framework Ready</span>
+          </div>
+        </section>
+
+        <!-- SECTION 10: STUDY CENTRES -->
+        <section class="admin-section" id="section-study-centres" aria-label="Study Centres">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Study Centres Oversight</h2>
+            <p class="section-sub-title">Physical campus hubs and designated theological coordination centres.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">📍</div>
+            <h3 class="placeholder-title">Study Centres Registry</h3>
+            <p class="placeholder-desc">Goshen 13, Kusimo Street, Abeokuta (Central Campus) and regional partner centres.</p>
+            <span class="placeholder-tag">1 Physical Campus Hub</span>
+          </div>
+        </section>
+
+        <!-- SECTION 11: RESULT APPROVAL -->
+        <section class="admin-section" id="section-result-approval" aria-label="Result Approval">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Result Approval &amp; Grading</h2>
+            <p class="section-sub-title">Audit continuous assessment scores and semester examination results.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">🎖️</div>
+            <h3 class="placeholder-title">Registry Examination Clearance</h3>
+            <p class="placeholder-desc">Verify scores submitted by course tutors prior to publishing results to student portals.</p>
+            <span class="placeholder-tag">Zero Pending Approvals</span>
+          </div>
+        </section>
+
+        <!-- SECTION 14: ANNOUNCEMENTS -->
+        <section class="admin-section" id="section-announcements" aria-label="Announcements Archive">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Announcements Archive</h2>
+            <p class="section-sub-title">Complete chronological archive of institute communication broadcasts.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">📣</div>
+            <h3 class="placeholder-title">Central Announcement Feed</h3>
+            <p class="placeholder-desc">Unified historical log of all institutional announcements issued by the Administrator desk.</p>
+            <span class="placeholder-tag">Archive Initialized</span>
+          </div>
+        </section>
+
+        <!-- SECTION 15: USER ACCOUNTS -->
+        <section class="admin-section" id="section-user-accounts" aria-label="User Accounts">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">User Accounts Administration</h2>
+            <p class="section-sub-title">Management of authentication credentials and role assignments across the portal.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">🔐</div>
+            <h3 class="placeholder-title">Authentication Registry Oversight</h3>
+            <p class="placeholder-desc">Manage accounts across Student, Lecturer, and Administrator roles with Firebase Authentication.</p>
+            <span class="placeholder-tag">Security Foundation Active</span>
+          </div>
+        </section>
+
+        <!-- SECTION 16: ACTIVITY LOGS -->
+        <section class="admin-section" id="section-activity-logs" aria-label="Activity Logs">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">System Activity Logs</h2>
+            <p class="section-sub-title">Audit trail of administrative logins, data modifications, and security events.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">📊</div>
+            <h3 class="placeholder-title">Audit Trail &amp; Telemetry</h3>
+            <p class="placeholder-desc">Timestamped records of user sessions, score modifications, and system configuration changes.</p>
+            <span class="placeholder-tag">Audit Stream Armed</span>
+          </div>
+        </section>
+
+        <!-- SECTION 17: ADMINISTRATION -->
+        <section class="admin-section" id="section-administration" aria-label="Administration Settings">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">Administration Controls</h2>
+            <p class="section-sub-title">High-level institutional parameters and registry configurations.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">⚙️</div>
+            <h3 class="placeholder-title">Institute Administration Panel</h3>
+            <p class="placeholder-desc">Configure academic calendar dates, session parameters, and certificate issuance templates.</p>
+            <span class="placeholder-tag">Command Level 1</span>
+          </div>
+        </section>
+
+        <!-- SECTION 18: EMAILJS & SETTINGS -->
+        <section class="admin-section" id="section-settings" aria-label="EmailJS and Settings">
+          <div class="section-heading-wrap">
+            <h2 class="section-main-title">EmailJS &amp; Dispatcher Settings</h2>
+            <p class="section-sub-title">Automated email templates, admission decision notifications, and gateway keys.</p>
+          </div>
+          <div class="section-placeholder-card">
+            <div class="placeholder-icon">✉️</div>
+            <h3 class="placeholder-title">Email Dispatcher Configuration</h3>
+            <p class="placeholder-desc">Configure EmailJS Service ID, Template IDs, and public keys for applicant notifications.</p>
+            <span class="placeholder-tag">Ready for Dispatcher Integration</span>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+  </div>
+
+  <!-- Pure Vanilla JavaScript Modules -->
+  <script type="module" src="assets/js/admin-dashboard.js"></script>
+</body>
+</html>
