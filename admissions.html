@@ -166,6 +166,10 @@
         <p class="section-subtitle">
           Begin your journey into sound theological scholarship and spiritual empowerment.
         </p>
+        <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.75rem; flex-wrap: wrap;">
+          <a href="#admission-form-section" class="btn btn-gold">APPLY ONLINE</a>
+          <a href="#check-status" class="btn btn-outline-white">CHECK ADMISSION STATUS</a>
+        </div>
       </div>
     </section>
 
@@ -250,6 +254,168 @@
         <div id="admissions-notice-board-container" class="notice-board-container">
           <!-- Populated in real-time by assets/js/public-announcements.js -->
         </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         DIMABIN ADMISSION STATUS CHECKER & ONBOARDING GATEWAY
+         ======================================================================== -->
+    <section class="section section-white" id="check-status" aria-label="Check Admission Status">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">REGISTRY VERIFICATION</span>
+          <h2 class="section-title">Check Admission Status</h2>
+          <p class="section-subtitle">
+            Enter your official Application Number and Date of Birth to verify your admission status and set up your Student Portal password.
+          </p>
+        </div>
+
+        <div class="admission-checker-card" id="admission-checker-card">
+          <!-- Checker Query Form -->
+          <form id="admission-checker-form" novalidate>
+            <div class="checker-form-grid">
+              <!-- Field 1: Application Number -->
+              <div class="form-group" style="text-align: left;">
+                <label for="checker-app-id" class="form-label">APPLICATION NUMBER *</label>
+                <input 
+                  type="text" 
+                  id="checker-app-id" 
+                  class="form-input" 
+                  placeholder="e.g. DIMABIN/APP/2026/1001" 
+                  required
+                  autocomplete="off"
+                >
+                <span class="form-hint" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; display: block;">
+                  Assigned upon application submission (e.g. DIMABIN/APP/2026/XXXX)
+                </span>
+              </div>
+
+              <!-- Field 2: Date of Birth -->
+              <div class="form-group" style="text-align: left;">
+                <label for="checker-dob" class="form-label">DATE OF BIRTH *</label>
+                <input 
+                  type="date" 
+                  id="checker-dob" 
+                  class="form-input" 
+                  required
+                >
+                <span class="form-hint" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; display: block;">
+                  Must match the date of birth entered during your application
+                </span>
+              </div>
+            </div>
+
+            <!-- Error / Feedback Alert Box -->
+            <div class="portal-alert-box" id="checker-alert-box" role="alert" aria-live="polite"></div>
+
+            <div style="text-align: center; margin-top: 1rem;">
+              <button type="submit" class="btn btn-primary" id="checker-submit-btn" style="min-width: 260px; min-height: 48px; font-weight: 700;">
+                <span>CHECK ADMISSION STATUS</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- Result Card (Populated upon matching application) -->
+          <div class="admission-result-container" id="admission-result-container" style="display: none;" role="region" aria-label="Official Admission Result">
+            <div class="admission-result-card">
+              <div class="admission-result-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Seal" width="40" height="40">
+                  <div>
+                    <div style="font-size: 0.7rem; font-weight: 800; color: var(--primary-blue); letter-spacing: 0.08em; text-transform: uppercase;">DIVINE MANDATE BIBLE INSTITUTE</div>
+                    <div style="font-size: 0.95rem; font-weight: 800; color: var(--dark-navy);">OFFICIAL ADMISSION STATUS SLIP</div>
+                  </div>
+                </div>
+                <div id="result-status-pill" class="result-status-pill">STATUS</div>
+              </div>
+
+              <!-- Candidate Details Grid -->
+              <div class="admission-result-grid">
+                <div class="result-field-block">
+                  <span class="result-label">Candidate Name</span>
+                  <span class="result-value" id="result-candidate-name">-</span>
+                </div>
+                <div class="result-field-block">
+                  <span class="result-label">Application Number</span>
+                  <span class="result-value" id="result-app-id">-</span>
+                </div>
+                <div class="result-field-block">
+                  <span class="result-label">Programme of Study</span>
+                  <span class="result-value" id="result-programme">-</span>
+                </div>
+                <div class="result-field-block">
+                  <span class="result-label">Academic Session</span>
+                  <span class="result-value" id="result-session">-</span>
+                </div>
+                <div class="result-field-block">
+                  <span class="result-label">Study Centre</span>
+                  <span class="result-value" id="result-study-centre">-</span>
+                </div>
+                <div class="result-field-block">
+                  <span class="result-label">Registered Email</span>
+                  <span class="result-value" id="result-email">-</span>
+                </div>
+              </div>
+
+              <!-- State 1: APPROVED / ADMITTED -->
+              <div class="admission-state-approved" id="result-state-approved" style="display: none;">
+                <div class="onboarding-approved-box">
+                  <div class="onboarding-approved-icon">✓</div>
+                  <div class="onboarding-approved-content">
+                    <h3 class="onboarding-approved-title">Your admission has been approved.</h3>
+                    <p class="onboarding-approved-next">
+                      Next Step: Go to the Student Portal and set your password using the email address you used during your admission application.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="onboarding-action-row" style="text-align: center; margin-top: 1.5rem;">
+                  <a href="#" id="result-setup-portal-btn" class="btn btn-gold btn-lg" style="font-weight: 800; padding: 0.85rem 2rem; font-size: 1rem; box-shadow: 0 4px 14px rgba(245, 184, 0, 0.4); display: inline-flex; align-items: center; justify-content: center;">
+                    SET UP STUDENT PORTAL
+                  </a>
+                </div>
+              </div>
+
+              <!-- State 2: PENDING -->
+              <div class="admission-state-pending" id="result-state-pending" style="display: none;">
+                <div class="result-notice-box pending">
+                  <div class="result-notice-icon">⏳</div>
+                  <div>
+                    <h4 class="result-notice-title">Application Under Review</h4>
+                    <p class="result-notice-desc">
+                      Your admission application is currently being evaluated by the Academic Registry and Admissions Committee. Please check back periodically or contact the Registry for inquiries.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- State 3: REJECTED -->
+              <div class="admission-state-rejected" id="result-state-rejected" style="display: none;">
+                <div class="result-notice-box rejected">
+                  <div class="result-notice-icon">✕</div>
+                  <div>
+                    <h4 class="result-notice-title">Application Not Successful</h4>
+                    <p class="result-notice-desc" id="result-rejected-reason">
+                      Thank you for your interest in Divine Mandate Bible Institute. We regret to inform you that your application was not approved for this academic intake.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Slip Auxiliary Actions -->
+              <div class="result-slip-actions">
+                <button type="button" class="btn btn-outline-blue btn-sm" id="result-check-another-btn">
+                  Check Another Application
+                </button>
+                <button type="button" class="btn btn-outline-navy btn-sm" onclick="window.print()">
+                  🖨️ Print Slip
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -687,16 +853,21 @@
                 <span id="summary-candidate-program" style="font-weight: 700; color: var(--gold-hover);">-</span>
               </div>
               <div class="success-summary-row">
+                <span style="font-weight: 700; color: var(--dark-navy);">Application Number:</span>
+                <span id="summary-candidate-appid" style="color: var(--primary-blue); font-weight: 700;">-</span>
+              </div>
+              <div class="success-summary-row">
                 <span style="font-weight: 700; color: var(--dark-navy);">Application Status:</span>
-                <span style="color: #15803D; font-weight: 700;">Validated (Ready for Registry Sync)</span>
+                <span style="color: #15803D; font-weight: 700;">Submitted to Registry</span>
               </div>
             </div>
 
             <p class="success-notice-note">
-              * Note: Your candidate data has been validated and compiled in your local session. The live database connection will be integrated during the admissions registry backend phase.
+              * Note: Please write down your <strong>Application Number</strong> and <strong>Date of Birth</strong>. You can use them anytime in the Admission Checker above to track your approval status and access Student Portal onboarding.
             </p>
 
-            <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.75rem;">
+            <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.75rem; flex-wrap: wrap;">
+              <a href="#check-status" class="btn btn-gold btn-sm">VERIFY ADMISSION STATUS</a>
               <a href="index.html" class="btn btn-primary btn-sm">RETURN TO HOME</a>
               <button type="button" class="btn btn-outline-blue btn-sm" id="restart-application-btn">START NEW FORM</button>
             </div>

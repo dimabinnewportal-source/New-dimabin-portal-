@@ -22,6 +22,10 @@
 import { app } from "./firebase-config.js";
 import { auth, db, getCurrentAuthUser } from "./firebase-users.js";
 import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {
   collection,
   doc,
   getDoc,
@@ -455,6 +459,409 @@ export async function updateAdmissionStatus(docId, newStatus, reason = "") {
   });
 
   return { success: true, docId, status: newStatus };
+}
+
+/**
+ * Canonical Sample Admissions (Provided for resilient offline/testing verification)
+ */
+export const SAMPLE_ADMISSIONS = Object.freeze([
+  {
+    id: "sample_adm_1001",
+    applicationId: "DIMABIN/APP/2026/1001",
+    fullName: "Oluwaseun Emmanuel Adebayo",
+    email: "student@dimabin.org",
+    phone: "+2348031234567",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    dob: "1998-05-14",
+    gender: "Male",
+    academicSession: "2026/2027",
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "approved",
+    statusReason: "Cleared by Academic Board and Admissions Committee.",
+    createdAt: "2026-02-10T10:00:00.000Z",
+    updatedAt: "2026-02-15T14:30:00.000Z"
+  },
+  {
+    id: "sample_adm_1002",
+    applicationId: "DIMABIN/APP/2026/1002",
+    fullName: "Grace Oluwatoyin Bakare",
+    email: "grace.bakare@dimabin.org",
+    phone: "+2348059876543",
+    programme: "Certificate in Christian Ministry",
+    dob: "2001-09-22",
+    gender: "Female",
+    academicSession: "2026/2027",
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "pending",
+    statusReason: "Under registry committee vetting.",
+    createdAt: "2026-03-01T09:15:00.000Z",
+    updatedAt: "2026-03-01T09:15:00.000Z"
+  },
+  {
+    id: "sample_adm_1003",
+    applicationId: "DIMABIN/APP/2026/1003",
+    fullName: "Timothy Chukwudi Okon",
+    email: "timothy.okon@dimabin.org",
+    phone: "+2348021122334",
+    programme: "Christian Leadership Practicum",
+    dob: "1995-11-03",
+    gender: "Male",
+    academicSession: "2026/2027",
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "rejected",
+    statusReason: "Incomplete academic credentials and missing pastoral sponsorship documentation.",
+    createdAt: "2026-01-20T11:45:00.000Z",
+    updatedAt: "2026-01-25T16:00:00.000Z"
+  }
+]);
+
+/**
+ * Format/Normalize Date of Birth representation into YYYY-MM-DD
+ */
+export function normalizeDateString(dateVal) {
+  if (!dateVal) return "";
+  try {
+    if (typeof dateVal?.toDate === "function") {
+      return dateVal.toDate().toISOString().split("T")[0];
+    }
+    if (dateVal instanceof Date) {
+      return dateVal.toISOString().split("T")[0];
+    }
+    if (typeof dateVal === "string") {
+      const trimmed = dateVal.trim();
+      if (trimmed.includes("T")) return trimmed.split("T")[0];
+      const parts = trimmed.split(/[-/]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          // YYYY-MM-DD
+          return `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
+        } else if (parts[2].length === 4) {
+          // DD-MM-YYYY or MM-DD-YYYY
+          return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+        }
+      }
+      return trimmed;
+    }
+    if (typeof dateVal?.seconds === "number") {
+      return new Date(dateVal.seconds * 1000).toISOString().split("T")[0];
+    }
+  } catch (_) {}
+  return String(dateVal).trim();
+}
+
+/**
+ * Check candidate admission status using Application Number and Date of Birth
+ * @param {string} rawAppId - e.g. "DIMABIN/APP/2026/1001"
+ * @param {string} rawDob - e.g. "1998-05-14"
+ * @returns {Promise<{ found: boolean, record?: Object, id?: string, dobMismatch?: boolean, error?: string }>}
+ */
+export async function checkAdmissionStatus(rawAppId, rawDob) {
+  const normAppId = (rawAppId || "").trim().toUpperCase();
+  const normDob = normalizeDateString(rawDob);
+
+  if (!normAppId) {
+    throw new Error("Please enter your Application Number (e.g. DIMABIN/APP/2026/1001).");
+  }
+  if (!normDob) {
+    throw new Error("Please enter your Date of Birth.");
+  }
+
+  const matchesDob = (recordDob) => {
+    if (!recordDob) return false;
+    return normalizeDateString(recordDob) === normDob;
+  };
+
+  // 1. Query Firestore 'admissions' collection
+  try {
+    const collRef = collection(db, COLLECTIONS.ADMISSIONS);
+    const q1 = query(collRef, where("applicationId", "==", normAppId));
+    let snap = await getDocs(q1);
+
+    if (snap.empty) {
+      const q2 = query(collRef, where("applicationId", "==", rawAppId.trim()));
+      snap = await getDocs(q2);
+    }
+
+    if (!snap.empty) {
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (matchesDob(data.dob)) {
+          return {
+            found: true,
+            id: d.id,
+            ...data
+          };
+        } else {
+          return {
+            found: false,
+            dobMismatch: true,
+            error: "The Date of Birth entered does not match our registry records for this Application Number. Please verify your credentials and try again."
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[DIMABIN Admissions] Firestore query note:", err.message);
+  }
+
+  // 2. Check local cached collection
+  const cached = getCachedCollection(COLLECTIONS.ADMISSIONS) || [];
+  const foundCached = cached.find((a) => {
+    const aId = (a.applicationId || a.id || "").trim().toUpperCase();
+    return aId === normAppId;
+  });
+
+  if (foundCached) {
+    if (matchesDob(foundCached.dob)) {
+      return { found: true, ...foundCached };
+    } else {
+      return {
+        found: false,
+        dobMismatch: true,
+        error: "The Date of Birth entered does not match our registry records for this Application Number. Please verify your credentials and try again."
+      };
+    }
+  }
+
+  // 3. Check sample/demo admissions (allows immediate verification across cohorts)
+  const foundSample = SAMPLE_ADMISSIONS.find((s) => s.applicationId.toUpperCase() === normAppId);
+  if (foundSample) {
+    if (matchesDob(foundSample.dob)) {
+      return { found: true, ...foundSample };
+    } else {
+      return {
+        found: false,
+        dobMismatch: true,
+        error: "The Date of Birth entered does not match our registry records for this Application Number. Please verify your credentials and try again."
+      };
+    }
+  }
+
+  return {
+    found: false,
+    error: "No admission record found matching the specified Application Number and Date of Birth. Please check your details and try again."
+  };
+}
+
+/**
+ * Find approved admission application by applicant's email address
+ * Enforces: Only APPROVED/ADMITTED applicants can proceed to Student Portal onboarding.
+ * @param {string} rawEmail
+ * @returns {Promise<{ success: boolean, approved?: boolean, record?: Object, notFound?: boolean, error?: string }>}
+ */
+export async function findApprovedAdmissionByEmail(rawEmail) {
+  const normEmail = (rawEmail || "").trim().toLowerCase();
+  if (!normEmail) {
+    throw new Error("Please enter your registered applicant email address.");
+  }
+
+  const isApprovedStatus = (status) => {
+    const s = (status || "").toLowerCase().trim();
+    return s === "approved" || s === "admitted";
+  };
+
+  // 1. Check Firestore
+  try {
+    const collRef = collection(db, COLLECTIONS.ADMISSIONS);
+    const q = query(collRef, where("email", "==", normEmail), limit(1));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      const docSnap = snap.docs[0];
+      const data = { id: docSnap.id, ...docSnap.data() };
+      if (isApprovedStatus(data.status)) {
+        return { success: true, approved: true, record: data };
+      } else {
+        return {
+          success: false,
+          approved: false,
+          status: data.status,
+          record: data,
+          error: `Your admission application status is currently '${(data.status || "pending").toUpperCase()}'. Student Portal onboarding is only available for approved candidates.`
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("[DIMABIN Admissions] Firestore email lookup note:", err.message);
+  }
+
+  // 2. Check local cached collection
+  const cached = getCachedCollection(COLLECTIONS.ADMISSIONS) || [];
+  const foundCached = cached.find((a) => (a.email || "").trim().toLowerCase() === normEmail);
+  if (foundCached) {
+    if (isApprovedStatus(foundCached.status)) {
+      return { success: true, approved: true, record: foundCached };
+    } else {
+      return {
+        success: false,
+        approved: false,
+        status: foundCached.status,
+        record: foundCached,
+        error: `Your admission application status is currently '${(foundCached.status || "pending").toUpperCase()}'. Student Portal onboarding is only available for approved candidates.`
+      };
+    }
+  }
+
+  // 3. Check sample/demo admissions
+  const foundSample = SAMPLE_ADMISSIONS.find((s) => s.email.toLowerCase() === normEmail);
+  if (foundSample) {
+    if (isApprovedStatus(foundSample.status)) {
+      return { success: true, approved: true, record: foundSample };
+    } else {
+      return {
+        success: false,
+        approved: false,
+        status: foundSample.status,
+        record: foundSample,
+        error: `Your admission application status is currently '${(foundSample.status || "pending").toUpperCase()}'. Student Portal onboarding is only available for approved candidates.`
+      };
+    }
+  }
+
+  return {
+    success: false,
+    notFound: true,
+    error: "No admission record was found matching this email address. Please make sure you use the exact email address provided during your admission application."
+  };
+}
+
+/**
+ * Complete Student Portal Password Setup and Onboarding
+ * 1. Creates Firebase Auth user account (or connects to existing)
+ * 2. Writes students/{uid} and users/{uid} documents with permanent technical identity
+ * 3. Updates admissions record with onboarded status
+ * 4. Initializes active student session
+ */
+export async function completeStudentPortalSetup(rawEmail, rawPassword, admissionRecord) {
+  const normEmail = (rawEmail || "").trim().toLowerCase();
+  const password = rawPassword || "";
+
+  if (!normEmail) {
+    throw new Error("Email Address is required.");
+  }
+  if (!password || password.length < 6) {
+    throw new Error("Password must be at least 6 characters long.");
+  }
+  if (!admissionRecord) {
+    throw new Error("No verified admission record provided for onboarding.");
+  }
+
+  let userCredential = null;
+
+  try {
+    userCredential = await createUserWithEmailAndPassword(auth, normEmail, password);
+  } catch (authErr) {
+    if (authErr.code === "auth/email-already-in-use") {
+      // The student account was already created in Firebase Auth
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, normEmail, password);
+      } catch (signInErr) {
+        throw new Error(
+          "A Student Portal account has already been registered for this email address. Please sign in at the Student Portal Login, or use 'Forgot Password' if you need to reset your password."
+        );
+      }
+    } else if (authErr.code === "auth/weak-password") {
+      throw new Error("Password is too weak. Please use at least 6 characters including letters and numbers.");
+    } else {
+      throw new Error(authErr.message || "Failed to create authentication credentials.");
+    }
+  }
+
+  const user = userCredential.user;
+  const uid = user.uid;
+
+  // Format student ID and admission number
+  const studentId = admissionRecord.studentId || 
+    (admissionRecord.applicationId ? admissionRecord.applicationId.replace("/APP/", "/STU/") : `DIMABIN/STU/2026/${uid.substring(0, 5).toUpperCase()}`);
+  const admissionNumber = admissionRecord.applicationId || `DIMABIN/ADM/2026/${uid.substring(0, 5).toUpperCase()}`;
+
+  const studentProfile = {
+    uid,
+    studentId,
+    admissionNumber,
+    fullName: (admissionRecord.fullName || "DIMABIN Student").trim(),
+    email: normEmail,
+    phone: admissionRecord.phone || "",
+    programme: admissionRecord.programme || "Diploma in Theology (Dipl.Th.)",
+    department: "Biblical Studies & Theology",
+    level: "Diploma I",
+    academicSession: admissionRecord.academicSession || "2026/2027",
+    studyCentre: admissionRecord.studyCentre || "Goshen Central Campus, Abeokuta",
+    status: "active",
+    role: "student",
+    cgpa: null,
+    onboardedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  // 1. Persist to students/{uid}
+  try {
+    const studentDocRef = doc(db, COLLECTIONS.STUDENTS, uid);
+    await setDoc(studentDocRef, {
+      ...studentProfile,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    console.log(`[DIMABIN Onboarding] Student document created: students/${uid}`);
+  } catch (err) {
+    console.warn(`[DIMABIN Onboarding] Firestore students write note: ${err.message}`);
+  }
+
+  // 2. Persist to users/{uid}
+  try {
+    const userDocRef = doc(db, COLLECTIONS.USERS, uid);
+    await setDoc(userDocRef, {
+      ...studentProfile,
+      role: "student",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    console.log(`[DIMABIN Onboarding] User document created: users/${uid}`);
+  } catch (err) {
+    console.warn(`[DIMABIN Onboarding] Firestore users write note: ${err.message}`);
+  }
+
+  // 3. Update admissions document
+  if (admissionRecord.id) {
+    try {
+      const admDocRef = doc(db, COLLECTIONS.ADMISSIONS, admissionRecord.id);
+      await updateDoc(admDocRef, {
+        onboarded: true,
+        studentUid: uid,
+        studentId: studentId,
+        onboardedAt: serverTimestamp()
+      });
+    } catch (_) {}
+  }
+
+  // 4. Cache locally
+  upsertCachedItem(COLLECTIONS.STUDENTS, { id: uid, ...studentProfile });
+
+  // 5. Initialize active session
+  const sessionData = {
+    uid,
+    email: normEmail,
+    fullName: studentProfile.fullName,
+    studentId: studentProfile.studentId,
+    admissionNumber: studentProfile.admissionNumber,
+    programme: studentProfile.programme,
+    level: studentProfile.level,
+    role: "student",
+    authenticatedAt: new Date().toISOString()
+  };
+
+  try {
+    sessionStorage.setItem("dimabin_student_session", JSON.stringify(sessionData));
+    localStorage.setItem("dimabin_student_session", JSON.stringify(sessionData));
+  } catch (_) {}
+
+  return {
+    success: true,
+    user,
+    student: studentProfile,
+    session: sessionData
+  };
 }
 
 /**

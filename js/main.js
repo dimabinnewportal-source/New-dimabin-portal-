@@ -5,7 +5,7 @@
 
 import './firebase-test.js';
 import { subscribeAdmissionSettings, formatAdmissionDate, DEFAULT_ADMISSION_SETTINGS } from './firebase-admissions.js';
-import { savePublicApplication } from './firebase-backend.js';
+import { savePublicApplication, checkAdmissionStatus } from './firebase-backend.js';
 import { mountPublicNoticeBoard } from './public-announcements.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -470,6 +470,10 @@ document.addEventListener('DOMContentLoaded', () => {
           statusEl.textContent = `Submitted (${result.applicationId})`;
           statusEl.style.color = '#15803D';
         }
+        const appIdEl = document.getElementById('summary-candidate-appid');
+        if (appIdEl) {
+          appIdEl.textContent = result.applicationId || 'DIMABIN/APP/2026';
+        }
       }).catch((err) => {
         console.warn('[DIMABIN Registry Service]: Application submission warning:', err);
         // If email uniqueness error, revert success pane and show error on step 1
@@ -876,6 +880,162 @@ document.addEventListener('DOMContentLoaded', () => {
       limit: 3,
       showViewAll: true
     });
+  }
+
+  // =========================================================================
+  // 12. DIMABIN ADMISSION STATUS CHECKER CONTROLLER
+  // =========================================================================
+  const checkerForm = document.getElementById('admission-checker-form');
+  if (checkerForm) {
+    const checkerAppInput = document.getElementById('checker-app-id');
+    const checkerDobInput = document.getElementById('checker-dob');
+    const checkerSubmitBtn = document.getElementById('checker-submit-btn');
+    const checkerAlertBox = document.getElementById('checker-alert-box');
+    const resultContainer = document.getElementById('admission-result-container');
+    const resultStatusPill = document.getElementById('result-status-pill');
+
+    const resultName = document.getElementById('result-candidate-name');
+    const resultAppId = document.getElementById('result-app-id');
+    const resultProg = document.getElementById('result-programme');
+    const resultSession = document.getElementById('result-session');
+    const resultCentre = document.getElementById('result-study-centre');
+    const resultEmail = document.getElementById('result-email');
+
+    const stateApproved = document.getElementById('result-state-approved');
+    const statePending = document.getElementById('result-state-pending');
+    const stateRejected = document.getElementById('result-state-rejected');
+    const resultRejectedReason = document.getElementById('result-rejected-reason');
+    const setupPortalBtn = document.getElementById('result-setup-portal-btn');
+    const checkAnotherBtn = document.getElementById('result-check-another-btn');
+
+    const showCheckerAlert = (type, message) => {
+      if (!checkerAlertBox) return;
+      checkerAlertBox.className = `portal-alert-box ${type} show`;
+      const icon = type === 'error' ? '⚠️' : type === 'success' ? '✓' : 'ℹ️';
+      checkerAlertBox.innerHTML = `<span class="portal-alert-icon" aria-hidden="true">${icon}</span><span>${message}</span>`;
+      checkerAlertBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+
+    const clearCheckerAlert = () => {
+      if (!checkerAlertBox) return;
+      checkerAlertBox.className = 'portal-alert-box';
+      checkerAlertBox.innerHTML = '';
+    };
+
+    checkerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearCheckerAlert();
+
+      const appId = (checkerAppInput?.value || '').trim();
+      const dob = (checkerDobInput?.value || '').trim();
+
+      if (!appId) {
+        showCheckerAlert('error', 'Please enter your official Application Number (e.g. DIMABIN/APP/2026/1001).');
+        if (checkerAppInput) checkerAppInput.focus();
+        return;
+      }
+
+      if (!dob) {
+        showCheckerAlert('error', 'Please enter your Date of Birth.');
+        if (checkerDobInput) checkerDobInput.focus();
+        return;
+      }
+
+      // Button loading state
+      if (checkerSubmitBtn) {
+        checkerSubmitBtn.disabled = true;
+        checkerSubmitBtn.innerHTML = `
+          <span class="btn-spinner" style="display:inline-block; width:16px; height:16px; border:2px solid #FFF; border-top-color:transparent; border-radius:50%; animation:spin 0.6s linear infinite; margin-right:8px; vertical-align:middle;"></span>
+          <span>VERIFYING REGISTRY RECORDS...</span>
+        `;
+      }
+
+      try {
+        const result = await checkAdmissionStatus(appId, dob);
+
+        if (!result.found) {
+          showCheckerAlert('error', result.error || 'No matching admission application found. Please check your credentials.');
+          if (resultContainer) resultContainer.style.display = 'none';
+          return;
+        }
+
+        const app = result;
+        const status = (app.status || 'pending').toLowerCase();
+
+        // Populate Candidate Details
+        if (resultName) resultName.textContent = app.fullName || 'Candidate';
+        if (resultAppId) resultAppId.textContent = app.applicationId || appId;
+        if (resultProg) resultProg.textContent = app.programme || 'Diploma in Theology (Dipl.Th.)';
+        if (resultSession) resultSession.textContent = app.academicSession || '2026/2027';
+        if (resultCentre) resultCentre.textContent = app.studyCentre || 'Goshen Central Campus, Abeokuta';
+        if (resultEmail) resultEmail.textContent = app.email || 'N/A';
+
+        // Reset state blocks
+        if (stateApproved) stateApproved.style.display = 'none';
+        if (statePending) statePending.style.display = 'none';
+        if (stateRejected) stateRejected.style.display = 'none';
+
+        if (status === 'approved' || status === 'admitted') {
+          // APPROVED / ADMITTED
+          if (resultStatusPill) {
+            resultStatusPill.className = 'result-status-pill approved';
+            resultStatusPill.textContent = '● APPROVED / ADMITTED';
+          }
+          if (stateApproved) stateApproved.style.display = 'block';
+
+          // Set Up Student Portal Button target
+          if (setupPortalBtn) {
+            setupPortalBtn.href = `student-password-setup.html?email=${encodeURIComponent(app.email || '')}&appId=${encodeURIComponent(app.applicationId || appId)}`;
+          }
+        } else if (status === 'rejected') {
+          // REJECTED
+          if (resultStatusPill) {
+            resultStatusPill.className = 'result-status-pill rejected';
+            resultStatusPill.textContent = '● APPLICATION NOT SUCCESSFUL';
+          }
+          if (stateRejected) {
+            stateRejected.style.display = 'block';
+            if (resultRejectedReason && app.statusReason) {
+              resultRejectedReason.textContent = `Registry Note: ${app.statusReason}`;
+            }
+          }
+        } else {
+          // PENDING
+          if (resultStatusPill) {
+            resultStatusPill.className = 'result-status-pill pending';
+            resultStatusPill.textContent = '● APPLICATION UNDER REVIEW';
+          }
+          if (statePending) statePending.style.display = 'block';
+        }
+
+        // Reveal Result Container and hide query form
+        if (resultContainer) {
+          resultContainer.style.display = 'block';
+          checkerForm.style.display = 'none';
+          resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      } catch (err) {
+        console.warn('[DIMABIN Admission Checker] Error:', err.message);
+        showCheckerAlert('error', err.message || 'An error occurred while verifying records. Please try again.');
+      } finally {
+        if (checkerSubmitBtn) {
+          checkerSubmitBtn.disabled = false;
+          checkerSubmitBtn.innerHTML = `<span>CHECK ADMISSION STATUS</span>`;
+        }
+      }
+    });
+
+    if (checkAnotherBtn) {
+      checkAnotherBtn.addEventListener('click', () => {
+        if (resultContainer) resultContainer.style.display = 'none';
+        if (checkerForm) {
+          checkerForm.style.display = 'block';
+          checkerForm.reset();
+          clearCheckerAlert();
+          if (checkerAppInput) checkerAppInput.focus();
+        }
+      });
+    }
   }
 });
 

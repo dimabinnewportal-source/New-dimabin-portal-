@@ -15,6 +15,8 @@ export default defineConfig({
         contact: resolve(__dirname, 'contact.html'),
         portals: resolve(__dirname, 'portals.html'),
         studentLogin: resolve(__dirname, 'student-login.html'),
+        studentDashboard: resolve(__dirname, 'student-dashboard.html'),
+        studentPasswordSetup: resolve(__dirname, 'student-password-setup.html'),
         lecturerLogin: resolve(__dirname, 'lecturer-login.html'),
         adminLogin: resolve(__dirname, 'admin-login.html'),
         adminDashboard: resolve(__dirname, 'admin-dashboard.html'),
