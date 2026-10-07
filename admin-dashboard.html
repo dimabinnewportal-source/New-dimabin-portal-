@@ -1368,11 +1368,22 @@
             <h2 class="section-main-title">Announcements Archive</h2>
             <p class="section-sub-title">Complete chronological archive of institute communication broadcasts.</p>
           </div>
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">📣</div>
-            <h3 class="placeholder-title">Central Announcement Feed</h3>
-            <p class="placeholder-desc">Unified historical log of all institutional announcements issued by the Administrator desk.</p>
-            <span class="placeholder-tag">Archive Initialized</span>
+
+          <div class="architecture-notice-box">
+            <strong>Public Website Synchronized:</strong><br>
+            All published announcements created here or in Public Website Notifications are instantly synchronized with the public Notice Board on the homepage and admissions page. Visitors see verified broadcasts in real time.
+          </div>
+
+          <div class="content-card" style="margin-bottom: 1.5rem;">
+            <div style="padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--admin-navy); margin-bottom: 0.25rem;">Central Announcement Feed</h3>
+                <p style="font-size: 0.8125rem; color: var(--admin-text-muted);">Manage published announcements and public notice broadcasts.</p>
+              </div>
+              <button type="button" class="btn-admin-primary" onclick="window.dimabinAdminDashboard?.navigateToSection('public-notifications')">
+                <span>+ Create New Announcement</span>
+              </button>
+            </div>
           </div>
         </section>
 

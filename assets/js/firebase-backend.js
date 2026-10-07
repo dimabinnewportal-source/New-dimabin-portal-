@@ -1076,10 +1076,12 @@ export async function createAnnouncement(data) {
   const record = {
     title: (data.title || "").trim(),
     message: (data.message || "").trim(),
-    audience: data.audience || "all", // all | students | lecturers | public
+    category: data.category || "General",
+    audience: data.audience || "public", // public | all | students | lecturers
     status: data.status || "published", // draft | published | archived
     createdAt: new Date().toISOString(),
-    publishedAt: data.status === "published" ? new Date().toISOString() : null,
+    publishedAt: data.status === "published" ? (data.publishedAt || new Date().toISOString()) : null,
+    expiresAt: data.expiresAt || null,
     createdBy: ADMIN_CREDENTIALS.ADMIN_ID
   };
 
@@ -1087,11 +1089,12 @@ export async function createAnnouncement(data) {
   upsertCachedItem(COLLECTIONS.ANNOUNCEMENTS, { id: localId, ...record });
 
   try {
-    await addDoc(collection(db, COLLECTIONS.ANNOUNCEMENTS), {
+    const docRef = await addDoc(collection(db, COLLECTIONS.ANNOUNCEMENTS), {
       ...record,
       createdAt: serverTimestamp(),
       publishedAt: record.publishedAt ? serverTimestamp() : null
     });
+    record.id = docRef.id;
   } catch (err) {
     console.warn(`[DIMABIN Announcements] Firestore create note: ${err.message}`);
   }
@@ -1100,10 +1103,52 @@ export async function createAnnouncement(data) {
     action: "announcement_published",
     description: `Published institutional announcement: "${record.title}".`,
     targetCollection: COLLECTIONS.ANNOUNCEMENTS,
-    targetDocumentId: localId
+    targetDocumentId: record.id || localId
   });
 
-  return { success: true, ...record };
+  return { success: true, id: record.id || localId, ...record };
+}
+
+export async function updateAnnouncement(annId, updates) {
+  const payload = {
+    ...updates,
+    updatedAt: new Date().toISOString(),
+    updatedBy: ADMIN_CREDENTIALS.ADMIN_ID
+  };
+
+  if (updates.status === "published" && !updates.publishedAt) {
+    payload.publishedAt = new Date().toISOString();
+  }
+
+  upsertCachedItem(COLLECTIONS.ANNOUNCEMENTS, { id: annId, ...payload });
+
+  try {
+    const docRef = doc(db, COLLECTIONS.ANNOUNCEMENTS, annId);
+    await updateDoc(docRef, {
+      ...payload,
+      updatedAt: serverTimestamp(),
+      ...(payload.publishedAt ? { publishedAt: serverTimestamp() } : {})
+    });
+  } catch (err) {
+    console.warn(`[DIMABIN Announcements] Update note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "announcement_updated",
+    description: `Updated announcement ${annId}.`,
+    targetCollection: COLLECTIONS.ANNOUNCEMENTS,
+    targetDocumentId: annId
+  });
+
+  return { success: true, annId, ...payload };
+}
+
+export async function toggleAnnouncementPublish(annId, currentStatus) {
+  const newStatus = currentStatus === "published" ? "draft" : "published";
+  return updateAnnouncement(annId, {
+    status: newStatus,
+    publishedAt: newStatus === "published" ? new Date().toISOString() : null
+  });
 }
 
 export async function deleteAnnouncement(annId) {

@@ -3891,4 +3891,208 @@ body.drawer-open {
   }
 }
 
+/* ==========================================================================
+   16. DIMABIN NOTICE BOARD / LATEST ANNOUNCEMENTS STYLES
+   Matching Exact DIMABIN Visual Identity: Navy, Blue, Gold, White, Poppins
+   ========================================================================== */
+
+.notice-board-section {
+  position: relative;
+  background-color: var(--white);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.notice-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.notice-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-md);
+  padding: 1.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(18, 36, 82, 0.04);
+}
+
+.notice-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--gold) 0%, var(--primary-blue) 100%);
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+}
+
+.notice-card:hover {
+  transform: translateY(-4px);
+  border-color: #CBD5E1;
+  box-shadow: 0 12px 24px -6px rgba(18, 36, 82, 0.12);
+}
+
+.notice-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.notice-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--dark-navy);
+  background-color: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: 9999px;
+}
+
+.notice-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.notice-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--dark-navy);
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+}
+
+.notice-card-body {
+  flex: 1;
+  margin-bottom: 1.25rem;
+}
+
+.notice-summary,
+.notice-full-text {
+  font-size: 0.875rem;
+  color: #475569;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
+.notice-card-footer {
+  padding-top: 1rem;
+  border-top: 1px solid #F1F5F9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notice-read-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: none;
+  color: var(--primary-blue);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  transition: color 0.2s ease;
+  font-family: inherit;
+}
+
+.notice-read-more-btn:hover {
+  color: var(--navy);
+  text-decoration: underline;
+}
+
+.notice-official-seal {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #64748B;
+  text-transform: uppercase;
+}
+
+.notice-board-action-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2.25rem;
+}
+
+/* Loading & Empty States */
+.notice-board-loading,
+.notice-board-empty {
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+  background-color: #F8FAFC;
+  border: 1px dashed #CBD5E1;
+  border-radius: var(--radius-lg);
+  margin-top: 1.5rem;
+}
+
+.notice-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(18, 36, 82, 0.15);
+  border-top-color: var(--primary-blue);
+  border-radius: 50%;
+  animation: noticeSpin 0.8s linear infinite;
+  margin: 0 auto 1rem auto;
+}
+
+@keyframes noticeSpin {
+  to { transform: rotate(360deg); }
+}
+
+.notice-board-loading p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.notice-empty-icon {
+  font-size: 2.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.notice-empty-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+  margin-bottom: 0.35rem;
+}
+
+.notice-empty-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  max-width: 28rem;
+  margin: 0 auto 0.75rem auto;
+}
+
+.notice-empty-sub {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--gold-hover);
+  text-transform: uppercase;
+}
+
+
 

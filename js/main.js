@@ -6,6 +6,7 @@
 import './firebase-test.js';
 import { subscribeAdmissionSettings, formatAdmissionDate, DEFAULT_ADMISSION_SETTINGS } from './firebase-admissions.js';
 import { savePublicApplication } from './firebase-backend.js';
+import { mountPublicNoticeBoard } from './public-announcements.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Header Sticky / Scrolled State Handler
@@ -834,6 +835,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Subscribe to real-time admission settings across pages
   if (admissionStatusBanner || admissionsClosedPane || admissionsForm) {
     subscribeAdmissionSettings(handleAdmissionStateUpdate);
+  }
+
+  // =========================================================================
+  // 11. DIMABIN PUBLIC NOTICE BOARD / ANNOUNCEMENTS INITIALIZER
+  // =========================================================================
+  // Homepage Notice Board
+  if (document.getElementById('home-notice-board-container')) {
+    mountPublicNoticeBoard({
+      containerId: 'home-notice-board-container',
+      limit: 3,
+      showViewAll: true
+    });
+  }
+
+  // Admissions Page Notice Board
+  if (document.getElementById('admissions-notice-board-container')) {
+    mountPublicNoticeBoard({
+      containerId: 'admissions-notice-board-container',
+      limit: 3,
+      showViewAll: true
+    });
   }
 });
 

@@ -13,6 +13,14 @@ import {
   formatAdmissionDate,
   DEFAULT_ADMISSION_SETTINGS
 } from "./firebase-admissions.js";
+import {
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+  toggleAnnouncementPublish,
+  subscribeAnnouncements,
+  formatDateOnly
+} from "./firebase-backend.js";
 
 // Canonical Administrator Credentials
 export const ADMIN_CONFIG = Object.freeze({
@@ -274,21 +282,201 @@ export function initDashboard() {
     }
   });
 
-  // 7. Notification Preview Form Triggers (UI only)
+  // 7. Announcement / Public Notification Manager (Integrated with Firestore "announcements" collection)
+  initAdminAnnouncementsManager();
+
+  // 8. ADMISSION AVAILABILITY & SESSION MANAGEMENT CONTROLLER (Phase 1)
+  initAdmissionManagement();
+}
+
+/**
+ * Initialize Admin Announcements Management
+ * Connects the "form-create-public-notif" to the Firestore "announcements" collection
+ * and renders Active, Scheduled, and Archived/Draft lists with Publish/Unpublish/Delete controls.
+ */
+export function initAdminAnnouncementsManager() {
   const publicNotifForm = document.getElementById("form-create-public-notif");
+  const feedback = document.getElementById("pub-notif-feedback");
+  const activePane = document.getElementById("pub-tab-active");
+  const scheduledPane = document.getElementById("pub-tab-scheduled");
+  const archivedPane = document.getElementById("pub-tab-archived");
+
+  const activeTabBtn = document.querySelector('.notif-tab-btn[data-tab="pub-tab-active"]');
+  const scheduledTabBtn = document.querySelector('.notif-tab-btn[data-tab="pub-tab-scheduled"]');
+  const archivedTabBtn = document.querySelector('.notif-tab-btn[data-tab="pub-tab-archived"]');
+
   if (publicNotifForm) {
-    publicNotifForm.addEventListener("submit", (e) => {
+    publicNotifForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const title = document.getElementById("pub-notif-title")?.value;
-      const feedback = document.getElementById("pub-notif-feedback");
-      if (feedback) {
-        feedback.style.display = "block";
-        feedback.textContent = `Notification '${title || "Announcement"}' validated for Public audience. Backend storage will be enabled in future phase.`;
-        setTimeout(() => { feedback.style.display = "none"; }, 5000);
+      const titleInput = document.getElementById("pub-notif-title");
+      const categoryInput = document.getElementById("pub-notif-category");
+      const statusInput = document.getElementById("pub-notif-status");
+      const messageInput = document.getElementById("pub-notif-message");
+
+      const title = titleInput?.value?.trim();
+      const message = messageInput?.value?.trim();
+      const category = categoryInput?.options[categoryInput.selectedIndex]?.text || "Institutional Announcement";
+      const status = statusInput?.value || "published";
+
+      if (!title || !message) {
+        if (feedback) {
+          feedback.style.display = "block";
+          feedback.style.background = "#FEE2E2";
+          feedback.style.color = "#B91C1C";
+          feedback.style.borderColor = "#FECACA";
+          feedback.textContent = "Please provide both a title and message for the announcement.";
+        }
+        return;
       }
-      publicNotifForm.reset();
+
+      try {
+        const submitBtn = publicNotifForm.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        await createAnnouncement({
+          title,
+          message,
+          category,
+          audience: "public",
+          status: status === "draft" ? "draft" : status === "scheduled" ? "scheduled" : "published"
+        });
+
+        if (feedback) {
+          feedback.style.display = "block";
+          feedback.style.background = "#DCFCE7";
+          feedback.style.color = "#15803D";
+          feedback.style.borderColor = "#BBF7D0";
+          feedback.textContent = `✓ Announcement "${title}" ${status === "published" ? "published live to the public website!" : "saved as " + status + "."}`;
+          setTimeout(() => { feedback.style.display = "none"; }, 6000);
+        }
+
+        publicNotifForm.reset();
+      } catch (err) {
+        if (feedback) {
+          feedback.style.display = "block";
+          feedback.style.background = "#FEE2E2";
+          feedback.style.color = "#B91C1C";
+          feedback.textContent = `Error publishing announcement: ${err.message}`;
+        }
+      } finally {
+        const submitBtn = publicNotifForm.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = false;
+      }
     });
   }
+
+  // Subscribe to real-time announcements from Firestore and populate tabs
+  subscribeAnnouncements((announcements) => {
+    const list = announcements || [];
+
+    const activeList = list.filter((a) => a.status === "published");
+    const scheduledList = list.filter((a) => a.status === "scheduled");
+    const archivedList = list.filter((a) => a.status === "draft" || a.status === "archived");
+
+    if (activeTabBtn) activeTabBtn.textContent = `Active Public Notifications (${activeList.length})`;
+    if (scheduledTabBtn) scheduledTabBtn.textContent = `Scheduled Notifications (${scheduledList.length})`;
+    if (archivedTabBtn) archivedTabBtn.textContent = `Drafts & Archived (${archivedList.length})`;
+
+    const renderCard = (ann) => {
+      const isPublished = ann.status === "published";
+      const dateStr = formatDateOnly(ann.publishedAt || ann.createdAt);
+      return `
+        <div class="content-card" style="margin-bottom: 1rem; border-left: 4px solid ${isPublished ? "var(--admin-success)" : "var(--admin-gold)"};" data-ann-id="${ann.id}">
+          <div style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 260px;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                <span class="placeholder-tag" style="background: ${isPublished ? "var(--admin-success-bg)" : "#FEF3C7"}; color: ${isPublished ? "var(--admin-success)" : "#92400E"}; font-size: 0.7rem;">
+                  ${(ann.status || "draft").toUpperCase()}
+                </span>
+                <span style="font-size: 0.75rem; color: var(--admin-text-muted);">${ann.category || "General"}</span>
+                <span style="font-size: 0.75rem; color: var(--admin-text-muted);">· ${dateStr}</span>
+              </div>
+              <h4 style="font-size: 1rem; font-weight: 700; color: var(--admin-navy); margin-bottom: 0.5rem;">${ann.title || "Untitled Announcement"}</h4>
+              <p style="font-size: 0.8125rem; color: var(--admin-text-muted); line-height: 1.5;">${ann.message || ""}</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <button type="button" class="btn-card-action ann-toggle-btn" data-id="${ann.id}" data-current-status="${ann.status || "published"}">
+                ${isPublished ? "Unpublish (Move to Draft)" : "Publish to Website"}
+              </button>
+              <button type="button" class="btn-card-action ann-delete-btn" data-id="${ann.id}" style="color: #DC2626; border-color: #FCA5A5;">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    if (activePane) {
+      if (activeList.length === 0) {
+        activePane.innerHTML = `
+          <div class="empty-state-box">
+            <div class="empty-icon">📢</div>
+            <div class="empty-state-text">No active public notifications.</div>
+            <div class="empty-state-sub">Create and publish an announcement to display it live on the public website Notice Board.</div>
+          </div>
+        `;
+      } else {
+        activePane.innerHTML = activeList.map(renderCard).join("");
+      }
+    }
+
+    if (scheduledPane) {
+      if (scheduledList.length === 0) {
+        scheduledPane.innerHTML = `
+          <div class="empty-state-box">
+            <div class="empty-icon">⏱️</div>
+            <div class="empty-state-text">No scheduled public notifications.</div>
+            <div class="empty-state-sub">Announcements set with a future release date will appear here.</div>
+          </div>
+        `;
+      } else {
+        scheduledPane.innerHTML = scheduledList.map(renderCard).join("");
+      }
+    }
+
+    if (archivedPane) {
+      if (archivedList.length === 0) {
+        archivedPane.innerHTML = `
+          <div class="empty-state-box">
+            <div class="empty-icon">📦</div>
+            <div class="empty-state-text">No drafts or archived announcements.</div>
+            <div class="empty-state-sub">Unpublished drafts or archived notices will be listed here.</div>
+          </div>
+        `;
+      } else {
+        archivedPane.innerHTML = archivedList.map(renderCard).join("");
+      }
+    }
+
+    // Attach actions
+    document.querySelectorAll(".ann-toggle-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const annId = btn.getAttribute("data-id");
+        const curr = btn.getAttribute("data-current-status");
+        btn.disabled = true;
+        try {
+          await toggleAnnouncementPublish(annId, curr);
+        } catch (err) {
+          console.warn("Toggle publish error:", err);
+        }
+      });
+    });
+
+    document.querySelectorAll(".ann-delete-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const annId = btn.getAttribute("data-id");
+        if (confirm("Are you sure you want to delete this announcement?")) {
+          btn.disabled = true;
+          try {
+            await deleteAnnouncement(annId);
+          } catch (err) {
+            console.warn("Delete announcement error:", err);
+          }
+        }
+      });
+    });
+  });
 
   const portalNotifForm = document.getElementById("form-create-portal-notif");
   if (portalNotifForm) {
@@ -296,18 +484,15 @@ export function initDashboard() {
       e.preventDefault();
       const title = document.getElementById("portal-notif-title")?.value;
       const audience = document.getElementById("portal-notif-audience")?.value;
-      const feedback = document.getElementById("portal-notif-feedback");
-      if (feedback) {
-        feedback.style.display = "block";
-        feedback.textContent = `Notification '${title || "Notice"}' validated for '${audience?.toUpperCase()}' audience. Backend delivery will be enabled in future phase.`;
-        setTimeout(() => { feedback.style.display = "none"; }, 5000);
+      const feedbackEl = document.getElementById("portal-notif-feedback");
+      if (feedbackEl) {
+        feedbackEl.style.display = "block";
+        feedbackEl.textContent = `Notification '${title || "Notice"}' validated for '${audience?.toUpperCase()}' audience.`;
+        setTimeout(() => { feedbackEl.style.display = "none"; }, 5000);
       }
       portalNotifForm.reset();
     });
   }
-
-  // 8. ADMISSION AVAILABILITY & SESSION MANAGEMENT CONTROLLER (Phase 1)
-  initAdmissionManagement();
 }
 
 /**

@@ -234,6 +234,26 @@
     </section>
 
     <!-- ========================================================================
+         DIMABIN ADMISSIONS NOTICE BOARD / LATEST ANNOUNCEMENTS
+         ======================================================================== -->
+    <section class="section notice-board-section" id="admissions-notice-board" aria-label="Admissions Notices and Announcements">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">REGISTRY BULLETINS</span>
+          <h2 class="section-title">Latest Announcements &amp; Updates</h2>
+          <p class="section-subtitle">
+            Essential admissions deadlines, orientation schedules, and registry communiques
+          </p>
+        </div>
+
+        <!-- Dynamic Live Container rendered from Firestore "announcements" collection -->
+        <div id="admissions-notice-board-container" class="notice-board-container">
+          <!-- Populated in real-time by assets/js/public-announcements.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
          3. ONLINE ADMISSION FORM SECTION (Light-Grey Background)
          ======================================================================== -->
     <section class="section section-light" id="admission-form-section" aria-label="Interactive Online Admission Form">

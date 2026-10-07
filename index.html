@@ -199,6 +199,26 @@
       <div class="hero-bottom-accent" aria-hidden="true"></div>
     </section>
 
+    <!-- ========================================================================
+         DIMABIN NOTICE BOARD / LATEST ANNOUNCEMENTS (Real-Time Live Component)
+         ======================================================================== -->
+    <section class="section notice-board-section" id="notice-board" aria-label="DIMABIN Notice Board and Latest Announcements">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">OFFICIAL COMMUNICATIONS</span>
+          <h2 class="section-title">DIMABIN Notice Board</h2>
+          <p class="section-subtitle">
+            Latest institutional broadcasts, academic notices, and registry directives
+          </p>
+        </div>
+
+        <!-- Dynamic Live Container rendered from Firestore "announcements" collection -->
+        <div id="home-notice-board-container" class="notice-board-container">
+          <!-- Populated in real-time by assets/js/public-announcements.js -->
+        </div>
+      </div>
+    </section>
+
     <!-- 2. WELCOME SECTION -->
     <section class="section section-white" id="welcome" aria-label="Welcome Message">
       <div class="container">
