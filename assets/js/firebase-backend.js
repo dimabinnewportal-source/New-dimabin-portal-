@@ -295,13 +295,46 @@ export async function checkSystemStatus() {
 
 /**
  * Save public application from admissions.html
+ * Enforces: ONE EMAIL ADDRESS = ONE STUDENT ADMISSION RECORD.
  */
 export async function savePublicApplication(formData) {
+  const normalizedEmail = (formData.email || "").trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new Error("A valid email address is required to submit an application.");
+  }
+
+  // 1. Check local cache first for duplicate email
+  const cachedAdmissions = getCachedCollection(COLLECTIONS.ADMISSIONS) || [];
+  const existingCached = cachedAdmissions.find(
+    (app) => (app.email || "").trim().toLowerCase() === normalizedEmail
+  );
+  if (existingCached) {
+    throw new Error("This email address has already been used for an admission application. Each applicant must use a unique email address.");
+  }
+
+  // 2. Query Firestore collection 'admissions' for existing record with this normalized email
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.ADMISSIONS),
+      where("email", "==", normalizedEmail),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      throw new Error("This email address has already been used for an admission application. Each applicant must use a unique email address.");
+    }
+  } catch (err) {
+    if (err.message && err.message.includes("already been used")) {
+      throw err;
+    }
+    console.warn(`[DIMABIN Admissions] Firestore uniqueness check warning: ${err.message}`);
+  }
+
   const appId = `DIMABIN/APP/2026/${Math.floor(1000 + Math.random() * 9000)}`;
   const record = {
     applicationId: appId,
     fullName: (formData.name || formData.fullName || "Candidate").trim(),
-    email: (formData.email || "").trim(),
+    email: normalizedEmail,
     phone: (formData.phone || "").trim(),
     whatsapp: (formData.whatsapp || formData.phone || "").trim(),
     programme: formData.program || formData.programme || "Diploma in Theology (Dipl.Th.)",

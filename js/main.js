@@ -472,6 +472,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }).catch((err) => {
         console.warn('[DIMABIN Registry Service]: Application submission warning:', err);
+        // If email uniqueness error, revert success pane and show error on step 1
+        if (err.message && err.message.includes('already been used')) {
+          if (successPane) successPane.classList.remove('active');
+          currentStep = 1;
+          updateStepUI(currentStep);
+          if (tracker) tracker.style.display = 'flex';
+          if (intro) intro.style.display = 'block';
+          if (formErrorList) {
+            formErrorList.innerHTML = `<li><strong>Email Already Registered:</strong> ${err.message}</li>`;
+          }
+          if (formErrorPanel) {
+            formErrorPanel.classList.add('show');
+            formErrorPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+          const emailInput = document.getElementById('app-email');
+          if (emailInput) {
+            emailInput.classList.add('input-error');
+            emailInput.focus();
+          }
+        }
       });
     });
 
@@ -659,8 +679,8 @@ document.addEventListener('DOMContentLoaded', () => {
     box.innerHTML = `<span class="portal-alert-icon" aria-hidden="true">${icon}</span><span>${message}</span>`;
   };
 
-  // Portal Login Forms: Empty field validation & friendly notification (strictly no auth, no backend)
-  document.querySelectorAll('.portal-login-form:not(#admin-login-form)').forEach((form) => {
+  // Portal Login Forms: Empty field validation & friendly notification (strictly no auth, no backend for non-activated portals)
+  document.querySelectorAll('.portal-login-form:not(#admin-login-form):not(#student-login-form)').forEach((form) => {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
 
@@ -712,8 +732,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // "Forgot Password?" friendly click handler (UI only, no backend recovery)
-  document.querySelectorAll('.forgot-password-link:not(#admin-forgot-pass)').forEach((link) => {
+  // "Forgot Password?" friendly click handler (UI only, no backend recovery for non-activated portals)
+  document.querySelectorAll('.forgot-password-link:not(#admin-forgot-pass):not(#student-forgot-pass)').forEach((link) => {
     link.addEventListener('click', function (e) {
       e.preventDefault();
       const card = this.closest('.portal-login-card');

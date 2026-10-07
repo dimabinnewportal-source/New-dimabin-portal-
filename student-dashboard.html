@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Student Portal Dashboard | Divine Mandate Bible Institute (DIMABIN)</title>
+  <meta name="description" content="DIMABIN Student Information System and Command Centre for academic progress, course registration, results, and learning assessments.">
+  <meta name="theme-color" content="#122452">
+
+  <!-- Open Graph Metadata -->
+  <meta property="og:site_name" content="Divine Mandate Bible Institute (DIMABIN)">
+  <meta property="og:title" content="Student Portal Dashboard | Divine Mandate Bible Institute (DIMABIN)">
+  <meta property="og:description" content="Institutional Academic Command Centre for DIMABIN Students.">
+  <meta property="og:type" content="website">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/logo/dimabin-emblem.svg">
+
+  <!-- Google Fonts: Poppins (300, 400, 500, 600, 700, 800) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="assets/css/student-dashboard.css">
+</head>
+<body class="student-body">
+
+  <div class="student-layout">
+
+    <!-- Mobile Drawer Overlay -->
+    <div class="student-drawer-overlay" id="student-drawer-overlay"></div>
+
+    <!-- ======================================================================
+         SIDEBAR NAVIGATION
+         ====================================================================== -->
+    <aside class="student-sidebar" id="student-sidebar" aria-label="Student Navigation">
+
+      <!-- Institutional Branding -->
+      <a href="index.html" class="student-sidebar-brand" aria-label="DIMABIN Home">
+        <img src="assets/logo/dimabin-emblem.svg" alt="DIMABIN Seal" width="38" height="38">
+        <div class="student-brand-text">
+          <h1>DIMABIN</h1>
+          <span class="student-brand-sub">STUDENT PORTAL</span>
+        </div>
+      </a>
+
+      <!-- Navigation Links -->
+      <nav class="student-sidebar-nav">
+
+        <!-- OVERVIEW -->
+        <div class="student-nav-group-title">OVERVIEW</div>
+        <button type="button" class="student-nav-item active" data-section="dashboard">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Dashboard</span>
+        </button>
+
+        <!-- ACADEMIC -->
+        <div class="student-nav-group-title">ACADEMIC</div>
+        <button type="button" class="student-nav-item" data-section="profile">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span>My Profile</span>
+        </button>
+        <button type="button" class="student-nav-item" data-section="course-reg">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+          <span>Course Registration</span>
+        </button>
+        <button type="button" class="student-nav-item" data-section="curriculum">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+          <span>Curriculum</span>
+        </button>
+        <button type="button" class="student-nav-item" data-section="calendar">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span>Calendar</span>
+        </button>
+        <button type="button" class="student-nav-item" data-section="course-ledger">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span>Course Ledger</span>
+        </button>
+        <button type="button" class="student-nav-item" data-section="results">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <span>My Results</span>
+        </button>
+
+        <!-- FINANCE -->
+        <div class="student-nav-group-title">FINANCE</div>
+        <button type="button" class="student-nav-item" data-section="payments">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+            <line x1="1" y1="10" x2="23" y2="10"></line>
+          </svg>
+          <span>My Payments</span>
+        </button>
+
+        <!-- ASSESSMENT -->
+        <div class="student-nav-group-title">ASSESSMENT</div>
+        <button type="button" class="student-nav-item" data-section="cbt">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span>CBT</span>
+        </button>
+
+        <!-- ADMINISTRATION -->
+        <div class="student-nav-group-title">ADMINISTRATION</div>
+        <button type="button" class="student-nav-item" data-section="notifications">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span>Notifications</span>
+        </button>
+        <button type="button" class="student-nav-item" data-section="disciplinary">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>Disciplinary Actions</span>
+        </button>
+
+        <!-- SUPPORT -->
+        <div class="student-nav-group-title">SUPPORT</div>
+        <button type="button" class="student-nav-item" data-section="support">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>Support</span>
+        </button>
+
+        <!-- ACCOUNT -->
+        <div class="student-nav-group-title">ACCOUNT</div>
+        <button type="button" class="student-nav-item" id="nav-logout-btn">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #F87171;">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span style="color: #FCA5A5;">Logout</span>
+        </button>
+
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="student-sidebar-footer">
+        <button type="button" class="student-logout-btn" id="sidebar-logout-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span>Sign Out</span>
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- ======================================================================
+         MAIN CONTENT AREA
+         ====================================================================== -->
+    <div class="student-main-content">
+
+      <!-- TOP HEADER -->
+      <header class="student-header" role="banner">
+        <div class="student-header-left">
+          <button type="button" class="student-menu-toggle" id="student-menu-toggle" aria-label="Toggle Navigation">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <span class="student-header-badge" id="header-active-session">2026/2027 ACADEMIC SESSION</span>
+        </div>
+
+        <div class="student-header-right">
+          <button type="button" class="student-header-notif-btn" id="header-notif-btn" aria-label="Notifications" onclick="window.dimabinStudentPortal?.navigateToSection('notifications')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="student-notif-dot" id="header-notif-dot"></span>
+          </button>
+
+          <div class="student-header-user">
+            <div class="student-avatar" id="header-student-avatar">ST</div>
+            <div class="student-user-info">
+              <span class="student-user-name" id="header-student-name">Loading...</span>
+              <span class="student-user-role" id="header-student-role">DIMABIN Student</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- DASHBOARD BODY -->
+      <main class="student-dashboard-body" id="main-student-content">
+
+        <!-- ================================================================
+             SECTION 1: DASHBOARD OVERVIEW
+             ================================================================ -->
+        <section class="student-section active" id="section-dashboard" aria-label="Student Dashboard Overview">
+
+          <!-- 6. STUDENT PROFILE HERO CARD -->
+          <div class="student-profile-hero-card">
+            <div class="hero-glow-pattern"></div>
+            <div class="student-hero-content">
+              <div class="student-hero-left">
+                <div class="student-hero-avatar-large" id="hero-avatar">ST</div>
+                <div>
+                  <span class="student-hero-title-tag">
+                    <span>✦</span> DIMABIN Student
+                  </span>
+                  <h2 class="student-hero-fullname" id="hero-student-name">Loading Profile...</h2>
+                  <div class="student-hero-meta-row">
+                    <span class="student-hero-meta-pill" id="hero-student-id">DIMABIN/STU/...</span>
+                    <span id="hero-student-level">Level: N/A</span>
+                    <span>·</span>
+                    <span id="hero-student-department">Department: Theological Studies</span>
+                    <span>·</span>
+                    <span id="hero-student-session">Session: 2026/2027</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="student-hero-right">
+                <div class="student-hero-stat-badge">
+                  <span class="stat-badge-label">Institutional Status</span>
+                  <span class="stat-badge-val" id="hero-academic-status" style="color: #4ADE80;">Active</span>
+                </div>
+                <div class="student-hero-stat-badge">
+                  <span class="stat-badge-label">Cumulative GPA</span>
+                  <span class="stat-badge-val" id="hero-cgpa-val" style="color: var(--student-gold);">N/A</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7. DASHBOARD SUMMARY CARDS -->
+          <div class="student-metrics-grid">
+            <!-- Metric 1: CGPA -->
+            <div class="student-metric-card">
+              <div class="metric-header">
+                <span class="metric-title">CGPA</span>
+                <div class="metric-icon-wrap icon-gold">★</div>
+              </div>
+              <div class="metric-value" id="card-cgpa-val">N/A</div>
+              <div class="metric-subtitle">Cumulative Grade Point</div>
+            </div>
+
+            <!-- Metric 2: Current Level -->
+            <div class="student-metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Current Level</span>
+                <div class="metric-icon-wrap icon-blue">🎓</div>
+              </div>
+              <div class="metric-value" id="card-level-val">N/A</div>
+              <div class="metric-subtitle">Current Academic Placement</div>
+            </div>
+
+            <!-- Metric 3: Course Registration Status -->
+            <div class="student-metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Registration</span>
+                <div class="metric-icon-wrap icon-blue">📚</div>
+              </div>
+              <div class="metric-value" id="card-reg-status" style="font-size: 1.15rem; color: var(--student-blue);">Registration Pending</div>
+              <div class="metric-subtitle">First Semester 2026/2027</div>
+            </div>
+
+            <!-- Metric 4: Outstanding Balance -->
+            <div class="student-metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Finance</span>
+                <div class="metric-icon-wrap icon-green">💳</div>
+              </div>
+              <div class="metric-value" id="card-finance-val">N/A</div>
+              <div class="metric-subtitle">Outstanding Balance</div>
+            </div>
+
+            <!-- Metric 5: Academic Status -->
+            <div class="student-metric-card">
+              <div class="metric-header">
+                <span class="metric-title">Academic Standing</span>
+                <div class="metric-icon-wrap icon-green">✓</div>
+              </div>
+              <div class="metric-value" id="card-standing-val" style="font-size: 1.2rem; color: var(--student-success);">In Good Standing</div>
+              <div class="metric-subtitle">Clearance Active</div>
+            </div>
+
+            <!-- Metric 6: CBT / Assessment Status -->
+            <div class="student-metric-card">
+              <div class="metric-header">
+                <span class="metric-title">CBT Status</span>
+                <div class="metric-icon-wrap icon-purple">🖥️</div>
+              </div>
+              <div class="metric-value" id="card-cbt-val" style="font-size: 1.15rem; color: var(--student-navy);">No CBT Active</div>
+              <div class="metric-subtitle">Scheduled Assessments</div>
+            </div>
+          </div>
+
+          <!-- DUAL COLUMN SPLIT -->
+          <div class="student-dual-grid">
+
+            <!-- LEFT MAIN: Course Reg Card & Latest Results -->
+            <div>
+
+              <!-- 8. COURSE REGISTRATION CARD -->
+              <div class="student-content-card">
+                <div class="student-card-header">
+                  <h3 class="student-card-title">
+                    <span>📖</span> Course Registration
+                  </h3>
+                  <button type="button" class="student-card-action-btn" onclick="window.dimabinStudentPortal?.navigateToSection('course-reg')">
+                    Course Registration →
+                  </button>
+                </div>
+                <div class="student-card-body">
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Current Session</span>
+                      <p style="font-size: 0.9375rem; font-weight: 700; color: var(--student-navy);" id="reg-card-session">2026/2027</p>
+                    </div>
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Current Semester</span>
+                      <p style="font-size: 0.9375rem; font-weight: 700; color: var(--student-navy);">First Semester</p>
+                    </div>
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Registration Status</span>
+                      <p><span class="status-pill-badge badge-gold" id="reg-card-badge">Registration Open</span></p>
+                    </div>
+                  </div>
+                  <p style="font-size: 0.84rem; color: var(--student-text-muted); line-height: 1.5;">
+                    Online course enrollment for the current semester is available. Register your required and elective theology credit units before the add/drop deadline.
+                  </p>
+                </div>
+              </div>
+
+              <!-- 10. LATEST RESULTS CARD -->
+              <div class="student-content-card">
+                <div class="student-card-header">
+                  <h3 class="student-card-title">
+                    <span>📊</span> Latest Results
+                  </h3>
+                  <button type="button" class="student-card-action-btn" onclick="window.dimabinStudentPortal?.navigateToSection('results')">
+                    View Complete Result Ledger →
+                  </button>
+                </div>
+                <div class="student-card-body">
+                  <div class="student-table-wrap">
+                    <table class="student-table">
+                      <thead>
+                        <tr>
+                          <th>Course Code</th>
+                          <th>Course Title</th>
+                          <th>Score</th>
+                          <th>Grade</th>
+                          <th>Semester</th>
+                          <th>Session</th>
+                        </tr>
+                      </thead>
+                      <tbody id="dash-latest-results-tbody">
+                        <tr>
+                          <td colspan="6">
+                            <div class="student-empty-box">
+                              <div class="student-empty-icon">📋</div>
+                              <div class="student-empty-text">No results have been published yet.</div>
+                              <div class="student-empty-sub">Tutor assessments and registry examination clearances will appear here upon publication.</div>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 14. CBT BANNER IN DASHBOARD -->
+              <div class="student-content-card">
+                <div class="student-card-header">
+                  <h3 class="student-card-title">
+                    <span>🖥️</span> Computer-Based Test (CBT)
+                  </h3>
+                  <button type="button" class="student-card-action-btn" onclick="window.dimabinStudentPortal?.navigateToSection('cbt')">
+                    View Available Tests →
+                  </button>
+                </div>
+                <div class="student-card-body">
+                  <p style="font-size: 0.875rem; color: var(--student-text-muted); margin-bottom: 1rem;">
+                    Take your assigned computer-based assessments in biblical studies, scriptural hermeneutics, and theology.
+                  </p>
+                  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: 1rem; background: var(--student-bg); border-radius: var(--student-radius-sm);">
+                    <div>
+                      <span class="status-pill-badge badge-blue">CBT MODULE READY</span>
+                      <p style="font-size: 0.84rem; font-weight: 700; color: var(--student-navy); margin-top: 0.25rem;">No CBT Scheduled for Today</p>
+                    </div>
+                    <button type="button" class="student-card-action-btn" onclick="window.dimabinStudentPortal?.navigateToSection('cbt')">
+                      Open CBT Portal
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Academic Snapshot, Payments & Recent Activity -->
+            <div>
+
+              <!-- 11. ACADEMIC PROFILE SNAPSHOT -->
+              <div class="student-content-card">
+                <div class="student-card-header">
+                  <h3 class="student-card-title">Academic Profile</h3>
+                </div>
+                <div class="student-card-body">
+                  <div style="display: flex; flex-direction: column; gap: 0.85rem; font-size: 0.84rem;">
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Programme</span>
+                      <strong style="color: var(--student-navy);" id="snap-programme">Loading...</strong>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Department</span>
+                      <strong style="color: var(--student-navy);" id="snap-department">Theological Studies</strong>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Study Centre</span>
+                      <strong style="color: var(--student-navy);" id="snap-study-centre">Goshen Central Campus, Abeokuta</strong>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Entry Session</span>
+                      <strong style="color: var(--student-navy);" id="snap-entry-session">2026/2027</strong>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Projected Graduation</span>
+                      <strong style="color: var(--student-navy);" id="snap-graduation">2028</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 9. MY PAYMENTS SUMMARY CARD -->
+              <div class="student-content-card">
+                <div class="student-card-header">
+                  <h3 class="student-card-title">My Payments</h3>
+                  <button type="button" class="student-card-action-btn" onclick="window.dimabinStudentPortal?.navigateToSection('payments')">
+                    Ledger →
+                  </button>
+                </div>
+                <div class="student-card-body">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.84rem;">
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Outstanding</span>
+                      <strong style="color: #DC2626; font-size: 1.1rem;">N/A</strong>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Total Paid</span>
+                      <strong style="color: var(--student-navy); font-size: 1.1rem;">N/A</strong>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Pending Invoices</span>
+                      <strong style="color: var(--student-text-muted);">N/A</strong>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Last Payment</span>
+                      <strong style="color: var(--student-text-muted);">N/A</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 12. RECENT ACTIVITY CARD -->
+              <div class="student-content-card">
+                <div class="student-card-header">
+                  <h3 class="student-card-title">Recent Activity</h3>
+                </div>
+                <div class="student-card-body">
+                  <div id="student-recent-activity-list">
+                    <div class="student-empty-box" style="padding: 1.5rem 0.5rem;">
+                      <div class="student-empty-icon" style="font-size: 1.5rem;">⚡</div>
+                      <div class="student-empty-text" style="font-size: 0.8125rem;">No recent activity yet.</div>
+                      <div class="student-empty-sub" style="font-size: 0.75rem;">Your account logins, enrollments, and test submissions will be recorded here.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- ================================================================
+             SECTION 2: MY PROFILE
+             ================================================================ -->
+        <section class="student-section" id="section-profile" aria-label="My Profile">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Student Profile &amp; Registry Record</h3>
+              <span class="status-pill-badge badge-green">VERIFIED IDENTITY</span>
+            </div>
+            <div class="student-card-body">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem;">
+                <div>
+                  <span style="font-size: 0.75rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Full Legal Name</span>
+                  <p style="font-size: 1.1rem; font-weight: 800; color: var(--student-navy);" id="prof-fullname">Loading...</p>
+                </div>
+                <div>
+                  <span style="font-size: 0.75rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Student ID / Admission Number</span>
+                  <p style="font-size: 1.1rem; font-weight: 800; color: var(--student-blue);" id="prof-student-id">-</p>
+                </div>
+                <div>
+                  <span style="font-size: 0.75rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Registered Email Address</span>
+                  <p style="font-size: 0.9375rem; font-weight: 600; color: var(--student-navy);" id="prof-email">-</p>
+                </div>
+                <div>
+                  <span style="font-size: 0.75rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Phone Number</span>
+                  <p style="font-size: 0.9375rem; font-weight: 600; color: var(--student-navy);" id="prof-phone">N/A</p>
+                </div>
+                <div>
+                  <span style="font-size: 0.75rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Programme</span>
+                  <p style="font-size: 0.9375rem; font-weight: 700; color: var(--student-navy);" id="prof-programme">-</p>
+                </div>
+                <div>
+                  <span style="font-size: 0.75rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Department</span>
+                  <p style="font-size: 0.9375rem; font-weight: 700; color: var(--student-navy);" id="prof-department">Theological Studies</p>
+                </div>
+                <div>
+                  <span style="font-size: 0.75rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Level</span>
+                  <p style="font-size: 0.9375rem; font-weight: 700; color: var(--student-navy);" id="prof-level">-</p>
+                </div>
+                <div>
+                  <span style="font-size: 0.75rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Study Centre</span>
+                  <p style="font-size: 0.9375rem; font-weight: 700; color: var(--student-navy);" id="prof-study-centre">Goshen Central Campus, Abeokuta</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 3: COURSE REGISTRATION
+             ================================================================ -->
+        <section class="student-section" id="section-course-reg" aria-label="Course Registration">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Course Registration — First Semester 2026/2027</h3>
+              <span class="status-pill-badge badge-gold">REGISTRATION OPEN</span>
+            </div>
+            <div class="student-card-body">
+              <p style="font-size: 0.875rem; color: var(--student-text-muted); margin-bottom: 1.5rem;">
+                Enrolled courses will be registered in this module. Full registration workflow engine will be implemented in the subsequent phase.
+              </p>
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📖</div>
+                <div class="student-empty-text">No courses registered yet for the 2026/2027 session.</div>
+                <div class="student-empty-sub">Course selection and credit unit enrollment will open per academic calendar.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 4: CURRICULUM
+             ================================================================ -->
+        <section class="student-section" id="section-curriculum" aria-label="Curriculum">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Academic Curriculum Outline</h3>
+              <span class="status-pill-badge badge-blue">OFFICIAL SYLLABUS</span>
+            </div>
+            <div class="student-card-body">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📜</div>
+                <div class="student-empty-text">Institutional Curriculum Guide</div>
+                <div class="student-empty-sub">Complete programme syllabi and course prerequisites are maintained by the Academic Board.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 5: CALENDAR
+             ================================================================ -->
+        <section class="student-section" id="section-calendar" aria-label="Academic Calendar">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Academic Calendar 2026/2027</h3>
+            </div>
+            <div class="student-card-body">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📅</div>
+                <div class="student-empty-text">Calendar Schedule</div>
+                <div class="student-empty-sub">Resumption, matriculation, examination timetables, and convocation dates.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 6: COURSE LEDGER
+             ================================================================ -->
+        <section class="student-section" id="section-course-ledger" aria-label="Course Ledger">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Course Ledger &amp; Credit Audits</h3>
+            </div>
+            <div class="student-card-body">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📑</div>
+                <div class="student-empty-text">Zero records in current ledger.</div>
+                <div class="student-empty-sub">Credit units completed and pending graduation requirements will appear here.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 7: MY RESULTS
+             ================================================================ -->
+        <section class="student-section" id="section-results" aria-label="My Results">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">My Academic Results Ledger</h3>
+            </div>
+            <div class="student-card-body">
+              <div class="student-table-wrap">
+                <table class="student-table">
+                  <thead>
+                    <tr>
+                      <th>Course Code</th>
+                      <th>Course Title</th>
+                      <th>Score</th>
+                      <th>Grade</th>
+                      <th>Semester</th>
+                      <th>Session</th>
+                    </tr>
+                  </thead>
+                  <tbody id="student-all-results-tbody">
+                    <tr>
+                      <td colspan="6">
+                        <div class="student-empty-box">
+                          <div class="student-empty-icon">📋</div>
+                          <div class="student-empty-text">No results have been published yet.</div>
+                          <div class="student-empty-sub">Verified registry scores will appear once confirmed by the Academic Registry.</div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 8: MY PAYMENTS
+             ================================================================ -->
+        <section class="student-section" id="section-payments" aria-label="My Payments">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Tuition &amp; Fee Payments Ledger</h3>
+            </div>
+            <div class="student-card-body">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">💳</div>
+                <div class="student-empty-text">No payment records available.</div>
+                <div class="student-empty-sub">Invoices, bank receipts, and tuition payment statements will be posted here.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 9: CBT MODULE (14. CBT MODULE PLACEHOLDER)
+             ================================================================ -->
+        <section class="student-section" id="section-cbt" aria-label="CBT Computer-Based Test">
+          <div class="cbt-hero-card">
+            <span class="status-pill-badge badge-gold" style="margin-bottom: 0.75rem;">ASSESSMENT SUITE</span>
+            <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.35rem;">CBT / Computer-Based Test</h2>
+            <p style="font-size: 0.9375rem; color: #CBD5E1; max-width: 36rem;">
+              Take your assigned computer-based assessments. Please adhere to institutional examination rules and honor codes during tests.
+            </p>
+          </div>
+
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Available &amp; Upcoming Assessments</h3>
+              <span class="status-pill-badge badge-blue">DIAGNOSTIC &amp; SEMESTER EXAMINATIONS</span>
+            </div>
+            <div class="student-card-body">
+              <!-- Professional CBT Landing State -->
+              <div class="student-empty-box">
+                <div class="student-empty-icon">🖥️</div>
+                <div class="student-empty-text">No CBT Available at this moment.</div>
+                <div class="student-empty-sub">
+                  Assigned tests and quizzes will become active here when published by the course lecturer and registry.
+                </div>
+                <div style="margin-top: 1.5rem;">
+                  <button type="button" class="student-card-action-btn" style="padding: 0.6rem 1.25rem; font-size: 0.84rem;" onclick="alert('No CBT tests are currently scheduled for your cohort. Check back during examination periods.')">
+                    View Available Tests
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 10: NOTIFICATIONS (13. PRIVATE PORTAL NOTIFICATIONS)
+             ================================================================ -->
+        <section class="student-section" id="section-notifications" aria-label="Notifications">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Student Private Notifications</h3>
+              <span class="status-pill-badge badge-blue">STUDENT DESK</span>
+            </div>
+            <div class="student-card-body">
+              <div id="student-notifications-list">
+                <div class="student-empty-box">
+                  <div class="student-empty-icon">🔔</div>
+                  <div class="student-empty-text">No student notifications at this moment.</div>
+                  <div class="student-empty-sub">Private notices, course announcements, and clearance memos will appear here.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 11: DISCIPLINARY ACTIONS
+             ================================================================ -->
+        <section class="student-section" id="section-disciplinary" aria-label="Disciplinary Actions">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Disciplinary &amp; Character Clearance</h3>
+              <span class="status-pill-badge badge-green">CLEAN RECORD</span>
+            </div>
+            <div class="student-card-body">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">🛡️</div>
+                <div class="student-empty-text">No disciplinary records on file.</div>
+                <div class="student-empty-sub">Motto: Fear of God without a Mess. Student maintains exemplary Christian character standing.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 12: SUPPORT
+             ================================================================ -->
+        <section class="student-section" id="section-support" aria-label="Student Support">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Academic &amp; Portal Support Desk</h3>
+            </div>
+            <div class="student-card-body">
+              <p style="font-size: 0.875rem; color: var(--student-text-muted); margin-bottom: 1.25rem;">
+                Need assistance with course registration, timetable queries, or portal access? Contact the DIMABIN Student Affairs &amp; Registry desk.
+              </p>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                <div style="background: var(--student-bg); padding: 1rem; border-radius: var(--student-radius-sm);">
+                  <strong style="color: var(--student-navy); display: block; margin-bottom: 0.25rem;">Registry Office</strong>
+                  <span style="font-size: 0.8125rem; color: var(--student-text-muted);">info@dimabin.org</span>
+                </div>
+                <div style="background: var(--student-bg); padding: 1rem; border-radius: var(--student-radius-sm);">
+                  <strong style="color: var(--student-navy); display: block; margin-bottom: 0.25rem;">Phone Desk</strong>
+                  <span style="font-size: 0.8125rem; color: var(--student-text-muted);">+234 (0) 800-DIMABIN</span>
+                </div>
+                <div style="background: var(--student-bg); padding: 1rem; border-radius: var(--student-radius-sm);">
+                  <strong style="color: var(--student-navy); display: block; margin-bottom: 0.25rem;">Campus Location</strong>
+                  <span style="font-size: 0.8125rem; color: var(--student-text-muted);">Goshen Central Campus, Abeokuta</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- Pure Vanilla JavaScript Modules -->
+  <script type="module" src="assets/js/student-dashboard.js"></script>
+</body>
+</html>
