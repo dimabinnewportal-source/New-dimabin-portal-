@@ -3478,7 +3478,7 @@ body.drawer-open {
 }
 
 .portal-login-card.admin-card-accent {
-  border-top: 4px solid #DC2626;
+  border-top: 4px solid var(--primary-blue);
 }
 
 .portal-login-card.lecturer-card-accent {
@@ -3843,18 +3843,18 @@ body.drawer-open {
 }
 
 .btn-admin-login {
-  background-color: var(--dark-navy);
+  background-color: var(--primary-blue);
   color: var(--white);
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 4px 12px rgba(18, 36, 82, 0.35);
 }
 
 .btn-admin-login:hover {
-  background-color: #0b1736;
+  background-color: var(--dark-navy);
   border-color: var(--gold);
   color: var(--gold);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 6px 16px rgba(18, 36, 82, 0.45);
 }
 
 /* Back to Main Website Link inside Card */
