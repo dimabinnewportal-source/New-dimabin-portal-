@@ -119,6 +119,16 @@ button, input, select, textarea {
   background: var(--student-navy);
 }
 
+.student-sidebar-brand img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  border-radius: var(--student-radius-sm);
+  background: #FFFFFF;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
 .student-brand-text h1 {
   font-size: 0.9375rem;
   font-weight: 800;

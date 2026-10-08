@@ -179,6 +179,10 @@ button, input, select, textarea {
 .admin-brand-icon {
   width: 40px;
   height: 40px;
+  object-fit: contain;
+  border-radius: var(--admin-radius-sm);
+  background: var(--white);
+  padding: 2px;
   flex-shrink: 0;
 }
 
@@ -527,9 +531,10 @@ button, input, select, textarea {
   width: 58px;
   height: 58px;
   border-radius: var(--admin-radius-md);
-  background: rgba(255, 255, 255, 0.1);
-  padding: 6px;
+  background: var(--white);
+  padding: 3px;
   border: 1px solid rgba(245, 184, 0, 0.45);
+  object-fit: contain;
   flex-shrink: 0;
 }
 
