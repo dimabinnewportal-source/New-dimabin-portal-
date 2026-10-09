@@ -2565,3 +2565,235 @@ button, input, select, textarea {
   color: var(--admin-text-muted);
 }
 
+/* ==========================================================================
+   LECTURER MANAGEMENT MODULE STYLES
+   ========================================================================== */
+.badge-lec-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.badge-lec-active {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+}
+
+.badge-lec-inactive {
+  background: #F3F4F6;
+  color: #6B7280;
+  border: 1px solid #D1D5DB;
+}
+
+.badge-lec-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-lec-count.blue {
+  background: #EFF6FF;
+  color: var(--primary-blue);
+  border: 1px solid #BFDBFE;
+}
+
+.badge-lec-count.gold {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+}
+
+.badge-lec-count.zero {
+  background: #F9FAFB;
+  color: #9CA3AF;
+  border: 1px solid #E5E7EB;
+}
+
+.lec-actions-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.btn-lec-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.32rem 0.65rem;
+  border-radius: var(--admin-radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-lec-view {
+  background: #EFF6FF;
+  color: var(--primary-blue);
+  border-color: #BFDBFE;
+}
+
+.btn-lec-view:hover {
+  background: #DBEAFE;
+  border-color: var(--primary-blue);
+}
+
+.btn-lec-edit {
+  background: #F8FAFC;
+  color: var(--dark-navy);
+  border-color: #CBD5E1;
+}
+
+.btn-lec-edit:hover {
+  background: #E2E8F0;
+  color: var(--dark-navy);
+}
+
+.btn-lec-allocs {
+  background: #FEF3C7;
+  color: #92400E;
+  border-color: #FDE68A;
+}
+
+.btn-lec-allocs:hover {
+  background: #FDE68A;
+  border-color: #F59E0B;
+}
+
+.btn-lec-toggle-active {
+  background: #FEF2F2;
+  color: #DC2626;
+  border-color: #FECACA;
+}
+
+.btn-lec-toggle-active:hover {
+  background: #FEE2E2;
+  border-color: #EF4444;
+}
+
+.btn-lec-toggle-inactive {
+  background: #F0FDF4;
+  color: #16A34A;
+  border-color: #BBF7D0;
+}
+
+.btn-lec-toggle-inactive:hover {
+  background: #DCFCE7;
+  border-color: #22C55E;
+}
+
+/* Lecturer Profile Modal Card */
+.lec-profile-header-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%);
+  border: 1px solid #DBEAFE;
+  border-radius: var(--admin-radius-md);
+  margin-bottom: 1.25rem;
+}
+
+.lec-profile-avatar-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary-blue);
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.lec-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.lec-profile-field {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--admin-radius-sm);
+  padding: 0.75rem 0.9rem;
+}
+
+.lec-profile-field-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--admin-text-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+.lec-profile-field-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--dark-navy);
+  word-break: break-word;
+}
+
+.lec-auth-box {
+  background: #F8FAFC;
+  border: 1px dashed #CBD5E1;
+  border-radius: var(--admin-radius-md);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.lec-assignments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.lec-assignment-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-left: 3px solid var(--primary-blue);
+  border-radius: var(--admin-radius-sm);
+  padding: 0.85rem 1rem;
+  transition: border-color 0.15s ease;
+}
+
+.lec-assignment-card:hover {
+  border-color: #BFDBFE;
+  border-left-color: var(--gold);
+}
+

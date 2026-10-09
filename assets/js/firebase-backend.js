@@ -975,63 +975,88 @@ export async function toggleStudentStatus(studentId, currentStatus) {
 export const DEFAULT_DIMABIN_LECTURERS = Object.freeze([
   {
     id: "lec_olubunmi_01",
+    uid: "lec_auth_dimabin_fac_2026_01",
     staffId: "DIMABIN/FAC/2026/01",
     fullName: "Rev. Dr. E. A. Olubunmi",
     email: "e.olubunmi@dimabin.edu.ng",
     phone: "+234 803 111 2233",
     department: "Biblical Studies & Theology",
     qualification: "Ph.D. Biblical Theology, M.Th., B.Th.",
+    specialization: "Pauline Epistles & Systematic Christology",
     studyCentre: "Goshen Central Campus, Abeokuta",
     status: "active",
-    createdAt: "2026-01-10T08:00:00.000Z"
+    accountStatus: "active",
+    employmentStatus: "active",
+    createdAt: "2026-01-10T08:00:00.000Z",
+    updatedAt: "2026-01-10T08:00:00.000Z"
   },
   {
     id: "lec_adebayo_02",
+    uid: "lec_auth_dimabin_fac_2026_02",
     staffId: "DIMABIN/FAC/2026/02",
     fullName: "Pastor M. O. Adebayo",
     email: "m.adebayo@dimabin.edu.ng",
     phone: "+234 802 334 4556",
     department: "Practical Theology & Pastoral Ministry",
     qualification: "M.Div., B.Th.",
+    specialization: "Pastoral Counseling & Expository Preaching",
     studyCentre: "Goshen Central Campus, Abeokuta",
     status: "active",
-    createdAt: "2026-01-10T08:00:00.000Z"
+    accountStatus: "active",
+    employmentStatus: "active",
+    createdAt: "2026-01-10T08:00:00.000Z",
+    updatedAt: "2026-01-10T08:00:00.000Z"
   },
   {
     id: "lec_adeleke_03",
+    uid: "lec_auth_dimabin_fac_2026_03",
     staffId: "DIMABIN/FAC/2026/03",
     fullName: "Rev. Deborah F. Adeleke",
     email: "d.adeleke@dimabin.edu.ng",
     phone: "+234 805 445 5667",
     department: "Church Administration & Leadership",
     qualification: "M.Th., PGD Th., B.A. Rel.",
+    specialization: "Ecclesiastical Governance & Christian Education",
     studyCentre: "Lagos Outreach Coordination Centre",
     status: "active",
-    createdAt: "2026-01-10T08:00:00.000Z"
+    accountStatus: "active",
+    employmentStatus: "active",
+    createdAt: "2026-01-10T08:00:00.000Z",
+    updatedAt: "2026-01-10T08:00:00.000Z"
   },
   {
     id: "lec_ogundipe_04",
+    uid: "lec_auth_dimabin_fac_2026_04",
     staffId: "DIMABIN/FAC/2026/04",
     fullName: "Pastor Samuel K. Ogundipe",
     email: "s.ogundipe@dimabin.edu.ng",
     phone: "+234 807 556 6778",
     department: "Missions & Evangelism",
     qualification: "M.A. Missiology, Dipl.Th.",
+    specialization: "Cross-Cultural Missions & Church Planting",
     studyCentre: "Ibadan Regional Study Centre",
     status: "active",
-    createdAt: "2026-01-10T08:00:00.000Z"
+    accountStatus: "active",
+    employmentStatus: "active",
+    createdAt: "2026-01-10T08:00:00.000Z",
+    updatedAt: "2026-01-10T08:00:00.000Z"
   },
   {
     id: "lec_babalola_05",
+    uid: "lec_auth_dimabin_fac_2026_05",
     staffId: "DIMABIN/FAC/2026/05",
     fullName: "Rev. Dr. J. A. Babalola",
     email: "j.babalola@dimabin.edu.ng",
     phone: "+234 809 667 7889",
     department: "Systematic Theology & Apologetics",
     qualification: "Ph.D. Systematic Theology, M.Th.",
+    specialization: "Christian Apologetics & Contemporary Ethics",
     studyCentre: "Online & Distance Learning Hub",
     status: "active",
-    createdAt: "2026-01-10T08:00:00.000Z"
+    accountStatus: "active",
+    employmentStatus: "active",
+    createdAt: "2026-01-10T08:00:00.000Z",
+    updatedAt: "2026-01-10T08:00:00.000Z"
   }
 ]);
 
@@ -1058,7 +1083,13 @@ export function subscribeLecturers(callback) {
       collRef,
       (snap) => {
         if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const list = snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+            accountStatus: d.data().accountStatus || d.data().status || "active",
+            employmentStatus: d.data().employmentStatus || "active",
+            specialization: d.data().specialization || ""
+          }));
           setCachedCollection(COLLECTIONS.LECTURERS, list);
           callback(list);
         } else {
@@ -1082,62 +1113,211 @@ export function subscribeLecturers(callback) {
 }
 
 export async function createLecturer(lecturerData) {
-  const staffId = lecturerData.staffId || `DIMABIN/FAC/2026/${Math.floor(10 + Math.random() * 90)}`;
+  const fullName = (lecturerData.fullName || "").trim();
+  if (!fullName) throw new Error("Full Name is required.");
+
+  const staffId = (lecturerData.staffId || "").trim();
+  if (!staffId) throw new Error("Institutional Lecturer ID is required.");
+
+  const email = (lecturerData.email || "").trim().toLowerCase();
+  if (!email) throw new Error("Email Address is required.");
+
+  const phone = (lecturerData.phone || "").trim();
+  const department = (lecturerData.department || "Biblical Studies & Theology").trim();
+  const qualification = (lecturerData.qualification || "M.Th., B.Th.").trim();
+  const specialization = (lecturerData.specialization || "").trim();
+  const studyCentre = (lecturerData.studyCentre || "Goshen Central Campus, Abeokuta").trim();
+  const accountStatus = lecturerData.accountStatus === "inactive" || lecturerData.status === "inactive" ? "inactive" : "active";
+  const employmentStatus = lecturerData.employmentStatus || "active";
+
+  // Check unique constraints against existing lecturers
+  const existingLecturers = getCachedCollection(COLLECTIONS.LECTURERS) || [];
+  const staffIdExists = existingLecturers.some((l) => (l.staffId || "").trim().toLowerCase() === staffId.toLowerCase());
+  if (staffIdExists) {
+    throw new Error(`Lecturer ID '${staffId}' is already registered to another faculty member. Institutional IDs must be unique.`);
+  }
+
+  const emailExists = existingLecturers.some((l) => (l.email || "").trim().toLowerCase() === email);
+  if (emailExists) {
+    throw new Error(`A faculty member with email address '${email}' is already registered.`);
+  }
+
+  const nowIso = new Date().toISOString();
+  const stableUid = lecturerData.uid || `lec_uid_${staffId.replace(/[^A-Za-z0-9]/g, "_").toLowerCase()}`;
+
   const record = {
+    uid: stableUid,
     staffId,
-    fullName: (lecturerData.fullName || "Rev. Faculty Instructor").trim(),
-    email: (lecturerData.email || "").trim(),
-    phone: (lecturerData.phone || "").trim(),
-    department: lecturerData.department || "Biblical & Systematic Theology",
-    qualification: lecturerData.qualification || "M.Th., B.Th.",
-    studyCentre: lecturerData.studyCentre || "Goshen Central Campus, Abeokuta",
-    status: lecturerData.status || "active", // active | inactive
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    fullName,
+    email,
+    phone,
+    department,
+    qualification,
+    specialization,
+    studyCentre,
+    accountStatus,
+    employmentStatus,
+    status: accountStatus, // maintain status for backwards compatibility
+    createdAt: nowIso,
+    updatedAt: nowIso
   };
 
-  const localId = `lec_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const localId = `lec_${staffId.replace(/[^A-Za-z0-9]/g, "_")}`;
   upsertCachedItem(COLLECTIONS.LECTURERS, { id: localId, ...record });
 
+  let savedId = localId;
   try {
-    await addDoc(collection(db, COLLECTIONS.LECTURERS), {
+    const docRef = await addDoc(collection(db, COLLECTIONS.LECTURERS), {
       ...record,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+    savedId = docRef.id;
+    removeCachedItem(COLLECTIONS.LECTURERS, localId);
+    upsertCachedItem(COLLECTIONS.LECTURERS, { id: savedId, ...record });
   } catch (err) {
     console.warn(`[DIMABIN Lecturers] Firestore create note: ${err.message}`);
   }
 
   await logActivity({
     action: "lecturer_added",
-    description: `Added faculty instructor ${record.fullName} (${record.staffId}).`,
+    description: `Added faculty instructor ${record.fullName} (${record.staffId}) to ${record.department}.`,
     targetCollection: COLLECTIONS.LECTURERS,
     targetDocumentId: record.staffId
   });
 
-  return { success: true, ...record };
+  refreshLecturerDashboardData();
+  return { success: true, id: savedId, ...record };
 }
 
-export async function toggleLecturerStatus(lecturerId, currentStatus) {
-  const newStatus = currentStatus === "active" ? "inactive" : "active";
-  upsertCachedItem(COLLECTIONS.LECTURERS, { id: lecturerId, status: newStatus, updatedAt: new Date().toISOString() });
+export async function updateLecturer(lecturerId, updateData) {
+  if (!lecturerId) throw new Error("Lecturer ID is required for updating.");
+
+  const existingLecturers = getCachedCollection(COLLECTIONS.LECTURERS) || [];
+  const target = existingLecturers.find((l) => l.id === lecturerId || l.staffId === lecturerId);
+  if (!target) throw new Error("Faculty profile not found.");
+
+  const fullName = (updateData.fullName || target.fullName).trim();
+  const email = (updateData.email || target.email).trim().toLowerCase();
+  const phone = (updateData.phone || target.phone || "").trim();
+  const department = (updateData.department || target.department).trim();
+  const qualification = (updateData.qualification || target.qualification || "").trim();
+  const specialization = (updateData.specialization !== undefined ? updateData.specialization : target.specialization || "").trim();
+  const studyCentre = (updateData.studyCentre || target.studyCentre).trim();
+  const accountStatus = updateData.accountStatus || updateData.status || target.accountStatus || target.status || "active";
+  const employmentStatus = updateData.employmentStatus || target.employmentStatus || "active";
+
+  // Check email uniqueness if email changed
+  if (email !== (target.email || "").toLowerCase()) {
+    const emailConflict = existingLecturers.some((l) => l.id !== target.id && (l.email || "").toLowerCase() === email);
+    if (emailConflict) {
+      throw new Error(`Email '${email}' is already in use by another faculty instructor.`);
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+  const updatedRecord = {
+    ...target,
+    fullName,
+    email,
+    phone,
+    department,
+    qualification,
+    specialization,
+    studyCentre,
+    accountStatus,
+    employmentStatus,
+    status: accountStatus,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.LECTURERS, { id: target.id, ...updatedRecord });
 
   try {
-    const docRef = doc(db, COLLECTIONS.LECTURERS, lecturerId);
-    await updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() });
+    const docRef = doc(db, COLLECTIONS.LECTURERS, target.id);
+    await updateDoc(docRef, {
+      fullName,
+      email,
+      phone,
+      department,
+      qualification,
+      specialization,
+      studyCentre,
+      accountStatus,
+      employmentStatus,
+      status: accountStatus,
+      updatedAt: serverTimestamp()
+    });
   } catch (err) {
-    console.warn(`[DIMABIN Lecturers] Status toggle note: ${err.message}`);
+    console.warn(`[DIMABIN Lecturers] Firestore update note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "lecturer_updated",
+    description: `Updated profile details for faculty instructor ${fullName} (${target.staffId}).`,
+    targetCollection: COLLECTIONS.LECTURERS,
+    targetDocumentId: target.staffId
+  });
+
+  refreshLecturerDashboardData();
+  return { success: true, id: target.id, ...updatedRecord };
+}
+
+export async function setLecturerStatus(lecturerId, newStatus, reason = "") {
+  if (!lecturerId) throw new Error("Lecturer ID is required.");
+  const statusVal = ["active", "inactive", "concluded"].includes(newStatus) ? newStatus : "active";
+
+  const existingLecturers = getCachedCollection(COLLECTIONS.LECTURERS) || [];
+  const target = existingLecturers.find((l) => l.id === lecturerId || l.staffId === lecturerId);
+  if (!target) throw new Error("Faculty profile not found.");
+
+  const nowIso = new Date().toISOString();
+  const employmentStatus = statusVal === "concluded" ? "concluded" : target.employmentStatus || "active";
+
+  const updatedRecord = {
+    ...target,
+    accountStatus: statusVal,
+    employmentStatus: employmentStatus,
+    status: statusVal,
+    statusReason: reason ? reason.trim() : target.statusReason || "",
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.LECTURERS, { id: target.id, ...updatedRecord });
+
+  try {
+    const docRef = doc(db, COLLECTIONS.LECTURERS, target.id);
+    await updateDoc(docRef, {
+      accountStatus: statusVal,
+      employmentStatus: employmentStatus,
+      status: statusVal,
+      statusReason: updatedRecord.statusReason,
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.warn(`[DIMABIN Lecturers] Status update note: ${err.message}`);
   }
 
   await logActivity({
     action: "lecturer_status_changed",
-    description: `Lecturer ${lecturerId} status set to '${newStatus.toUpperCase()}'.`,
+    description: `Faculty instructor ${target.fullName} (${target.staffId}) status changed to '${statusVal.toUpperCase()}'.${reason ? ` Reason: ${reason}` : ""}`,
     targetCollection: COLLECTIONS.LECTURERS,
-    targetDocumentId: lecturerId
+    targetDocumentId: target.staffId
   });
 
-  return { success: true, lecturerId, status: newStatus };
+  refreshLecturerDashboardData();
+  return { success: true, id: target.id, status: statusVal };
+}
+
+export async function toggleLecturerStatus(lecturerId, currentStatus) {
+  const newStatus = currentStatus === "active" ? "inactive" : "active";
+  return setLecturerStatus(lecturerId, newStatus);
+}
+
+export function getLecturerAssignments(lecturerStaffId) {
+  if (!lecturerStaffId) return [];
+  const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+  return allocations.filter((a) => (a.lecturerId || "").trim().toLowerCase() === lecturerStaffId.trim().toLowerCase());
 }
 
 /**

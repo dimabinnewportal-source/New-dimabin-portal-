@@ -35,6 +35,8 @@ import {
   deleteCourseAllocation,
   subscribeLecturers,
   createLecturer,
+  updateLecturer,
+  setLecturerStatus,
   refreshLecturerDashboardData
 } from "./firebase-backend.js";
 
@@ -309,6 +311,9 @@ export function initDashboard() {
 
   // 10. COURSE ALLOCATION MODULE CONTROLLER (Multi-Centre Scoped Offering Assignments & Audit)
   initCourseAllocation();
+
+  // 11. LECTURER MANAGEMENT MODULE CONTROLLER (Faculty Directory & Multi-Assignment Tracking)
+  initLecturerManagement();
 }
 
 /**
@@ -2565,6 +2570,962 @@ export function initCourseAllocation() {
   });
 }
 
+/**
+ * =========================================================================
+ * 18. LECTURER MANAGEMENT MODULE CONTROLLER
+ * Institutional Faculty Directory, Single-Identity Rule, Dynamic Allocations & Audit
+ * =========================================================================
+ */
+export function initLecturerManagement() {
+  console.log("[DIMABIN Dashboard] Initializing Lecturer Management Controller...");
+
+  // State
+  let lecturersList = [];
+  let allocationsList = [];
+  let activeLecturerForModal = null;
+
+  // Filter State
+  const filters = {
+    search: "",
+    department: "all",
+    status: "all",
+    centre: "all",
+    sort: "name-asc"
+  };
+
+  // Table DOM Elements
+  const tbody = document.getElementById("lecturers-table-tbody");
+  const loadingEl = document.getElementById("lecturers-table-loading");
+  const emptyEl = document.getElementById("lecturers-table-empty");
+  const emptyHeading = document.getElementById("lec-empty-heading");
+  const errorEl = document.getElementById("lecturers-table-error");
+  const countPill = document.getElementById("lec-count-pill");
+  const filterSummary = document.getElementById("lec-filter-summary");
+
+  // Summary Stat DOM Elements
+  const statTotal = document.getElementById("stat-lec-total");
+  const statActive = document.getElementById("stat-lec-active");
+  const statInactive = document.getElementById("stat-lec-inactive");
+  const statAssigned = document.getElementById("stat-lec-assigned");
+  const statMultiCentre = document.getElementById("stat-lec-multi-centre");
+  const statAllocCount = document.getElementById("stat-lec-alloc-count");
+
+  // Filter Input DOM Elements
+  const searchInput = document.getElementById("filter-lec-search");
+  const deptFilter = document.getElementById("filter-lec-dept");
+  const statusFilter = document.getElementById("filter-lec-status");
+  const centreFilter = document.getElementById("filter-lec-centre");
+  const sortFilter = document.getElementById("filter-lec-sort");
+  const resetFiltersBtn = document.getElementById("btn-reset-lec-filters");
+
+  // Navigation / Action Buttons
+  const gotoAllocationsBtn = document.getElementById("btn-goto-allocations-from-lec");
+  const openAddLecturerBtn = document.getElementById("btn-open-add-lecturer-modal");
+  const quickAddLecBtn = document.getElementById("btn-open-quick-add-lecturer");
+
+  // Add Modal Elements
+  const addModal = document.getElementById("modal-add-lecturer-profile");
+  const addForm = document.getElementById("form-add-lecturer-profile");
+  const addAlert = document.getElementById("add-lec-modal-alert");
+  const btnCloseAddModal = document.getElementById("btn-close-add-lec-modal");
+  const btnCancelAddModal = document.getElementById("btn-cancel-add-lec-modal");
+  const btnConfirmAddModal = document.getElementById("btn-confirm-add-lecturer");
+  const btnAutoGenStaffId = document.getElementById("btn-auto-gen-staff-id");
+  const addSpinner = document.getElementById("add-lec-spinner");
+  const addBtnText = document.getElementById("add-lec-btn-text");
+
+  // Edit Modal Elements
+  const editModal = document.getElementById("modal-edit-lecturer-profile");
+  const editForm = document.getElementById("form-edit-lecturer-profile");
+  const editAlert = document.getElementById("edit-lec-modal-alert");
+  const btnCloseEditModal = document.getElementById("btn-close-edit-lec-modal");
+  const btnCancelEditModal = document.getElementById("btn-cancel-edit-lec-modal");
+  const btnConfirmEditModal = document.getElementById("btn-confirm-edit-lecturer");
+  const editSpinner = document.getElementById("edit-lec-spinner");
+  const editBtnText = document.getElementById("edit-lec-btn-text");
+
+  // View Profile Modal Elements
+  const viewModal = document.getElementById("modal-view-lecturer-profile");
+  const btnCloseViewModal = document.getElementById("btn-close-view-lec-modal");
+  const btnCloseViewBtn = document.getElementById("btn-close-view-lec-btn");
+  const btnEditFromViewBtn = document.getElementById("btn-edit-from-view-lec-btn");
+  const btnViewAllAllocsBtn = document.getElementById("btn-view-all-assignments-btn");
+
+  // View Assignments Modal Elements
+  const allocsModal = document.getElementById("modal-view-lecturer-assignments");
+  const btnCloseAllocsModal = document.getElementById("btn-close-allocs-lec-modal");
+  const btnCloseAllocsBtn = document.getElementById("btn-close-allocs-lec-btn");
+  const btnGotoAllocsFromModal = document.getElementById("btn-goto-allocations-from-modal");
+
+  // Toggle Status Modal Elements
+  const toggleModal = document.getElementById("modal-toggle-lecturer-status");
+  const btnCloseToggleModal = document.getElementById("btn-close-toggle-lec-modal");
+  const btnCancelToggleModal = document.getElementById("btn-cancel-toggle-lec-modal");
+  const btnConfirmToggle = document.getElementById("btn-confirm-toggle-status");
+
+  // Helper: Get active allocations for a lecturer dynamically from allocationsList
+  const getActiveAllocations = (lecturer) => {
+    if (!lecturer) return [];
+    const staffId = (lecturer.staffId || "").trim().toLowerCase();
+    const id = (lecturer.id || "").trim().toLowerCase();
+    const name = (lecturer.fullName || "").trim().toLowerCase();
+
+    return (allocationsList || []).filter((a) => {
+      const aStatus = (a.status || "").toLowerCase();
+      if (aStatus !== "active" && aStatus !== "assigned" && aStatus !== "reassigned") return false;
+
+      const aLecId = (a.lecturerId || "").trim().toLowerCase();
+      const aLecName = (a.lecturerName || "").trim().toLowerCase();
+
+      return (staffId && aLecId === staffId) || (id && aLecId === id) || (name && aLecName === name);
+    });
+  };
+
+  // Helper: Get unique study centres where lecturer is actively assigned
+  const getAssignedCentres = (lecturer) => {
+    const activeAllocs = getActiveAllocations(lecturer);
+    const centres = new Set();
+    activeAllocs.forEach((a) => {
+      if (a.studyCentre) centres.add(a.studyCentre);
+    });
+    return Array.from(centres);
+  };
+
+  // Helper: Compute next sequential staff ID (e.g. DIMABIN/FAC/2026/06)
+  const computeNextStaffId = () => {
+    const currentYear = new Date().getFullYear();
+    let maxNum = 0;
+    lecturersList.forEach((l) => {
+      const match = (l.staffId || "").match(/\/FAC\/(?:\d{4})\/(\d+)/i);
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    });
+    const nextSeq = String(maxNum + 1).padStart(2, "0");
+    return `DIMABIN/FAC/${currentYear}/${nextSeq}`;
+  };
+
+  // Update Summary Statistics Cards
+  const updateStats = () => {
+    const total = lecturersList.length;
+    const active = lecturersList.filter((l) => (l.accountStatus || l.status || "active") === "active").length;
+    const inactive = lecturersList.filter((l) => (l.accountStatus || l.status || "active") === "inactive").length;
+
+    let teachingCount = 0;
+    let multiCentreCount = 0;
+    let totalActiveAllocCount = 0;
+
+    lecturersList.forEach((l) => {
+      const activeAllocs = getActiveAllocations(l);
+      if (activeAllocs.length > 0) {
+        teachingCount++;
+        totalActiveAllocCount += activeAllocs.length;
+      }
+      const centres = getAssignedCentres(l);
+      if (centres.length >= 2) {
+        multiCentreCount++;
+      }
+    });
+
+    if (statTotal) statTotal.textContent = total;
+    if (statActive) statActive.textContent = active;
+    if (statInactive) statInactive.textContent = inactive;
+    if (statAssigned) statAssigned.textContent = teachingCount;
+    if (statMultiCentre) statMultiCentre.textContent = multiCentreCount;
+    if (statAllocCount) statAllocCount.textContent = totalActiveAllocCount;
+  };
+
+  // Render Table
+  const renderTable = () => {
+    if (!tbody) return;
+
+    // Filter
+    let list = lecturersList.filter((l) => {
+      // 1. Search Query
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const staffId = (l.staffId || "").toLowerCase();
+        const name = (l.fullName || "").toLowerCase();
+        const email = (l.email || "").toLowerCase();
+        const phone = (l.phone || "").toLowerCase();
+        const dept = (l.department || "").toLowerCase();
+        const spec = (l.specialization || "").toLowerCase();
+        if (!staffId.includes(q) && !name.includes(q) && !email.includes(q) && !phone.includes(q) && !dept.includes(q) && !spec.includes(q)) {
+          return false;
+        }
+      }
+
+      // 2. Department
+      if (filters.department !== "all" && (l.department || "") !== filters.department) {
+        return false;
+      }
+
+      // 3. Status
+      const accStatus = (l.accountStatus || l.status || "active").toLowerCase();
+      if (filters.status !== "all" && accStatus !== filters.status) {
+        return false;
+      }
+
+      // 4. Study Centre (Checks either primary base OR assigned teaching centres)
+      if (filters.centre !== "all") {
+        const base = l.studyCentre || "";
+        const assignedCentres = getAssignedCentres(l);
+        if (base !== filters.centre && !assignedCentres.includes(filters.centre)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Sort
+    list.sort((a, b) => {
+      switch (filters.sort) {
+        case "name-asc":
+          return (a.fullName || "").localeCompare(b.fullName || "");
+        case "name-desc":
+          return (b.fullName || "").localeCompare(a.fullName || "");
+        case "id-asc":
+          return (a.staffId || "").localeCompare(b.staffId || "");
+        case "courses-desc": {
+          const countA = getActiveAllocations(a).length;
+          const countB = getActiveAllocations(b).length;
+          return countB - countA;
+        }
+        case "status-active": {
+          const stA = (a.accountStatus || a.status || "active") === "active" ? 0 : 1;
+          const stB = (b.accountStatus || b.status || "active") === "active" ? 0 : 1;
+          return stA - stB;
+        }
+        default:
+          return (a.fullName || "").localeCompare(b.fullName || "");
+      }
+    });
+
+    // Update Counts & Description
+    if (countPill) countPill.textContent = `${list.length} Faculty Member${list.length === 1 ? "" : "s"}`;
+    if (filterSummary) {
+      const activeTags = [];
+      if (filters.search) activeTags.push(`"${filters.search}"`);
+      if (filters.department !== "all") activeTags.push(filters.department);
+      if (filters.status !== "all") activeTags.push(`Status: ${filters.status}`);
+      if (filters.centre !== "all") activeTags.push(filters.centre);
+      filterSummary.textContent = activeTags.length > 0 ? `Filtered by ${activeTags.join(" · ")}` : "Showing all faculty records";
+    }
+
+    if (list.length === 0) {
+      tbody.innerHTML = "";
+      if (emptyEl) {
+        emptyEl.style.display = "block";
+        if (emptyHeading) {
+          emptyHeading.textContent = lecturersList.length === 0 ? "No faculty members registered in system." : "No faculty records match your criteria.";
+        }
+      }
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = "none";
+
+    const rowsHtml = list
+      .map((lec) => {
+        const id = lec.id;
+        const staffId = lec.staffId || "N/A";
+        const name = lec.fullName || "Unnamed Faculty";
+        const email = lec.email || "—";
+        const phone = lec.phone || "—";
+        const dept = lec.department || "General Theology";
+        const accStatus = (lec.accountStatus || lec.status || "active").toLowerCase();
+        const isActive = accStatus === "active";
+
+        const activeAllocs = getActiveAllocations(lec);
+        const assignedCentres = getAssignedCentres(lec);
+
+        // Course load badge HTML
+        let courseLoadHtml = "";
+        if (activeAllocs.length === 0) {
+          courseLoadHtml = `<span class="badge-lec-count zero">0 Courses</span>`;
+        } else {
+          courseLoadHtml = `<span class="badge-lec-count blue">📚 ${activeAllocs.length} Course${activeAllocs.length === 1 ? "" : "s"}</span>`;
+        }
+
+        // Centres badge HTML
+        let centresHtml = "";
+        if (assignedCentres.length === 0) {
+          centresHtml = `<span style="font-size: 0.72rem; color: var(--admin-text-muted);">Base: ${lec.studyCentre ? lec.studyCentre.split(",")[0] : "Goshen"}</span>`;
+        } else if (assignedCentres.length === 1) {
+          centresHtml = `<span class="badge-lec-count gold">📍 1 Campus</span>`;
+        } else {
+          centresHtml = `<span class="badge-lec-count gold">📍 ${assignedCentres.length} Campuses</span>`;
+        }
+
+        // Status badge HTML
+        const statusBadgeHtml = isActive
+          ? `<span class="badge-lec-status badge-lec-active">● Active</span>`
+          : `<span class="badge-lec-status badge-lec-inactive">○ Inactive</span>`;
+
+        return `
+          <tr data-lecturer-id="${id}">
+            <td><strong style="color: var(--primary-blue); font-size: 0.875rem;">${staffId}</strong></td>
+            <td>
+              <div style="font-weight: 700; color: var(--dark-navy);">${name}</div>
+              <div style="font-size: 0.72rem; color: var(--admin-text-muted);">${lec.qualification || "Faculty Tutor"}</div>
+            </td>
+            <td>
+              <a href="mailto:${email}" style="color: var(--primary-blue); text-decoration: none; font-size: 0.8125rem;">${email}</a>
+            </td>
+            <td><span style="font-size: 0.8125rem; color: var(--admin-text-main);">${phone}</span></td>
+            <td>
+              <div style="font-size: 0.8125rem; font-weight: 600; color: var(--dark-navy);">${dept}</div>
+              <div style="font-size: 0.7rem; color: var(--admin-text-muted);">${lec.specialization ? lec.specialization : "Theology"}</div>
+            </td>
+            <td>${courseLoadHtml}</td>
+            <td>${centresHtml}</td>
+            <td>${statusBadgeHtml}</td>
+            <td style="text-align: right;">
+              <div class="lec-actions-cell">
+                <button type="button" class="btn-lec-action btn-lec-view action-view-lec-profile" data-id="${id}" title="View Complete Faculty Profile">
+                  Profile
+                </button>
+                <button type="button" class="btn-lec-action btn-lec-edit action-edit-lec-profile" data-id="${id}" title="Edit Profile Details">
+                  Edit
+                </button>
+                <button type="button" class="btn-lec-action btn-lec-allocs action-view-lec-allocs" data-id="${id}" title="View Teaching Allocations">
+                  Assignments
+                </button>
+                <button type="button" class="btn-lec-action ${isActive ? "btn-lec-toggle-active" : "btn-lec-toggle-inactive"} action-toggle-lec-status" data-id="${id}" data-current="${accStatus}" title="${isActive ? "Deactivate Account" : "Activate Account"}">
+                  ${isActive ? "Deactivate" : "Activate"}
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    tbody.innerHTML = rowsHtml;
+  };
+
+  // Refresh All Controller Views
+  const refreshAll = () => {
+    updateStats();
+    renderTable();
+  };
+
+  // --- Modal Openers & Helpers ---
+
+  const showModalAlert = (alertEl, type, msg) => {
+    if (!alertEl) return;
+    alertEl.style.display = "block";
+    alertEl.className = `course-modal-feedback ${type === "error" ? "error" : "success"}`;
+    alertEl.textContent = msg;
+  };
+
+  const clearModalAlert = (alertEl) => {
+    if (!alertEl) return;
+    alertEl.style.display = "none";
+    alertEl.textContent = "";
+  };
+
+  const openAddLecturerModal = () => {
+    if (!addModal) return;
+    clearModalAlert(addAlert);
+    if (addForm) addForm.reset();
+
+    const staffIdInput = document.getElementById("add-lec-staffid");
+    if (staffIdInput) {
+      staffIdInput.value = computeNextStaffId();
+    }
+    const statusSelect = document.getElementById("add-lec-status");
+    if (statusSelect) statusSelect.value = "active";
+
+    addModal.style.display = "flex";
+  };
+
+  const closeAddLecturerModal = () => {
+    if (addModal) addModal.style.display = "none";
+  };
+
+  const openEditLecturerModal = (lecturer) => {
+    if (!editModal || !lecturer) return;
+    clearModalAlert(editAlert);
+    activeLecturerForModal = lecturer;
+
+    const idInput = document.getElementById("edit-lec-id");
+    const staffIdDisplay = document.getElementById("edit-lec-staffid-display");
+    const nameInput = document.getElementById("edit-lec-fullname");
+    const emailInput = document.getElementById("edit-lec-email");
+    const phoneInput = document.getElementById("edit-lec-phone");
+    const deptSelect = document.getElementById("edit-lec-department");
+    const qualInput = document.getElementById("edit-lec-qualification");
+    const specInput = document.getElementById("edit-lec-specialization");
+    const centreSelect = document.getElementById("edit-lec-centre");
+    const statusSelect = document.getElementById("edit-lec-status");
+
+    if (idInput) idInput.value = lecturer.id;
+    if (staffIdDisplay) staffIdDisplay.textContent = lecturer.staffId || "N/A";
+    if (nameInput) nameInput.value = lecturer.fullName || "";
+    if (emailInput) emailInput.value = lecturer.email || "";
+    if (phoneInput) phoneInput.value = lecturer.phone || "";
+    if (deptSelect) deptSelect.value = lecturer.department || "Biblical Studies & Theology";
+    if (qualInput) qualInput.value = lecturer.qualification || "";
+    if (specInput) specInput.value = lecturer.specialization || "";
+    if (centreSelect) centreSelect.value = lecturer.studyCentre || "Goshen Central Campus, Abeokuta";
+    if (statusSelect) statusSelect.value = (lecturer.accountStatus || lecturer.status || "active").toLowerCase();
+
+    editModal.style.display = "flex";
+  };
+
+  const closeEditLecturerModal = () => {
+    if (editModal) editModal.style.display = "none";
+  };
+
+  const openViewProfileModal = (lecturer) => {
+    if (!viewModal || !lecturer) return;
+    activeLecturerForModal = lecturer;
+
+    const initials = (lecturer.fullName || "FA")
+      .split(" ")
+      .filter((w) => w.length > 0 && !w.startsWith("Rev.") && !w.startsWith("Dr.") && !w.startsWith("Pst."))
+      .slice(0, 2)
+      .map((w) => w[0].toUpperCase())
+      .join("") || "FA";
+
+    const avatarEl = document.getElementById("view-lec-avatar");
+    const nameEl = document.getElementById("view-lec-fullname");
+    const staffIdEl = document.getElementById("view-lec-staffid");
+    const deptEl = document.getElementById("view-lec-dept");
+    const statusBadgeEl = document.getElementById("view-lec-status-badge");
+    const emailEl = document.getElementById("view-lec-email");
+    const phoneEl = document.getElementById("view-lec-phone");
+    const qualEl = document.getElementById("view-lec-qualification");
+    const specEl = document.getElementById("view-lec-specialization");
+    const centreEl = document.getElementById("view-lec-centre");
+    const loadSummaryEl = document.getElementById("view-lec-load-summary");
+    const uidEl = document.getElementById("view-lec-uid");
+    const assignedCountEl = document.getElementById("view-lec-assigned-count");
+    const assignmentsPreview = document.getElementById("view-lec-assignments-preview");
+
+    if (avatarEl) avatarEl.textContent = initials;
+    if (nameEl) nameEl.textContent = lecturer.fullName || "Unnamed Faculty";
+    if (staffIdEl) staffIdEl.textContent = lecturer.staffId || "N/A";
+    if (deptEl) deptEl.textContent = lecturer.department || "General Faculty";
+
+    const isActive = (lecturer.accountStatus || lecturer.status || "active").toLowerCase() === "active";
+    if (statusBadgeEl) {
+      statusBadgeEl.className = `badge-lec-status ${isActive ? "badge-lec-active" : "badge-lec-inactive"}`;
+      statusBadgeEl.textContent = isActive ? "● Active" : "○ Inactive";
+    }
+
+    if (emailEl) emailEl.textContent = lecturer.email || "No email recorded";
+    if (phoneEl) phoneEl.textContent = lecturer.phone || "No phone recorded";
+    if (qualEl) qualEl.textContent = lecturer.qualification || "Unspecified Qualifications";
+    if (specEl) specEl.textContent = lecturer.specialization || "General Theology & Ministry";
+    if (centreEl) centreEl.textContent = lecturer.studyCentre || "Goshen Central Campus, Abeokuta";
+
+    const activeAllocs = getActiveAllocations(lecturer);
+    const assignedCentres = getAssignedCentres(lecturer);
+
+    if (loadSummaryEl) {
+      loadSummaryEl.textContent = `${activeAllocs.length} Active Course${activeAllocs.length === 1 ? "" : "s"} · ${assignedCentres.length} Campus${assignedCentres.length === 1 ? "" : "es"}`;
+    }
+
+    if (uidEl) {
+      uidEl.textContent = lecturer.uid || `lec_auth_${(lecturer.staffId || "").replace(/[^A-Za-z0-9]/g, "_").toLowerCase()}`;
+    }
+
+    if (assignedCountEl) {
+      assignedCountEl.textContent = `${activeAllocs.length} Offering${activeAllocs.length === 1 ? "" : "s"}`;
+    }
+
+    if (assignmentsPreview) {
+      if (activeAllocs.length === 0) {
+        assignmentsPreview.innerHTML = `
+          <div style="background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: var(--admin-radius-sm); padding: 1.25rem; text-align: center; color: var(--admin-text-muted); font-size: 0.8125rem;">
+            No course offerings currently allocated to this faculty member.
+          </div>
+        `;
+      } else {
+        assignmentsPreview.innerHTML = activeAllocs
+          .map((a) => {
+            const sem = a.semester || "Semester";
+            const sess = a.academicSession || "Session";
+            const centre = a.studyCentre || "Campus";
+            return `
+              <div class="lec-assignment-card">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
+                    <strong style="color: var(--primary-blue); font-size: 0.875rem;">${a.courseCode}</strong>
+                    <span style="font-size: 0.72rem; color: var(--admin-text-muted);">· ${sess} (${sem})</span>
+                  </div>
+                  <div style="font-weight: 700; color: var(--dark-navy); font-size: 0.8125rem;">${a.courseTitle}</div>
+                  <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 2px;">📍 ${centre}</div>
+                </div>
+                <div>
+                  <span class="badge-alloc-status badge-alloc-${a.status === "reassigned" ? "reassigned" : "assigned"}">
+                    ${a.status === "reassigned" ? "↻ Reassigned" : "● Assigned"}
+                  </span>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+    }
+
+    viewModal.style.display = "flex";
+  };
+
+  const closeViewProfileModal = () => {
+    if (viewModal) viewModal.style.display = "none";
+  };
+
+  const openViewAssignmentsModal = (lecturer) => {
+    if (!allocsModal || !lecturer) return;
+    activeLecturerForModal = lecturer;
+
+    const staffIdEl = document.getElementById("allocs-modal-lec-id");
+    const nameEl = document.getElementById("allocs-modal-lec-name");
+    const deptEl = document.getElementById("allocs-modal-lec-dept");
+    const countBadge = document.getElementById("allocs-modal-count-badge");
+    const listContainer = document.getElementById("allocs-modal-list-container");
+
+    if (staffIdEl) staffIdEl.textContent = lecturer.staffId || "N/A";
+    if (nameEl) nameEl.textContent = lecturer.fullName || "Unnamed Faculty";
+    if (deptEl) deptEl.textContent = `${lecturer.department || "Faculty"} · Base: ${lecturer.studyCentre || "Goshen"}`;
+
+    const activeAllocs = getActiveAllocations(lecturer);
+
+    if (countBadge) {
+      countBadge.textContent = `${activeAllocs.length} Active Offering${activeAllocs.length === 1 ? "" : "s"}`;
+    }
+
+    if (listContainer) {
+      if (activeAllocs.length === 0) {
+        listContainer.innerHTML = `
+          <div style="background: #F8FAFC; border: 1.5px dashed #CBD5E1; border-radius: var(--admin-radius-md); padding: 2rem; text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📖</div>
+            <h5 style="font-size: 0.9375rem; font-weight: 700; color: var(--dark-navy); margin-bottom: 0.35rem;">No Course Allocations Recorded</h5>
+            <p style="font-size: 0.8125rem; color: var(--admin-text-muted); margin-bottom: 1rem;">
+              ${lecturer.fullName} has not been allocated to any course offering in the active trimester sessions.
+            </p>
+            <button type="button" class="btn-admin-primary btn-jump-to-alloc-screen" style="font-size: 0.8125rem; padding: 0.5rem 1rem;">
+              Open Course Allocation Matrix →
+            </button>
+          </div>
+        `;
+      } else {
+        listContainer.innerHTML = activeAllocs
+          .map((a) => {
+            const sem = a.semester || "Semester";
+            const sess = a.academicSession || "Session";
+            const centre = a.studyCentre || "Campus";
+            return `
+              <div class="lec-assignment-card" style="padding: 1rem 1.15rem;">
+                <div style="flex: 1;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                    <strong style="color: var(--primary-blue); font-size: 0.9375rem;">${a.courseCode}</strong>
+                    <span class="badge-alloc-status badge-alloc-${a.status === "reassigned" ? "reassigned" : "assigned"}">
+                      ${a.status === "reassigned" ? "↻ Reassigned" : "● Assigned"}
+                    </span>
+                  </div>
+                  <h5 style="font-weight: 800; color: var(--dark-navy); font-size: 0.875rem; margin: 0 0 0.3rem 0;">${a.courseTitle}</h5>
+                  <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; font-size: 0.75rem; color: var(--admin-text-muted);">
+                    <span>📍 <strong>Campus:</strong> ${centre}</span>
+                    <span>📅 <strong>Session:</strong> ${sess}</span>
+                    <span>⏳ <strong>Term:</strong> ${sem}</span>
+                  </div>
+                  ${a.notes ? `<div style="margin-top: 0.4rem; font-size: 0.72rem; color: var(--admin-text-main); background: #F8FAFC; padding: 0.3rem 0.5rem; border-radius: 4px;">Scope: ${a.notes}</div>` : ""}
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-end;">
+                  <button type="button" class="btn-alloc-action btn-alloc-assign btn-jump-to-alloc-screen" style="font-size: 0.72rem; padding: 0.3rem 0.65rem;">
+                    Manage Offering
+                  </button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+    }
+
+    allocsModal.style.display = "flex";
+  };
+
+  const closeViewAssignmentsModal = () => {
+    if (allocsModal) allocsModal.style.display = "none";
+  };
+
+  const openToggleStatusModal = (lecturer) => {
+    if (!toggleModal || !lecturer) return;
+    activeLecturerForModal = lecturer;
+
+    const currentStatus = (lecturer.accountStatus || lecturer.status || "active").toLowerCase();
+    const targetStatus = currentStatus === "active" ? "inactive" : "active";
+
+    const idInput = document.getElementById("toggle-lec-id");
+    const targetInput = document.getElementById("toggle-lec-target-status");
+    const headerEl = document.getElementById("modal-toggle-lec-header");
+    const titleEl = document.getElementById("modal-toggle-lec-title");
+    const promptEl = document.getElementById("toggle-lec-prompt");
+    const nameEl = document.getElementById("toggle-lec-name-display");
+    const metaEl = document.getElementById("toggle-lec-meta-display");
+    const explanationEl = document.getElementById("toggle-lec-explanation");
+    const confirmBtn = document.getElementById("btn-confirm-toggle-status");
+
+    if (idInput) idInput.value = lecturer.id;
+    if (targetInput) targetInput.value = targetStatus;
+    if (nameEl) nameEl.textContent = lecturer.fullName || "Unnamed Faculty";
+    if (metaEl) metaEl.textContent = `${lecturer.staffId} · ${lecturer.department || "Faculty"}`;
+
+    if (targetStatus === "inactive") {
+      if (headerEl) headerEl.style.background = "#DC2626";
+      if (titleEl) titleEl.textContent = "Deactivate Faculty Account";
+      if (promptEl) promptEl.textContent = "Are you sure you want to suspend this faculty member's account?";
+      if (explanationEl) {
+        explanationEl.textContent =
+          "Deactivating this profile suspends portal access for this faculty member. Existing course allocation records and teaching history are preserved safely in institutional archives.";
+      }
+      if (confirmBtn) {
+        confirmBtn.style.background = "#DC2626";
+        confirmBtn.style.borderColor = "#DC2626";
+        confirmBtn.textContent = "Confirm Deactivation";
+      }
+    } else {
+      if (headerEl) headerEl.style.background = "#16A34A";
+      if (titleEl) titleEl.textContent = "Activate Faculty Account";
+      if (promptEl) promptEl.textContent = "Are you sure you want to restore active status for this faculty member?";
+      if (explanationEl) {
+        explanationEl.textContent =
+          "Activating this profile restores full lecturer portal sign-in and enables course assignments across all DIMABIN study centres.";
+      }
+      if (confirmBtn) {
+        confirmBtn.style.background = "#16A34A";
+        confirmBtn.style.borderColor = "#16A34A";
+        confirmBtn.textContent = "Confirm Activation";
+      }
+    }
+
+    toggleModal.style.display = "flex";
+  };
+
+  const closeToggleStatusModal = () => {
+    if (toggleModal) toggleModal.style.display = "none";
+  };
+
+  // --- Event Listeners Wiring ---
+
+  // Filters Listeners
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      filters.search = e.target.value.trim();
+      renderTable();
+    });
+  }
+
+  if (deptFilter) {
+    deptFilter.addEventListener("change", (e) => {
+      filters.department = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (statusFilter) {
+    statusFilter.addEventListener("change", (e) => {
+      filters.status = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (centreFilter) {
+    centreFilter.addEventListener("change", (e) => {
+      filters.centre = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (sortFilter) {
+    sortFilter.addEventListener("change", (e) => {
+      filters.sort = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener("click", () => {
+      filters.search = "";
+      filters.department = "all";
+      filters.status = "all";
+      filters.centre = "all";
+      filters.sort = "name-asc";
+
+      if (searchInput) searchInput.value = "";
+      if (deptFilter) deptFilter.value = "all";
+      if (statusFilter) statusFilter.value = "all";
+      if (centreFilter) centreFilter.value = "all";
+      if (sortFilter) sortFilter.value = "name-asc";
+
+      renderTable();
+      showAdminToast("success", "Faculty directory filters reset.");
+    });
+  }
+
+  // Cross-Navigation Buttons
+  if (gotoAllocationsBtn) {
+    gotoAllocationsBtn.addEventListener("click", () => {
+      navigateToSection("course-allocation");
+    });
+  }
+
+  if (openAddLecturerBtn) {
+    openAddLecturerBtn.addEventListener("click", () => {
+      openAddLecturerModal();
+    });
+  }
+
+  if (quickAddLecBtn) {
+    quickAddLecBtn.addEventListener("click", () => {
+      openAddLecturerModal();
+    });
+  }
+
+  // Add Modal Controls
+  if (btnCloseAddModal) btnCloseAddModal.addEventListener("click", closeAddLecturerModal);
+  if (btnCancelAddModal) btnCancelAddModal.addEventListener("click", closeAddLecturerModal);
+  if (btnAutoGenStaffId) {
+    btnAutoGenStaffId.addEventListener("click", () => {
+      const staffIdInput = document.getElementById("add-lec-staffid");
+      if (staffIdInput) {
+        staffIdInput.value = computeNextStaffId();
+        showAdminToast("success", `Suggested Next ID: ${staffIdInput.value}`);
+      }
+    });
+  }
+
+  if (btnConfirmAddModal) {
+    btnConfirmAddModal.addEventListener("click", async () => {
+      const fullName = (document.getElementById("add-lec-fullname")?.value || "").trim();
+      const staffId = (document.getElementById("add-lec-staffid")?.value || "").trim();
+      const email = (document.getElementById("add-lec-email")?.value || "").trim().toLowerCase();
+      const phone = (document.getElementById("add-lec-phone")?.value || "").trim();
+      const department = (document.getElementById("add-lec-department")?.value || "Biblical Studies & Theology").trim();
+      const qualification = (document.getElementById("add-lec-qualification")?.value || "").trim();
+      const specialization = (document.getElementById("add-lec-specialization")?.value || "").trim();
+      const studyCentre = (document.getElementById("add-lec-centre")?.value || "Goshen Central Campus, Abeokuta").trim();
+      const accountStatus = document.getElementById("add-lec-status")?.value === "inactive" ? "inactive" : "active";
+
+      if (!fullName) {
+        showModalAlert(addAlert, "error", "Please provide the lecturer's full name.");
+        return;
+      }
+      if (!staffId) {
+        showModalAlert(addAlert, "error", "Institutional Lecturer ID is required.");
+        return;
+      }
+      if (!email || !email.includes("@")) {
+        showModalAlert(addAlert, "error", "Please enter a valid institutional email address.");
+        return;
+      }
+
+      try {
+        if (addSpinner) addSpinner.style.display = "inline";
+        if (addBtnText) addBtnText.textContent = "Saving Faculty Member...";
+        btnConfirmAddModal.disabled = true;
+
+        await createLecturer({
+          fullName,
+          staffId,
+          email,
+          phone,
+          department,
+          qualification,
+          specialization,
+          studyCentre,
+          accountStatus
+        });
+
+        showAdminToast("success", `Faculty member ${fullName} (${staffId}) registered successfully.`);
+        closeAddLecturerModal();
+      } catch (err) {
+        console.error("[DIMABIN Lecturers] Add error:", err);
+        showModalAlert(addAlert, "error", err.message || "Failed to register lecturer.");
+      } finally {
+        if (addSpinner) addSpinner.style.display = "none";
+        if (addBtnText) addBtnText.textContent = "Register Faculty Member";
+        btnConfirmAddModal.disabled = false;
+      }
+    });
+  }
+
+  // Edit Modal Controls
+  if (btnCloseEditModal) btnCloseEditModal.addEventListener("click", closeEditLecturerModal);
+  if (btnCancelEditModal) btnCancelEditModal.addEventListener("click", closeEditLecturerModal);
+
+  if (btnConfirmEditModal) {
+    btnConfirmEditModal.addEventListener("click", async () => {
+      const id = (document.getElementById("edit-lec-id")?.value || "").trim();
+      const fullName = (document.getElementById("edit-lec-fullname")?.value || "").trim();
+      const email = (document.getElementById("edit-lec-email")?.value || "").trim().toLowerCase();
+      const phone = (document.getElementById("edit-lec-phone")?.value || "").trim();
+      const department = (document.getElementById("edit-lec-department")?.value || "").trim();
+      const qualification = (document.getElementById("edit-lec-qualification")?.value || "").trim();
+      const specialization = (document.getElementById("edit-lec-specialization")?.value || "").trim();
+      const studyCentre = (document.getElementById("edit-lec-centre")?.value || "").trim();
+      const accountStatus = document.getElementById("edit-lec-status")?.value === "inactive" ? "inactive" : "active";
+
+      if (!id) {
+        showModalAlert(editAlert, "error", "Missing faculty identifier.");
+        return;
+      }
+      if (!fullName) {
+        showModalAlert(editAlert, "error", "Full Name is required.");
+        return;
+      }
+      if (!email || !email.includes("@")) {
+        showModalAlert(editAlert, "error", "A valid email address is required.");
+        return;
+      }
+
+      try {
+        if (editSpinner) editSpinner.style.display = "inline";
+        if (editBtnText) editBtnText.textContent = "Updating...";
+        btnConfirmEditModal.disabled = true;
+
+        await updateLecturer(id, {
+          fullName,
+          email,
+          phone,
+          department,
+          qualification,
+          specialization,
+          studyCentre,
+          accountStatus
+        });
+
+        showAdminToast("success", `Faculty profile for ${fullName} updated successfully.`);
+        closeEditLecturerModal();
+      } catch (err) {
+        console.error("[DIMABIN Lecturers] Update error:", err);
+        showModalAlert(editAlert, "error", err.message || "Failed to update lecturer profile.");
+      } finally {
+        if (editSpinner) editSpinner.style.display = "none";
+        if (editBtnText) editBtnText.textContent = "Save Changes";
+        btnConfirmEditModal.disabled = false;
+      }
+    });
+  }
+
+  // View Profile Modal Controls
+  if (btnCloseViewModal) btnCloseViewModal.addEventListener("click", closeViewProfileModal);
+  if (btnCloseViewBtn) btnCloseViewBtn.addEventListener("click", closeViewProfileModal);
+
+  if (btnEditFromViewBtn) {
+    btnEditFromViewBtn.addEventListener("click", () => {
+      closeViewProfileModal();
+      if (activeLecturerForModal) {
+        openEditLecturerModal(activeLecturerForModal);
+      }
+    });
+  }
+
+  if (btnViewAllAllocsBtn) {
+    btnViewAllAllocsBtn.addEventListener("click", () => {
+      closeViewProfileModal();
+      if (activeLecturerForModal) {
+        openViewAssignmentsModal(activeLecturerForModal);
+      }
+    });
+  }
+
+  // View Assignments Modal Controls
+  if (btnCloseAllocsModal) btnCloseAllocsModal.addEventListener("click", closeViewAssignmentsModal);
+  if (btnCloseAllocsBtn) btnCloseAllocsBtn.addEventListener("click", closeViewAssignmentsModal);
+
+  if (btnGotoAllocsFromModal) {
+    btnGotoAllocsFromModal.addEventListener("click", () => {
+      closeViewAssignmentsModal();
+      navigateToSection("course-allocation");
+    });
+  }
+
+  // Toggle Status Modal Controls
+  if (btnCloseToggleModal) btnCloseToggleModal.addEventListener("click", closeToggleStatusModal);
+  if (btnCancelToggleModal) btnCancelToggleModal.addEventListener("click", closeToggleStatusModal);
+
+  if (btnConfirmToggle) {
+    btnConfirmToggle.addEventListener("click", async () => {
+      const id = (document.getElementById("toggle-lec-id")?.value || "").trim();
+      const targetStatus = (document.getElementById("toggle-lec-target-status")?.value || "active").trim();
+
+      if (!id) return;
+
+      try {
+        btnConfirmToggle.disabled = true;
+        btnConfirmToggle.textContent = "Updating...";
+
+        await setLecturerStatus(id, targetStatus, `Administrator toggle to ${targetStatus}`);
+        showAdminToast("success", `Faculty account status updated to ${targetStatus.toUpperCase()}.`);
+        closeToggleStatusModal();
+      } catch (err) {
+        console.error("[DIMABIN Lecturers] Toggle status error:", err);
+        showAdminToast("error", err.message || "Failed to change account status.");
+      } finally {
+        btnConfirmToggle.disabled = false;
+        btnConfirmToggle.textContent = "Confirm Status Change";
+      }
+    });
+  }
+
+  // Delegate Row Action Buttons in Table
+  if (tbody) {
+    tbody.addEventListener("click", (e) => {
+      const btnView = e.target.closest(".action-view-lec-profile");
+      const btnEdit = e.target.closest(".action-edit-lec-profile");
+      const btnAllocs = e.target.closest(".action-view-lec-allocs");
+      const btnToggle = e.target.closest(".action-toggle-lec-status");
+
+      if (btnView) {
+        const id = btnView.dataset.id;
+        const target = lecturersList.find((l) => l.id === id);
+        if (target) openViewProfileModal(target);
+      } else if (btnEdit) {
+        const id = btnEdit.dataset.id;
+        const target = lecturersList.find((l) => l.id === id);
+        if (target) openEditLecturerModal(target);
+      } else if (btnAllocs) {
+        const id = btnAllocs.dataset.id;
+        const target = lecturersList.find((l) => l.id === id);
+        if (target) openViewAssignmentsModal(target);
+      } else if (btnToggle) {
+        const id = btnToggle.dataset.id;
+        const target = lecturersList.find((l) => l.id === id);
+        if (target) openToggleStatusModal(target);
+      }
+    });
+  }
+
+  // Handle Delegate Clicks for jump buttons inside modals
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".btn-jump-to-alloc-screen")) {
+      closeViewAssignmentsModal();
+      closeViewProfileModal();
+      navigateToSection("course-allocation");
+    }
+  });
+
+  // --- Real-Time Firestore & Local Cache Subscriptions ---
+
+  subscribeLecturers((lecs) => {
+    lecturersList = lecs || [];
+    refreshAll();
+  });
+
+  subscribeCourseAllocations((allocs) => {
+    allocationsList = allocs || [];
+    refreshAll();
+  });
+}
+
 // Auto-run on DOM ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initDashboard);
@@ -2582,6 +3543,7 @@ if (typeof window !== "undefined") {
     handleAdminSignOut,
     initCourseManagement,
     initCourseAllocation,
+    initLecturerManagement,
     showAdminToast
   };
 }

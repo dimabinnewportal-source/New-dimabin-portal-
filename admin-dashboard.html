@@ -1298,16 +1298,284 @@
 
         <!-- SECTION 7: LECTURER MANAGEMENT -->
         <section class="admin-section" id="section-lecturer-management" aria-label="Lecturer Management">
-          <div class="section-heading-wrap">
-            <h2 class="section-main-title">Lecturer Management</h2>
-            <p class="section-sub-title">Faculty credentials, assigned departments, and instructor access controls.</p>
+
+          <!-- Institutional Session & Faculty Model Strip -->
+          <div class="session-info-strip">
+            <div class="session-strip-group">
+              <div class="session-strip-item">
+                <span class="session-strip-label">Academic Session:</span>
+                <span class="session-strip-badge" id="lec-active-session-badge">2026/2027</span>
+              </div>
+              <div class="session-strip-item">
+                <span class="session-strip-label">Account Architecture:</span>
+                <span class="session-strip-badge" style="color: var(--gold); border-color: rgba(245, 184, 0, 0.45);">Single Identity · Multi-Campus</span>
+              </div>
+            </div>
+            <div class="session-strip-item">
+              <span class="session-strip-label" style="color: #93C5FD;">Authentication Sync:</span>
+              <span class="session-strip-badge" style="background: rgba(22, 163, 74, 0.2); color: #86EFAC; border-color: #86EFAC;">● Live Firebase Firestore</span>
+            </div>
           </div>
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">👨‍🏫</div>
-            <h3 class="placeholder-title">Faculty Roster &amp; Profiles</h3>
-            <p class="placeholder-desc">Manage ordained tutors, pastoral educators, and academic facilitators across all study centres.</p>
-            <span class="placeholder-tag">Faculty Registry Ready</span>
+
+          <!-- Page Header & Action Controls -->
+          <div class="section-heading-wrap" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 class="section-main-title">Lecturer Management</h2>
+              <p class="section-sub-title">Manage lecturer profiles, accounts and academic responsibilities across all DIMABIN study centres.</p>
+            </div>
+            <div class="section-heading-actions" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+              <button type="button" class="btn-card-action" id="btn-goto-allocations-from-lec" style="padding: 0.55rem 1rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <polyline points="16 3 21 3 21 8"></polyline>
+                  <line x1="4" y1="20" x2="21" y2="3"></line>
+                  <polyline points="21 16 21 21 16 21"></polyline>
+                  <line x1="15" y1="15" x2="21" y2="21"></line>
+                  <line x1="4" y1="4" x2="9" y2="9"></line>
+                </svg>
+                Course Allocations
+              </button>
+              <button type="button" class="btn-card-action" id="btn-open-add-lecturer-modal" style="background: var(--gold); color: var(--dark-navy); font-weight: 800; border-color: var(--gold); padding: 0.55rem 1.15rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Lecturer (+)
+              </button>
+            </div>
           </div>
+
+          <!-- Summary Statistics Grid (Dynamically Calculated from Real Firestore Records) -->
+          <div class="stats-grid-6" style="margin-bottom: 1.5rem;">
+            <!-- 1. Total Lecturers -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Lecturers</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-lec-total">0</div>
+              <span class="stat-foot">Institutional Faculty Members</span>
+            </div>
+
+            <!-- 2. Active Lecturers -->
+            <div class="stat-card green-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Active Lecturers</span>
+                <div class="stat-icon-wrap" style="color: #16A34A; background: #DCFCE7;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-lec-active">0</div>
+              <span class="stat-foot">Full Portal Access Enabled</span>
+            </div>
+
+            <!-- 3. Inactive Lecturers -->
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Inactive Lecturers</span>
+                <div class="stat-icon-wrap" style="color: #6B7280; background: #F3F4F6;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-lec-inactive">0</div>
+              <span class="stat-foot">Paused or Concluded Accounts</span>
+            </div>
+
+            <!-- 4. Teaching / Assigned Faculty -->
+            <div class="stat-card gold-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Currently Assigned</span>
+                <div class="stat-icon-wrap" style="color: #2563EB; background: #EFF6FF;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-lec-assigned">0</div>
+              <span class="stat-foot">Faculty with Active Course Load</span>
+            </div>
+
+            <!-- 5. Multi-Centre Instructors -->
+            <div class="stat-card warning-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Multi-Centre Faculty</span>
+                <div class="stat-icon-wrap" style="color: #D97706; background: #FEF3C7;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                    <line x1="8" y1="2" x2="8" y2="18"></line>
+                    <line x1="16" y1="6" x2="16" y2="22"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-lec-multi-centre">0</div>
+              <span class="stat-foot">Teaching Across ≥2 Campuses</span>
+            </div>
+
+            <!-- 6. Total Active Allocations -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Active Course Load</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-lec-alloc-count">0</div>
+              <span class="stat-foot">Total Allocated Course Offerings</span>
+            </div>
+          </div>
+
+          <!-- Search and Filter Panel -->
+          <div class="course-filter-panel-card">
+            <div class="filter-panel-header">
+              <div class="filter-panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <span>Filter Faculty Directory</span>
+              </div>
+              <button type="button" class="btn-reset-filters" id="btn-reset-lec-filters">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+                <span>Reset Filters</span>
+              </button>
+            </div>
+
+            <div class="filter-grid-courses">
+              <!-- 1. Search Field -->
+              <div class="filter-item-search">
+                <label class="filter-label" for="filter-lec-search">Search Faculty</label>
+                <div class="table-search-box">
+                  <span class="table-search-icon">🔍</span>
+                  <input type="text" class="table-search-input" id="filter-lec-search" placeholder="Search by Lecturer ID, name, email, phone, or specialization...">
+                </div>
+              </div>
+
+              <!-- 2. Department Filter -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-lec-dept">Department</label>
+                <select class="table-filter-select" id="filter-lec-dept">
+                  <option value="all">All Departments</option>
+                  <option value="Biblical Studies &amp; Theology">Biblical Studies &amp; Theology</option>
+                  <option value="Systematic Theology &amp; Apologetics">Systematic Theology &amp; Apologetics</option>
+                  <option value="Practical Theology &amp; Pastoral Ministry">Practical Theology &amp; Pastoral Ministry</option>
+                  <option value="Missions &amp; Evangelism">Missions &amp; Evangelism</option>
+                  <option value="Church Administration &amp; Leadership">Church Administration &amp; Leadership</option>
+                  <option value="Christian Education">Christian Education</option>
+                </select>
+              </div>
+
+              <!-- 3. Account Status Filter -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-lec-status">Account Status</label>
+                <select class="table-filter-select" id="filter-lec-status">
+                  <option value="all">All Account Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              <!-- 4. Study Centre Filter -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-lec-centre">Study Centre (Base or Teaching)</label>
+                <select class="table-filter-select" id="filter-lec-centre">
+                  <option value="all">All Study Centres</option>
+                  <option value="Goshen Central Campus, Abeokuta">Goshen Central Campus, Abeokuta</option>
+                  <option value="Lagos Outreach Coordination Centre">Lagos Outreach Coordination Centre</option>
+                  <option value="Ibadan Regional Study Centre">Ibadan Regional Study Centre</option>
+                  <option value="Online &amp; Distance Learning Hub">Online &amp; Distance Learning Hub</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Secondary Filters Row -->
+            <div class="filter-row-secondary">
+              <!-- Sort Order -->
+              <div class="filter-item" style="flex: 1;">
+                <label class="filter-label" for="filter-lec-sort">Sort Directory By</label>
+                <select class="table-filter-select" id="filter-lec-sort">
+                  <option value="name-asc">Full Name (A–Z)</option>
+                  <option value="name-desc">Full Name (Z–A)</option>
+                  <option value="id-asc">Lecturer ID (Ascending)</option>
+                  <option value="courses-desc">Most Assigned Courses</option>
+                  <option value="status-active">Active Status First</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Directory Card -->
+          <div class="content-card">
+            <div class="table-toolbar">
+              <div class="table-toolbar-left">
+                <span class="content-card-title" style="margin-right: 0.5rem;">Institutional Faculty Roster</span>
+                <span class="session-strip-badge" id="lec-count-pill" style="background: #EFF6FF; color: var(--primary-blue); border-color: #BFDBFE;">0 Faculty Members</span>
+              </div>
+              <div class="table-toolbar-right">
+                <span id="lec-filter-summary" style="font-size: 0.75rem; color: var(--admin-text-muted);">Showing all faculty records</span>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="admin-table" id="lecturers-admin-table">
+                <thead>
+                  <tr>
+                    <th style="min-width: 140px;">Lecturer ID</th>
+                    <th style="min-width: 200px;">Full Name</th>
+                    <th style="min-width: 190px;">Email</th>
+                    <th style="min-width: 130px;">Phone</th>
+                    <th style="min-width: 190px;">Department</th>
+                    <th style="min-width: 130px;">Assigned Courses</th>
+                    <th style="min-width: 170px;">Assigned Study Centres</th>
+                    <th style="min-width: 120px;">Account Status</th>
+                    <th style="text-align: right; min-width: 270px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="lecturers-table-tbody">
+                  <!-- Dynamically Rendered by Lecturer Management Controller -->
+                </tbody>
+              </table>
+
+              <!-- Loading State -->
+              <div id="lecturers-table-loading" class="empty-state-box" style="display: none;">
+                <div class="empty-icon">⏳</div>
+                <div class="empty-state-text">Loading institutional faculty directory...</div>
+                <div class="empty-state-sub">Fetching verified lecturer profiles and active allocations from Firestore.</div>
+              </div>
+
+              <!-- Empty State -->
+              <div id="lecturers-table-empty" class="empty-state-box" style="display: none;">
+                <div class="empty-icon">👨‍🏫</div>
+                <div class="empty-state-text" id="lec-empty-heading">No faculty records match your criteria.</div>
+                <div class="empty-state-sub" id="lec-empty-sub">Adjust your search or add a new faculty member using "+ Add Lecturer".</div>
+              </div>
+
+              <!-- Error State -->
+              <div id="lecturers-table-error" class="empty-state-box" style="display: none;">
+                <div class="empty-icon" style="color: #DC2626;">⚠️</div>
+                <div class="empty-state-text" style="color: #DC2626;">Unable to sync lecturer directory.</div>
+                <div class="empty-state-sub">A Firestore database error occurred while querying lecturer records.</div>
+              </div>
+            </div>
+          </div>
+
         </section>
 
         <!-- SECTION 8: COURSE MANAGEMENT -->
@@ -2629,7 +2897,414 @@
     </div>
   </div>
 
-  <!-- Toast Notification Container -->
+  <!-- ======================================================================
+       LECTURER MANAGEMENT MODALS
+       ====================================================================== -->
+
+  <!-- Lecturer Modal 1: Add Lecturer -->
+  <div class="admin-modal-overlay" id="modal-add-lecturer-profile" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-add-lec-title" style="display: none;">
+    <div class="admin-modal-card modal-large">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modal-add-lec-title">Register Institutional Faculty Member</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-add-lec-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div id="add-lec-modal-alert" class="course-modal-feedback" role="alert" style="display: none;"></div>
+
+        <!-- Single Institutional Identity & Safe Auth Provisioning Banner -->
+        <div class="allocation-info-banner" style="margin-bottom: 1.25rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <div>
+            <strong>Institutional Single-Identity Policy:</strong> Each lecturer maintains ONE permanent institutional profile across all courses, semesters, and study centres. Account provisioning creates their verified profile and establishes institutional credentials safely without disturbing your active administrator session.
+          </div>
+        </div>
+
+        <form id="form-add-lecturer-profile" novalidate>
+          <div class="course-form-grid">
+            <!-- 1. Full Name -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="add-lec-fullname">Full Name &amp; Ecclesiastical Title *</label>
+              <input type="text" class="admin-form-input" id="add-lec-fullname" placeholder="e.g. Rev. Dr. Emmanuel A. Olubunmi" required>
+            </div>
+
+            <!-- 2. Institutional Lecturer ID -->
+            <div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
+                <label class="admin-form-label" for="add-lec-staffid" style="margin-bottom: 0;">Lecturer ID *</label>
+                <button type="button" id="btn-auto-gen-staff-id" style="background: none; border: none; color: var(--primary-blue); font-size: 0.75rem; font-weight: 700; cursor: pointer; text-decoration: underline;">
+                  ⚡ Suggest Next ID
+                </button>
+              </div>
+              <input type="text" class="admin-form-input" id="add-lec-staffid" placeholder="DIMABIN/FAC/2026/06" required>
+              <small style="color: var(--admin-text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">Must be unique across all DIMABIN study centres.</small>
+            </div>
+
+            <!-- 3. Institutional Email Address -->
+            <div>
+              <label class="admin-form-label" for="add-lec-email">Email Address *</label>
+              <input type="email" class="admin-form-input" id="add-lec-email" placeholder="faculty@dimabin.edu.ng" required>
+              <small style="color: var(--admin-text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">Used for portal authentication and institutional notices.</small>
+            </div>
+
+            <!-- 4. Phone Number -->
+            <div>
+              <label class="admin-form-label" for="add-lec-phone">Phone Number</label>
+              <input type="tel" class="admin-form-input" id="add-lec-phone" placeholder="+234 803 123 4567">
+            </div>
+
+            <!-- 5. Academic Department -->
+            <div>
+              <label class="admin-form-label" for="add-lec-department">Department *</label>
+              <select class="admin-form-select" id="add-lec-department" required>
+                <option value="Biblical Studies &amp; Theology">Biblical Studies &amp; Theology</option>
+                <option value="Systematic Theology &amp; Apologetics">Systematic Theology &amp; Apologetics</option>
+                <option value="Practical Theology &amp; Pastoral Ministry">Practical Theology &amp; Pastoral Ministry</option>
+                <option value="Missions &amp; Evangelism">Missions &amp; Evangelism</option>
+                <option value="Church Administration &amp; Leadership">Church Administration &amp; Leadership</option>
+                <option value="Christian Education">Christian Education</option>
+              </select>
+            </div>
+
+            <!-- 6. Academic Qualification -->
+            <div>
+              <label class="admin-form-label" for="add-lec-qualification">Qualifications</label>
+              <input type="text" class="admin-form-input" id="add-lec-qualification" placeholder="e.g. Ph.D. Theology, M.Th., B.Th.">
+            </div>
+
+            <!-- 7. Theological Specialization -->
+            <div>
+              <label class="admin-form-label" for="add-lec-specialization">Theological Specialization</label>
+              <input type="text" class="admin-form-input" id="add-lec-specialization" placeholder="e.g. Systematic Christology, Hermeneutics">
+            </div>
+
+            <!-- 8. Primary Campus Base -->
+            <div>
+              <label class="admin-form-label" for="add-lec-centre">Primary Campus Base</label>
+              <select class="admin-form-select" id="add-lec-centre">
+                <option value="Goshen Central Campus, Abeokuta">Goshen Central Campus, Abeokuta</option>
+                <option value="Lagos Outreach Coordination Centre">Lagos Outreach Coordination Centre</option>
+                <option value="Ibadan Regional Study Centre">Ibadan Regional Study Centre</option>
+                <option value="Online &amp; Distance Learning Hub">Online &amp; Distance Learning Hub</option>
+              </select>
+            </div>
+
+            <!-- 9. Account Status -->
+            <div>
+              <label class="admin-form-label" for="add-lec-status">Initial Account Status *</label>
+              <select class="admin-form-select" id="add-lec-status" required>
+                <option value="active">Active (Access Enabled)</option>
+                <option value="inactive">Inactive (Account Suspended)</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-add-lec-modal">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-add-lecturer">
+          <span class="btn-spinner" id="add-lec-spinner" style="display: none;">⏳</span>
+          <span id="add-lec-btn-text">Register Faculty Member</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lecturer Modal 2: Edit Lecturer Profile -->
+  <div class="admin-modal-overlay" id="modal-edit-lecturer-profile" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-edit-lec-title" style="display: none;">
+    <div class="admin-modal-card modal-large">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modal-edit-lec-title">Edit Faculty Member Profile</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-edit-lec-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div id="edit-lec-modal-alert" class="course-modal-feedback" role="alert" style="display: none;"></div>
+        <input type="hidden" id="edit-lec-id" value="">
+
+        <!-- Permanent Identity Note -->
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: var(--admin-radius-sm); padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <span style="font-size: 0.7rem; text-transform: uppercase; font-weight: 700; color: var(--admin-text-muted);">Institutional ID (Permanent):</span>
+            <div style="font-weight: 800; color: var(--primary-blue); font-size: 0.9375rem;" id="edit-lec-staffid-display">DIMABIN/FAC/...</div>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--admin-text-muted);">
+            Existing course allocations &amp; history preserved
+          </div>
+        </div>
+
+        <form id="form-edit-lecturer-profile" novalidate>
+          <div class="course-form-grid">
+            <!-- 1. Full Name -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="edit-lec-fullname">Full Name &amp; Ecclesiastical Title *</label>
+              <input type="text" class="admin-form-input" id="edit-lec-fullname" required>
+            </div>
+
+            <!-- 2. Institutional Email Address -->
+            <div>
+              <label class="admin-form-label" for="edit-lec-email">Email Address *</label>
+              <input type="email" class="admin-form-input" id="edit-lec-email" required>
+            </div>
+
+            <!-- 3. Phone Number -->
+            <div>
+              <label class="admin-form-label" for="edit-lec-phone">Phone Number</label>
+              <input type="tel" class="admin-form-input" id="edit-lec-phone">
+            </div>
+
+            <!-- 4. Academic Department -->
+            <div>
+              <label class="admin-form-label" for="edit-lec-department">Department *</label>
+              <select class="admin-form-select" id="edit-lec-department" required>
+                <option value="Biblical Studies &amp; Theology">Biblical Studies &amp; Theology</option>
+                <option value="Systematic Theology &amp; Apologetics">Systematic Theology &amp; Apologetics</option>
+                <option value="Practical Theology &amp; Pastoral Ministry">Practical Theology &amp; Pastoral Ministry</option>
+                <option value="Missions &amp; Evangelism">Missions &amp; Evangelism</option>
+                <option value="Church Administration &amp; Leadership">Church Administration &amp; Leadership</option>
+                <option value="Christian Education">Christian Education</option>
+              </select>
+            </div>
+
+            <!-- 5. Academic Qualification -->
+            <div>
+              <label class="admin-form-label" for="edit-lec-qualification">Qualifications</label>
+              <input type="text" class="admin-form-input" id="edit-lec-qualification">
+            </div>
+
+            <!-- 6. Theological Specialization -->
+            <div>
+              <label class="admin-form-label" for="edit-lec-specialization">Theological Specialization</label>
+              <input type="text" class="admin-form-input" id="edit-lec-specialization">
+            </div>
+
+            <!-- 7. Primary Campus Base -->
+            <div>
+              <label class="admin-form-label" for="edit-lec-centre">Primary Campus Base</label>
+              <select class="admin-form-select" id="edit-lec-centre">
+                <option value="Goshen Central Campus, Abeokuta">Goshen Central Campus, Abeokuta</option>
+                <option value="Lagos Outreach Coordination Centre">Lagos Outreach Coordination Centre</option>
+                <option value="Ibadan Regional Study Centre">Ibadan Regional Study Centre</option>
+                <option value="Online &amp; Distance Learning Hub">Online &amp; Distance Learning Hub</option>
+              </select>
+            </div>
+
+            <!-- 8. Account Status -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="edit-lec-status">Account Status *</label>
+              <select class="admin-form-select" id="edit-lec-status" required>
+                <option value="active">Active (Access Enabled)</option>
+                <option value="inactive">Inactive (Account Suspended)</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-edit-lec-modal">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-edit-lecturer">
+          <span class="btn-spinner" id="edit-lec-spinner" style="display: none;">⏳</span>
+          <span id="edit-lec-btn-text">Save Changes</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lecturer Modal 3: View Full Faculty Profile -->
+  <div class="admin-modal-overlay" id="modal-view-lecturer-profile" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-view-lec-title" style="display: none;">
+    <div class="admin-modal-card modal-large">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modal-view-lec-title">Institutional Faculty Profile</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-view-lec-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <!-- Header Banner Card -->
+        <div class="lec-profile-header-card">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div class="lec-profile-avatar-circle" id="view-lec-avatar">OL</div>
+            <div>
+              <h4 style="font-size: 1.15rem; font-weight: 800; color: var(--dark-navy); margin-bottom: 0.2rem;" id="view-lec-fullname">Rev. Dr. E. A. Olubunmi</h4>
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <span style="font-size: 0.8125rem; font-weight: 700; color: var(--primary-blue);" id="view-lec-staffid">DIMABIN/FAC/2026/01</span>
+                <span style="color: #CBD5E1;">•</span>
+                <span style="font-size: 0.8125rem; color: var(--admin-text-muted);" id="view-lec-dept">Biblical Studies &amp; Theology</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <span class="badge-lec-status badge-lec-active" id="view-lec-status-badge">● Active</span>
+          </div>
+        </div>
+
+        <!-- Academic & Contact Details Grid -->
+        <div class="lec-profile-grid">
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Institutional Email</div>
+            <div class="lec-profile-field-value" id="view-lec-email">e.olubunmi@dimabin.edu.ng</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Phone Number</div>
+            <div class="lec-profile-field-value" id="view-lec-phone">+234 803 111 2233</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Academic Qualifications</div>
+            <div class="lec-profile-field-value" id="view-lec-qualification">Ph.D. Biblical Theology, M.Th.</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Theological Specialization</div>
+            <div class="lec-profile-field-value" id="view-lec-specialization">Pauline Epistles &amp; Christology</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Primary Campus Base</div>
+            <div class="lec-profile-field-value" id="view-lec-centre">Goshen Central Campus, Abeokuta</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Current Teaching Load</div>
+            <div class="lec-profile-field-value" id="view-lec-load-summary">1 Course · 1 Campus</div>
+          </div>
+        </div>
+
+        <!-- Single Institutional Authentication Information -->
+        <div class="lec-auth-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          <div style="flex: 1;">
+            <div style="font-weight: 700; color: var(--dark-navy); margin-bottom: 0.2rem;">Portal Authentication &amp; Institutional Account Status</div>
+            <p style="color: var(--admin-text-main); font-size: 0.78rem; line-height: 1.45; margin-bottom: 0.35rem;">
+              Linked Institutional UID: <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color: #1E293B;" id="view-lec-uid">lec_auth_dimabin_fac_...</code>
+            </p>
+            <p style="color: var(--admin-text-muted); font-size: 0.72rem; line-height: 1.4; margin: 0;">
+              This faculty member has ONE unified account. They sign in to the Lecturer Portal via their institutional credentials regardless of how many courses or study centres they are allocated.
+            </p>
+          </div>
+        </div>
+
+        <!-- Assigned Offerings Quick Preview -->
+        <div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+            <h5 style="font-size: 0.875rem; font-weight: 800; color: var(--dark-navy); margin: 0;">Current Course Assignments</h5>
+            <span style="font-size: 0.75rem; color: var(--primary-blue); font-weight: 700;" id="view-lec-assigned-count">0 Offerings</span>
+          </div>
+          <div id="view-lec-assignments-preview" class="lec-assignments-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-close-view-lec-btn">Close</button>
+        <button type="button" class="btn-card-action" id="btn-view-all-assignments-btn" style="background: #EFF6FF; color: var(--primary-blue); border-color: #BFDBFE;">
+          View Full Teaching Schedule
+        </button>
+        <button type="button" class="btn-admin-primary" id="btn-edit-from-view-lec-btn">
+          Edit Profile
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lecturer Modal 4: View Assignments Schedule -->
+  <div class="admin-modal-overlay" id="modal-view-lecturer-assignments" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-view-allocs-title" style="display: none;">
+    <div class="admin-modal-card modal-large">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modal-view-allocs-title">Faculty Teaching Allocations</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-allocs-lec-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div class="history-offering-banner" style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--admin-radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--primary-blue);" id="allocs-modal-lec-id">DIMABIN/FAC/2026/01</div>
+          <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--dark-navy); margin: 0.25rem 0;" id="allocs-modal-lec-name">Rev. Dr. E. A. Olubunmi</h4>
+          <div style="font-size: 0.8125rem; color: var(--admin-text-main);" id="allocs-modal-lec-dept">Biblical Studies &amp; Theology</div>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+          <h5 style="font-size: 0.875rem; font-weight: 800; color: var(--dark-navy); margin: 0;">Allocated Course Offerings Across All Campuses</h5>
+          <span class="session-strip-badge" id="allocs-modal-count-badge" style="background: #EFF6FF; color: var(--primary-blue); border-color: #BFDBFE;">0 Active Offerings</span>
+        </div>
+
+        <div id="allocs-modal-list-container" class="lec-assignments-list">
+          <!-- Dynamically populated with active allocations -->
+        </div>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-close-allocs-lec-btn">Close</button>
+        <button type="button" class="btn-admin-primary" id="btn-goto-allocations-from-modal">
+          Go to Course Allocation Matrix →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lecturer Modal 5: Toggle Status (Activate / Deactivate Confirmation) -->
+  <div class="admin-modal-overlay" id="modal-toggle-lecturer-status" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-toggle-lec-title" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header" id="modal-toggle-lec-header" style="background: #DC2626;">
+        <h3 class="admin-modal-title" id="modal-toggle-lec-title" style="color: #FFFFFF;">Change Account Status</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-toggle-lec-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <input type="hidden" id="toggle-lec-id" value="">
+        <input type="hidden" id="toggle-lec-target-status" value="">
+
+        <p style="font-size: 0.9375rem; color: var(--dark-navy); font-weight: 600; margin-bottom: 0.75rem;" id="toggle-lec-prompt">
+          Are you sure you want to change this faculty member's account status?
+        </p>
+
+        <div class="detail-item-box" style="margin-bottom: 1rem;">
+          <span class="detail-item-label">Faculty Member</span>
+          <div class="detail-item-val" id="toggle-lec-name-display">Rev. Dr. E. A. Olubunmi</div>
+          <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.25rem;" id="toggle-lec-meta-display">DIMABIN/FAC/2026/01 · Biblical Studies &amp; Theology</div>
+        </div>
+
+        <p style="font-size: 0.8125rem; color: var(--admin-text-muted); line-height: 1.5;" id="toggle-lec-explanation">
+          Deactivating this profile suspends portal access for this faculty member. Existing course allocation records and teaching history are preserved safely in institutional archives.
+        </p>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-toggle-lec-modal">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-toggle-status" style="background: #DC2626; border-color: #DC2626;">
+          Confirm Status Change
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="admin-toast-container" id="admin-toast-container" aria-live="polite"></div>
 
   <!-- Pure Vanilla JavaScript Modules -->
