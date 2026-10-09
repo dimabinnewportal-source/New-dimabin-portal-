@@ -1312,16 +1312,316 @@
 
         <!-- SECTION 8: COURSE MANAGEMENT -->
         <section class="admin-section" id="section-course-management" aria-label="Course Management">
-          <div class="section-heading-wrap">
-            <h2 class="section-main-title">Course Management</h2>
-            <p class="section-sub-title">Syllabus definitions, course codes, credit units, and curriculum standards.</p>
+
+          <!-- Academic Session & Trimester Summary Strip -->
+          <div class="session-info-strip">
+            <div class="session-strip-group">
+              <div class="session-strip-item">
+                <span class="session-strip-label">Academic Session:</span>
+                <span class="session-strip-badge" id="courses-active-session-badge">2026/2027</span>
+              </div>
+              <div class="session-strip-item">
+                <span class="session-strip-label">Academic Semester:</span>
+                <span class="session-strip-badge" id="courses-active-semester-badge">First Semester</span>
+              </div>
+              <div class="session-strip-item">
+                <span class="session-strip-label">Institutional Term Model:</span>
+                <span class="session-strip-badge" style="color: var(--gold); border-color: rgba(245, 184, 0, 0.45);">3-Semester Trimester</span>
+              </div>
+            </div>
+            <div class="session-strip-item">
+              <span class="session-strip-label" style="color: #93C5FD;">Curriculum Directory:</span>
+              <span class="session-strip-badge" style="background: rgba(22, 163, 74, 0.2); color: #86EFAC; border-color: #86EFAC;" id="courses-live-sync-badge">● Live Synced</span>
+            </div>
           </div>
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">📖</div>
-            <h3 class="placeholder-title">Academic Curriculum Catalogue</h3>
-            <p class="placeholder-desc">Configure foundational theological courses, biblical hermeneutics, homiletics, and ministry practicums.</p>
-            <span class="placeholder-tag">Curriculum Matrix Ready</span>
+
+          <!-- Page Header & Action Controls -->
+          <div class="section-heading-wrap" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 class="section-main-title">Course Management</h2>
+              <p class="section-sub-title">Configure academic courses, semester allocations, curriculum parameters, and course status.</p>
+            </div>
+            <div class="section-heading-actions" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+              <button type="button" class="btn-card-action" id="btn-course-list-view" style="padding: 0.55rem 1rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                List View
+              </button>
+              <button type="button" class="btn-card-action" id="btn-open-add-course" style="background: var(--gold); color: var(--dark-navy); font-weight: 800; border-color: var(--gold); padding: 0.55rem 1.15rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Course (+)
+              </button>
+            </div>
           </div>
+
+          <!-- Course Statistics Cards (Calculated Dynamically from Real Records) -->
+          <div class="stats-grid-6" style="margin-bottom: 1.5rem;">
+            <!-- 1. Total Courses -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Courses</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-courses-total">0</div>
+              <span class="stat-foot">Catalogued Curriculum Modules</span>
+            </div>
+
+            <!-- 2. Active Courses -->
+            <div class="stat-card green-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Active Courses</span>
+                <div class="stat-icon-wrap" style="color: #16A34A; background: #DCFCE7;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-courses-active">0</div>
+              <span class="stat-foot">Enrolment &amp; Allocation Ready</span>
+            </div>
+
+            <!-- 3. Inactive Courses -->
+            <div class="stat-card warning-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Inactive Courses</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-courses-inactive">0</div>
+              <span class="stat-foot">Archived / Paused Modules</span>
+            </div>
+
+            <!-- 4. First Semester Courses -->
+            <div class="stat-card gold-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">First Semester</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-courses-sem1">0</div>
+              <span class="stat-foot">1st Semester Allocations</span>
+            </div>
+
+            <!-- 5. Second Semester Courses -->
+            <div class="stat-card gold-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Second Semester</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-courses-sem2">0</div>
+              <span class="stat-foot">2nd Semester Allocations</span>
+            </div>
+
+            <!-- 6. Third Semester Courses -->
+            <div class="stat-card gold-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Third Semester</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-courses-sem3">0</div>
+              <span class="stat-foot">3rd Semester Allocations</span>
+            </div>
+          </div>
+
+          <!-- Search and Filter Panel -->
+          <div class="course-filter-panel-card">
+            <div class="filter-panel-header">
+              <div class="filter-panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <span>Search &amp; Filter Course Directory</span>
+              </div>
+              <button type="button" class="btn-reset-filters" id="btn-reset-course-filters">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+                <span>Reset Filters</span>
+              </button>
+            </div>
+
+            <div class="filter-grid-courses">
+              <!-- 1. Search Field -->
+              <div class="filter-item-search">
+                <label class="filter-label" for="course-search-input">Search Course</label>
+                <div class="table-search-box">
+                  <span class="table-search-icon">🔍</span>
+                  <input type="text" class="table-search-input" id="course-search-input" placeholder="Search by course code, title, or department...">
+                </div>
+              </div>
+
+              <!-- 2. Academic Session -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-course-session">Academic Session</label>
+                <select class="table-filter-select" id="filter-course-session">
+                  <option value="all">All Academic Sessions</option>
+                  <option value="2026/2027">2026/2027</option>
+                  <option value="2025/2026">2025/2026</option>
+                  <option value="2024/2025">2024/2025</option>
+                </select>
+              </div>
+
+              <!-- 3. Semester (Three-Semester Options) -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-course-semester">Semester</label>
+                <select class="table-filter-select" id="filter-course-semester">
+                  <option value="all">All Semesters</option>
+                  <option value="First Semester">First Semester</option>
+                  <option value="Second Semester">Second Semester</option>
+                  <option value="Third Semester">Third Semester</option>
+                </select>
+              </div>
+
+              <!-- 4. Course Status -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-course-status">Course Status</label>
+                <select class="table-filter-select" id="filter-course-status">
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Secondary Filters Row -->
+            <div class="filter-row-secondary">
+              <!-- 5. Study Centre -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-course-centre">Study Centre</label>
+                <select class="table-filter-select" id="filter-course-centre">
+                  <option value="all">All Study Centres</option>
+                  <option value="Goshen Central Campus, Abeokuta">Goshen Central Campus, Abeokuta</option>
+                  <option value="Lagos Outreach Coordination Centre">Lagos Outreach Coordination Centre</option>
+                  <option value="Ibadan Regional Study Centre">Ibadan Regional Study Centre</option>
+                  <option value="Online & Distance Learning Hub">Online & Distance Learning Hub</option>
+                </select>
+              </div>
+
+              <!-- 6. Department -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-course-dept">Department</label>
+                <select class="table-filter-select" id="filter-course-dept">
+                  <option value="all">All Departments</option>
+                  <option value="Biblical Studies & Theology">Biblical Studies & Theology</option>
+                  <option value="Systematic Theology & Apologetics">Systematic Theology & Apologetics</option>
+                  <option value="Practical Theology & Pastoral Ministry">Practical Theology & Pastoral Ministry</option>
+                  <option value="Missions & Evangelism">Missions & Evangelism</option>
+                  <option value="Church Administration & Leadership">Church Administration & Leadership</option>
+                  <option value="Christian Education">Christian Education</option>
+                </select>
+              </div>
+
+              <!-- 7. Sort Dropdown -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-course-sort">Sort Order</label>
+                <select class="table-filter-select" id="filter-course-sort">
+                  <option value="code-asc">Course Code (A–Z)</option>
+                  <option value="code-desc">Course Code (Z–A)</option>
+                  <option value="title-asc">Course Title (A–Z)</option>
+                  <option value="title-desc">Course Title (Z–A)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Course Directory Content Card & Table -->
+          <div class="content-card" id="course-table-card">
+            <div class="table-toolbar">
+              <div class="table-toolbar-left">
+                <span class="content-card-title" style="margin-right: 0.5rem;">Academic Curriculum Table</span>
+                <span class="session-strip-badge" id="courses-count-pill" style="background: #EFF6FF; color: var(--primary-blue); border-color: #BFDBFE;">0 Courses</span>
+              </div>
+              <div class="table-toolbar-right">
+                <span id="courses-filter-summary" style="font-size: 0.75rem; color: var(--admin-text-muted);">Showing all courses</span>
+              </div>
+            </div>
+
+            <!-- Horizontally Scrollable Table Container for Strict Responsiveness -->
+            <div class="table-responsive">
+              <table class="admin-table" id="courses-admin-table">
+                <thead>
+                  <tr>
+                    <th>Course Code</th>
+                    <th>Course Title</th>
+                    <th>Department</th>
+                    <th>Programme</th>
+                    <th>Level</th>
+                    <th>Semester</th>
+                    <th>Credit Units</th>
+                    <th>Study Centre</th>
+                    <th>Status</th>
+                    <th style="text-align: right; min-width: 220px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="courses-table-tbody">
+                  <!-- Dynamically Rendered by Course Management Controller -->
+                </tbody>
+              </table>
+
+              <!-- Loading State -->
+              <div id="courses-table-loading" class="empty-state-box" style="display: none;">
+                <div class="empty-icon">⏳</div>
+                <div class="empty-state-text">Loading courses...</div>
+                <div class="empty-state-sub">Fetching official curriculum modules from Firebase Firestore.</div>
+              </div>
+
+              <!-- Empty State -->
+              <div id="courses-table-empty" class="empty-state-box" style="display: none;">
+                <div class="empty-icon">📖</div>
+                <div class="empty-state-text" id="courses-empty-heading">No courses found for the selected filters.</div>
+                <div class="empty-state-sub" id="courses-empty-sub">Adjust your search terms, semester selection, or click "Reset Filters".</div>
+              </div>
+
+              <!-- Error State -->
+              <div id="courses-table-error" class="empty-state-box" style="display: none;">
+                <div class="empty-icon" style="color: #DC2626;">⚠️</div>
+                <div class="empty-state-text" style="color: #DC2626;">Unable to load courses. Please try again.</div>
+                <div class="empty-state-sub" id="courses-error-sub">A connection error occurred while syncing with the database.</div>
+              </div>
+            </div>
+          </div>
+
         </section>
 
         <!-- SECTION 9: COURSE ALLOCATION -->
@@ -1451,6 +1751,248 @@
     </div>
 
   </div>
+
+  <!-- ======================================================================
+       COURSE MANAGEMENT MODALS & DIALOGS
+       ====================================================================== -->
+
+  <!-- Modal 1: Add / Edit Course Modal -->
+  <div class="admin-modal-overlay" id="modal-course-form" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-course-form-title" style="display: none;">
+    <div class="admin-modal-card modal-large">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modal-course-form-title">Add New Course</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-course-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div id="course-form-alert" class="course-modal-feedback" role="alert"></div>
+
+        <form id="form-course-entry" novalidate>
+          <input type="hidden" id="course-form-id" value="">
+
+          <div class="course-form-grid">
+            <!-- Course Code -->
+            <div>
+              <label class="admin-form-label" for="course-form-code">Course Code *</label>
+              <input type="text" class="admin-form-input" id="course-form-code" placeholder="e.g. THY-101" required>
+              <small style="color: var(--admin-text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">Auto-normalized. Cannot duplicate within same session &amp; semester.</small>
+            </div>
+
+            <!-- Credit Units -->
+            <div>
+              <label class="admin-form-label" for="course-form-credit">Credit Units *</label>
+              <input type="number" class="admin-form-input" id="course-form-credit" min="1" max="12" step="1" value="3" required>
+            </div>
+
+            <!-- Course Title (Full Width) -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="course-form-title">Course Title *</label>
+              <input type="text" class="admin-form-input" id="course-form-title" placeholder="e.g. Christology &amp; The Person of Christ" required>
+            </div>
+
+            <!-- Academic Session -->
+            <div>
+              <label class="admin-form-label" for="course-form-session">Academic Session *</label>
+              <select class="admin-form-select" id="course-form-session" required>
+                <option value="2026/2027">2026/2027</option>
+                <option value="2025/2026">2025/2026</option>
+                <option value="2024/2025">2024/2025</option>
+              </select>
+            </div>
+
+            <!-- Semester (All 3 options explicitly provided) -->
+            <div>
+              <label class="admin-form-label" for="course-form-semester">Semester *</label>
+              <select class="admin-form-select" id="course-form-semester" required>
+                <option value="First Semester">First Semester</option>
+                <option value="Second Semester">Second Semester</option>
+                <option value="Third Semester">Third Semester</option>
+              </select>
+            </div>
+
+            <!-- Department -->
+            <div>
+              <label class="admin-form-label" for="course-form-department">Department *</label>
+              <select class="admin-form-select" id="course-form-department" required>
+                <option value="Biblical Studies &amp; Theology">Biblical Studies &amp; Theology</option>
+                <option value="Systematic Theology &amp; Apologetics">Systematic Theology &amp; Apologetics</option>
+                <option value="Practical Theology &amp; Pastoral Ministry">Practical Theology &amp; Pastoral Ministry</option>
+                <option value="Missions &amp; Evangelism">Missions &amp; Evangelism</option>
+                <option value="Church Administration &amp; Leadership">Church Administration &amp; Leadership</option>
+                <option value="Christian Education">Christian Education</option>
+              </select>
+            </div>
+
+            <!-- Programme -->
+            <div>
+              <label class="admin-form-label" for="course-form-programme">Programme *</label>
+              <select class="admin-form-select" id="course-form-programme" required>
+                <option value="Diploma in Theology (Dipl.Th.)">Diploma in Theology (Dipl.Th.)</option>
+                <option value="Certificate in Christian Ministry">Certificate in Christian Ministry</option>
+                <option value="Postgraduate Diploma in Theology (PGD Th.)">Postgraduate Diploma in Theology (PGD Th.)</option>
+                <option value="Executive Ministry Certificate">Executive Ministry Certificate</option>
+                <option value="Bachelor of Theology (B.Th.)">Bachelor of Theology (B.Th.)</option>
+              </select>
+            </div>
+
+            <!-- Academic Level -->
+            <div>
+              <label class="admin-form-label" for="course-form-level">Academic Level</label>
+              <select class="admin-form-select" id="course-form-level">
+                <option value="100">100 Level (Diploma I)</option>
+                <option value="200">200 Level (Diploma II)</option>
+                <option value="300">300 Level</option>
+                <option value="400">400 Level</option>
+              </select>
+            </div>
+
+            <!-- Study Centre -->
+            <div>
+              <label class="admin-form-label" for="course-form-centre">Study Centre</label>
+              <select class="admin-form-select" id="course-form-centre">
+                <option value="Goshen Central Campus, Abeokuta">Goshen Central Campus, Abeokuta</option>
+                <option value="Lagos Outreach Coordination Centre">Lagos Outreach Coordination Centre</option>
+                <option value="Ibadan Regional Study Centre">Ibadan Regional Study Centre</option>
+                <option value="Online &amp; Distance Learning Hub">Online &amp; Distance Learning Hub</option>
+              </select>
+            </div>
+
+            <!-- Status -->
+            <div>
+              <label class="admin-form-label" for="course-form-status">Course Status</label>
+              <select class="admin-form-select" id="course-form-status">
+                <option value="active">Active (Available for enrolment)</option>
+                <option value="inactive">Inactive (Paused/archived)</option>
+              </select>
+            </div>
+
+            <!-- Optional Prerequisite Courses -->
+            <div>
+              <label class="admin-form-label" for="course-form-prereqs">Optional Prerequisite Course(s)</label>
+              <input type="text" class="admin-form-input" id="course-form-prereqs" placeholder="e.g. THY-101, BIB-101">
+              <small style="color: var(--admin-text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">Comma-separated course codes, if any.</small>
+            </div>
+
+            <!-- Description (Full Width) -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="course-form-desc">Course Description &amp; Syllabus Synopsis</label>
+              <textarea class="admin-form-textarea" id="course-form-desc" rows="3" placeholder="Summary of course scope, biblical themes, and theological expectations..."></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-course">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-save-course">
+          <span class="btn-spinner" id="course-save-spinner" style="display: none;">⏳</span>
+          <span id="course-save-btn-text">Save Course</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Confirm Course Activation / Deactivation -->
+  <div class="admin-modal-overlay" id="modal-course-status-confirm" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-status-confirm-title" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modal-status-confirm-title">Update Course Status</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-status-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="admin-modal-body">
+        <div style="margin-bottom: 1rem;">
+          <p id="status-modal-prompt-text" style="font-size: 0.9375rem; color: var(--dark-navy); font-weight: 600; margin-bottom: 0.75rem;">
+            Are you sure you want to update the status of this course?
+          </p>
+          <div class="detail-item-box" style="margin-bottom: 1rem;">
+            <span class="detail-item-label">Target Course Record</span>
+            <div class="detail-item-val" id="status-modal-course-info">THY-101 — Christology</div>
+            <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.25rem;" id="status-modal-course-meta">First Semester · 2026/2027</div>
+          </div>
+          <p id="status-modal-note" style="font-size: 0.8125rem; color: var(--admin-text-main); line-height: 1.5;">
+            Deactivating this course will keep all existing student registrations and academic results intact, but will hide it from active student enrollment forms.
+          </p>
+        </div>
+      </div>
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-course-status">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-course-status">Confirm Status Change</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Confirm Permanent Deletion with Academic Dependency Protection -->
+  <div class="admin-modal-overlay" id="modal-course-delete-confirm" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-delete-confirm-title" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header" style="background: #DC2626;">
+        <h3 class="admin-modal-title" id="modal-delete-confirm-title" style="color: #FFFFFF;">Permanently Delete Course</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-delete-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="admin-modal-body">
+        <!-- Deletion Warning Box -->
+        <div class="course-delete-warning-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <div>
+            <div class="course-delete-warning-title">Permanent Deletion Warning</div>
+            <div class="course-delete-warning-desc">
+              This action will permanently delete this course record and cannot be undone.
+            </div>
+          </div>
+        </div>
+
+        <!-- Dependency Blocked Box (shown only if dependencies exist) -->
+        <div id="course-delete-dependency-block" class="course-dependency-blocked-box" style="display: none;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <div>
+            <div style="font-weight: 800; font-size: 0.875rem; margin-bottom: 0.25rem;">Deletion Blocked: Academic Dependencies Found</div>
+            <div id="course-delete-dependency-msg" style="font-size: 0.8125rem; line-height: 1.5;">
+              This course is referenced in active academic records. To protect student academic transcripts, permanent deletion is disabled. Please de-activate the course instead.
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-item-box" style="margin-bottom: 1rem;">
+          <span class="detail-item-label">Target Course Record</span>
+          <div class="detail-item-val" id="delete-modal-course-title">THY-101 — Christology</div>
+          <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.25rem;" id="delete-modal-course-meta">
+            Academic Session: 2026/2027 · Semester: First Semester
+          </div>
+        </div>
+      </div>
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-course-delete">Cancel</button>
+        <button type="button" class="btn-card-action" id="btn-confirm-course-delete" style="background: #DC2626; color: #FFFFFF; border-color: #DC2626; font-weight: 800; padding: 0.6rem 1.25rem;">
+          Permanently Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="admin-toast-container" id="admin-toast-container" aria-live="polite"></div>
 
   <!-- Pure Vanilla JavaScript Modules -->
   <script type="module" src="assets/js/admin-dashboard.js"></script>

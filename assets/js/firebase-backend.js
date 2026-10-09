@@ -1070,10 +1070,264 @@ export async function toggleLecturerStatus(lecturerId, currentStatus) {
  * 6. COURSE MANAGEMENT (courses)
  * =========================================================================
  */
+/**
+ * =========================================================================
+ * 6. COURSE MANAGEMENT (courses)
+ * Full 3-Semester Academic System with Strict Validation & Dependency Safety
+ * =========================================================================
+ */
+
+export function normalizeCourseCode(code) {
+  if (!code) return "";
+  return String(code).trim().toUpperCase().replace(/\s+/g, "-");
+}
+
+export const DEFAULT_DIMABIN_COURSES = Object.freeze([
+  // --- FIRST SEMESTER (2026/2027) ---
+  {
+    id: "crs_THY_101_sem1",
+    courseCode: "THY-101",
+    title: "Christology & The Person of Christ",
+    courseTitle: "Christology & The Person of Christ",
+    description: "In-depth study of the deity, humanity, prophetic titles, and redemptive mission of Jesus Christ in biblical theology.",
+    department: "Biblical Studies & Theology",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "First Semester",
+    creditUnits: 3,
+    creditUnit: 3,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: [],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+  {
+    id: "crs_BIB_101_sem1",
+    courseCode: "BIB-101",
+    title: "Old Testament Survey & Covenant History",
+    courseTitle: "Old Testament Survey & Covenant History",
+    description: "Foundational survey of the Pentateuch, historical records, prophetic oracles, and wisdom literature of the Old Covenant.",
+    department: "Biblical Studies & Theology",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "First Semester",
+    creditUnits: 3,
+    creditUnit: 3,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: [],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+  {
+    id: "crs_MIN_101_sem1",
+    courseCode: "MIN-101",
+    title: "Foundations of Christian Ministry & Homiletics",
+    courseTitle: "Foundations of Christian Ministry & Homiletics",
+    description: "Principles of biblical sermon preparation, expository preaching, pastoral calling, and holy pulpit decorum.",
+    department: "Practical Theology & Pastoral Ministry",
+    programme: "Certificate in Christian Ministry",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "First Semester",
+    creditUnits: 2,
+    creditUnit: 2,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: [],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+  {
+    id: "crs_EVA_101_sem1",
+    courseCode: "EVA-101",
+    title: "Personal Evangelism & Missions Strategy",
+    courseTitle: "Personal Evangelism & Missions Strategy",
+    description: "The Great Commission imperative, cross-cultural outreach methods, soul-winning mechanics, and discipleship planting.",
+    department: "Missions & Evangelism",
+    programme: "Certificate in Christian Ministry",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "First Semester",
+    creditUnits: 2,
+    creditUnit: 2,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: [],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+
+  // --- SECOND SEMESTER (2026/2027) ---
+  {
+    id: "crs_THY_102_sem2",
+    courseCode: "THY-102",
+    title: "Pneumatology & The Ministry of the Holy Spirit",
+    courseTitle: "Pneumatology & The Ministry of the Holy Spirit",
+    description: "The personality, biblical gifts, spiritual fruit, and empowering work of the Holy Ghost in the contemporary believer.",
+    department: "Biblical Studies & Theology",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "Second Semester",
+    creditUnits: 3,
+    creditUnit: 3,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: ["THY-101"],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+  {
+    id: "crs_BIB_102_sem2",
+    courseCode: "BIB-102",
+    title: "New Testament Epistles & Pauline Theology",
+    courseTitle: "New Testament Epistles & Pauline Theology",
+    description: "Comprehensive exegesis of Romans, Galatians, and the pastoral epistles with apostolic application for church doctrine.",
+    department: "Biblical Studies & Theology",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "Second Semester",
+    creditUnits: 3,
+    creditUnit: 3,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: ["BIB-101"],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+  {
+    id: "crs_PAS_102_sem2",
+    courseCode: "PAS-102",
+    title: "Pastoral Care, Ethics & Ministry Integrity",
+    courseTitle: "Pastoral Care, Ethics & Ministry Integrity",
+    description: "Biblical ethics in ministerial finances, family life, pastoral counselling, confidentiality, and institutional fidelity.",
+    department: "Practical Theology & Pastoral Ministry",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "Second Semester",
+    creditUnits: 3,
+    creditUnit: 3,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: [],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+  {
+    id: "crs_ADM_102_sem2",
+    courseCode: "ADM-102",
+    title: "Church Administration & Financial Stewardship",
+    courseTitle: "Church Administration & Financial Stewardship",
+    description: "Administrative governance, institutional compliance, committee leadership, accounting principles, and church operations.",
+    department: "Church Administration & Leadership",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "Second Semester",
+    creditUnits: 2,
+    creditUnit: 2,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: [],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+
+  // --- THIRD SEMESTER (2026/2027) ---
+  {
+    id: "crs_THY_103_sem3",
+    courseCode: "THY-103",
+    title: "Eschatology & Biblical Prophecy",
+    courseTitle: "Eschatology & Biblical Prophecy",
+    description: "The Rapture, the Millennial reign, prophetic chronologies of Daniel & Revelation, and eternal state theology.",
+    department: "Biblical Studies & Theology",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "Third Semester",
+    creditUnits: 3,
+    creditUnit: 3,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: ["THY-101"],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+  {
+    id: "crs_BIB_103_sem3",
+    courseCode: "BIB-103",
+    title: "Biblical Hermeneutics & Exegesis",
+    courseTitle: "Biblical Hermeneutics & Exegesis",
+    description: "Principles of grammatical-historical scripture interpretation, contextual analysis, and dispensational discernment.",
+    department: "Biblical Studies & Theology",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "Third Semester",
+    creditUnits: 3,
+    creditUnit: 3,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: ["BIB-101", "BIB-102"],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+  {
+    id: "crs_PRA_103_sem3",
+    courseCode: "PRA-103",
+    title: "Field Practicum & Pastoral Internship",
+    courseTitle: "Field Practicum & Pastoral Internship",
+    description: "Supervised ministerial placement in an accredited assembly or chaplaincy centre evaluating real-world leadership conduct.",
+    department: "Practical Theology & Pastoral Ministry",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "Third Semester",
+    creditUnits: 4,
+    creditUnit: 4,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: ["PAS-102"],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  },
+  {
+    id: "crs_LEA_103_sem3",
+    courseCode: "LEA-103",
+    title: "Christian Leadership in Contemporary Society",
+    courseTitle: "Christian Leadership in Contemporary Society",
+    description: "Servant leadership, conflict resolution, institutional growth strategies, and maintaining the fear of God in administration.",
+    department: "Church Administration & Leadership",
+    programme: "Executive Ministry Certificate",
+    level: "200",
+    academicSession: "2026/2027",
+    semester: "Third Semester",
+    creditUnits: 2,
+    creditUnit: 2,
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    prerequisiteCourseIds: [],
+    createdAt: "2026-01-15T08:00:00.000Z",
+    updatedAt: "2026-01-15T08:00:00.000Z"
+  }
+]);
+
 export function subscribeCourses(callback) {
   if (typeof callback !== "function") return () => {};
 
-  callback(getCachedCollection(COLLECTIONS.COURSES));
+  // 1. Initial hydration: use cached collection or seed defaults if completely empty
+  let initialList = getCachedCollection(COLLECTIONS.COURSES);
+  if (!Array.isArray(initialList) || initialList.length === 0) {
+    initialList = [...DEFAULT_DIMABIN_COURSES];
+    setCachedCollection(COLLECTIONS.COURSES, initialList);
+  }
+  callback(initialList);
 
   const localListener = (e) => {
     if (e.detail) callback(e.detail);
@@ -1086,9 +1340,28 @@ export function subscribeCourses(callback) {
     unsubscribe = onSnapshot(
       collRef,
       (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setCachedCollection(COLLECTIONS.COURSES, list);
-        callback(list);
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+            courseCode: d.data().courseCode || d.data().code || "",
+            title: d.data().title || d.data().courseTitle || "",
+            courseTitle: d.data().courseTitle || d.data().title || "",
+            creditUnits: d.data().creditUnits || d.data().creditUnit || 3,
+            creditUnit: d.data().creditUnit || d.data().creditUnits || 3
+          }));
+          setCachedCollection(COLLECTIONS.COURSES, list);
+          callback(list);
+        } else {
+          // If Firestore collection is pristine and empty, keep seed catalog and optionally seed
+          const currentCache = getCachedCollection(COLLECTIONS.COURSES);
+          if (currentCache.length === 0) {
+            setCachedCollection(COLLECTIONS.COURSES, [...DEFAULT_DIMABIN_COURSES]);
+            callback([...DEFAULT_DIMABIN_COURSES]);
+          } else {
+            callback(currentCache);
+          }
+        }
       },
       (err) => {
         console.warn("[DIMABIN Courses] onSnapshot note:", err.message);
@@ -1106,63 +1379,296 @@ export function subscribeCourses(callback) {
 }
 
 export async function createCourse(courseData) {
-  const code = (courseData.courseCode || "").trim().toUpperCase();
-  if (!code) throw new Error("Course code is required.");
+  const code = normalizeCourseCode(courseData.courseCode);
+  if (!code) throw new Error("Course Code is required.");
 
+  const title = (courseData.title || courseData.courseTitle || "").trim();
+  if (!title) throw new Error("Course Title is required.");
+
+  const session = (courseData.academicSession || "2026/2027").trim();
+  if (!session) throw new Error("Academic Session is required.");
+
+  const semester = (courseData.semester || "First Semester").trim();
+  if (!["First Semester", "Second Semester", "Third Semester"].includes(semester)) {
+    throw new Error("Invalid semester. Must be First Semester, Second Semester, or Third Semester.");
+  }
+
+  const credits = parseInt(courseData.creditUnits || courseData.creditUnit, 10);
+  if (isNaN(credits) || credits <= 0) {
+    throw new Error("Credit Units must be a valid positive number.");
+  }
+
+  // Duplicate Check: Same code within same session and semester is prohibited
+  const existingCourses = getCachedCollection(COLLECTIONS.COURSES);
+  const isDuplicate = existingCourses.some((c) => {
+    const cCode = normalizeCourseCode(c.courseCode);
+    const cSession = (c.academicSession || "").trim();
+    const cSemester = (c.semester || "").trim();
+    return cCode === code && cSession === session && cSemester === semester;
+  });
+
+  if (isDuplicate) {
+    throw new Error(
+      `Course Code '${code}' is already registered for ${semester} (${session}). Duplicate course codes within the same academic session and semester are prohibited.`
+    );
+  }
+
+  let prereqs = [];
+  if (Array.isArray(courseData.prerequisiteCourseIds)) {
+    prereqs = courseData.prerequisiteCourseIds;
+  } else if (typeof courseData.prerequisiteCourseIds === "string") {
+    prereqs = courseData.prerequisiteCourseIds
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  const nowIso = new Date().toISOString();
   const record = {
     courseCode: code,
-    courseTitle: (courseData.courseTitle || "").trim(),
-    programme: courseData.programme || "Diploma in Theology (Dipl.Th.)",
-    level: courseData.level || "Diploma I",
-    semester: courseData.semester || "First Semester",
-    creditUnit: parseInt(courseData.creditUnit, 10) || 2,
-    status: courseData.status || "active", // active | inactive
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    title: title,
+    courseTitle: title, // maintain both for backwards compatibility
+    description: (courseData.description || "").trim(),
+    department: (courseData.department || "Biblical Studies & Theology").trim(),
+    programme: (courseData.programme || "Diploma in Theology (Dipl.Th.)").trim(),
+    level: String(courseData.level || "100").trim(),
+    academicSession: session,
+    semester: semester,
+    creditUnits: credits,
+    creditUnit: credits,
+    studyCentre: (courseData.studyCentre || "Goshen Central Campus, Abeokuta").trim(),
+    status: courseData.status === "inactive" ? "inactive" : "active",
+    prerequisiteCourseIds: prereqs,
+    createdAt: nowIso,
+    updatedAt: nowIso
   };
 
-  const localId = `crs_${code.replace(/[^A-Z0-9]/g, "_")}`;
+  // Generate clean document ID
+  const localId = `crs_${code.replace(/[^A-Z0-9]/g, "_")}_${session.replace(/[^0-9]/g, "_")}_${semester.replace(/\s+/g, "_")}`;
   upsertCachedItem(COLLECTIONS.COURSES, { id: localId, ...record });
 
+  let savedDocId = localId;
   try {
-    await addDoc(collection(db, COLLECTIONS.COURSES), {
+    const docRef = await addDoc(collection(db, COLLECTIONS.COURSES), {
       ...record,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+    savedDocId = docRef.id;
+    // Update cached entry with true Firestore id
+    removeCachedItem(COLLECTIONS.COURSES, localId);
+    upsertCachedItem(COLLECTIONS.COURSES, { id: savedDocId, ...record });
   } catch (err) {
     console.warn(`[DIMABIN Courses] Firestore create note: ${err.message}`);
   }
 
   await logActivity({
     action: "course_created",
-    description: `Created course curriculum ${record.courseCode} — ${record.courseTitle}.`,
+    description: `Created course curriculum [${record.courseCode}] "${record.title}" for ${record.semester} (${record.academicSession}).`,
     targetCollection: COLLECTIONS.COURSES,
-    targetDocumentId: record.courseCode
+    targetDocumentId: savedDocId
   });
 
-  return { success: true, ...record };
+  return { success: true, id: savedDocId, ...record };
 }
 
-export async function toggleCourseStatus(courseId, currentStatus) {
-  const newStatus = currentStatus === "active" ? "inactive" : "active";
-  upsertCachedItem(COLLECTIONS.COURSES, { id: courseId, status: newStatus, updatedAt: new Date().toISOString() });
+export async function updateCourse(courseId, courseData) {
+  if (!courseId) throw new Error("Course ID is required for updating.");
+
+  const code = normalizeCourseCode(courseData.courseCode);
+  if (!code) throw new Error("Course Code is required.");
+
+  const title = (courseData.title || courseData.courseTitle || "").trim();
+  if (!title) throw new Error("Course Title is required.");
+
+  const session = (courseData.academicSession || "2026/2027").trim();
+  if (!session) throw new Error("Academic Session is required.");
+
+  const semester = (courseData.semester || "First Semester").trim();
+  if (!["First Semester", "Second Semester", "Third Semester"].includes(semester)) {
+    throw new Error("Invalid semester. Must be First Semester, Second Semester, or Third Semester.");
+  }
+
+  const credits = parseInt(courseData.creditUnits || courseData.creditUnit, 10);
+  if (isNaN(credits) || credits <= 0) {
+    throw new Error("Credit Units must be a valid positive number.");
+  }
+
+  // Duplicate Check: Exclude current course being edited
+  const existingCourses = getCachedCollection(COLLECTIONS.COURSES);
+  const isDuplicate = existingCourses.some((c) => {
+    if (c.id === courseId) return false;
+    const cCode = normalizeCourseCode(c.courseCode);
+    const cSession = (c.academicSession || "").trim();
+    const cSemester = (c.semester || "").trim();
+    return cCode === code && cSession === session && cSemester === semester;
+  });
+
+  if (isDuplicate) {
+    throw new Error(
+      `Course Code '${code}' is already assigned to another course in ${semester} (${session}). Duplicate course codes within the same academic session and semester are prohibited.`
+    );
+  }
+
+  let prereqs = [];
+  if (Array.isArray(courseData.prerequisiteCourseIds)) {
+    prereqs = courseData.prerequisiteCourseIds;
+  } else if (typeof courseData.prerequisiteCourseIds === "string") {
+    prereqs = courseData.prerequisiteCourseIds
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  // Fetch current cached record to preserve creation timestamp
+  const existingRecord = existingCourses.find((c) => c.id === courseId) || {};
+  const createdAt = existingRecord.createdAt || new Date().toISOString();
+  const nowIso = new Date().toISOString();
+
+  const updatedRecord = {
+    courseCode: code,
+    title: title,
+    courseTitle: title,
+    description: (courseData.description || "").trim(),
+    department: (courseData.department || "Biblical Studies & Theology").trim(),
+    programme: (courseData.programme || "Diploma in Theology (Dipl.Th.)").trim(),
+    level: String(courseData.level || "100").trim(),
+    academicSession: session,
+    semester: semester,
+    creditUnits: credits,
+    creditUnit: credits,
+    studyCentre: (courseData.studyCentre || "Goshen Central Campus, Abeokuta").trim(),
+    status: courseData.status === "inactive" ? "inactive" : "active",
+    prerequisiteCourseIds: prereqs,
+    createdAt: createdAt,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.COURSES, { id: courseId, ...updatedRecord });
 
   try {
     const docRef = doc(db, COLLECTIONS.COURSES, courseId);
-    await updateDoc(docRef, { status: newStatus, updatedAt: serverTimestamp() });
+    await updateDoc(docRef, {
+      ...updatedRecord,
+      updatedAt: serverTimestamp()
+    });
   } catch (err) {
-    console.warn(`[DIMABIN Courses] Status toggle note: ${err.message}`);
+    console.warn(`[DIMABIN Courses] Firestore update note: ${err.message}`);
   }
 
   await logActivity({
-    action: "course_status_changed",
-    description: `Course ${courseId} set to '${newStatus.toUpperCase()}'.`,
+    action: "course_updated",
+    description: `Updated curriculum parameters for [${updatedRecord.courseCode}] "${updatedRecord.title}" (${updatedRecord.semester}, ${updatedRecord.academicSession}).`,
     targetCollection: COLLECTIONS.COURSES,
     targetDocumentId: courseId
   });
 
-  return { success: true, courseId, status: newStatus };
+  return { success: true, id: courseId, ...updatedRecord };
+}
+
+export async function setCourseStatus(courseId, newStatus) {
+  if (!courseId) throw new Error("Course ID is required.");
+  const status = newStatus === "active" ? "active" : "inactive";
+
+  const courses = getCachedCollection(COLLECTIONS.COURSES);
+  const target = courses.find((c) => c.id === courseId);
+  const courseCode = target ? target.courseCode : courseId;
+
+  upsertCachedItem(COLLECTIONS.COURSES, {
+    id: courseId,
+    status: status,
+    updatedAt: new Date().toISOString()
+  });
+
+  try {
+    const docRef = doc(db, COLLECTIONS.COURSES, courseId);
+    await updateDoc(docRef, {
+      status: status,
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.warn(`[DIMABIN Courses] Status update note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: status === "active" ? "course_activated" : "course_deactivated",
+    description: `Course [${courseCode}] status changed to '${status.toUpperCase()}'.`,
+    targetCollection: COLLECTIONS.COURSES,
+    targetDocumentId: courseId
+  });
+
+  return { success: true, courseId, status };
+}
+
+export async function toggleCourseStatus(courseId, currentStatus) {
+  const newStatus = currentStatus === "active" ? "inactive" : "active";
+  return setCourseStatus(courseId, newStatus);
+}
+
+export async function checkCourseDependencies(courseCode, courseId) {
+  const code = normalizeCourseCode(courseCode);
+  const references = [];
+
+  // 1. Check allocations
+  const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+  const allocMatches = allocations.filter((a) => {
+    return normalizeCourseCode(a.courseCode) === code || a.courseId === courseId;
+  });
+  if (allocMatches.length > 0) {
+    references.push(`${allocMatches.length} Faculty Teaching Allocation(s)`);
+  }
+
+  // 2. Check academic results
+  const results = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const resultMatches = results.filter((r) => normalizeCourseCode(r.courseCode) === code);
+  if (resultMatches.length > 0) {
+    references.push(`${resultMatches.length} Student Academic Result Record(s)`);
+  }
+
+  return {
+    hasDependencies: references.length > 0,
+    references,
+    allocationsCount: allocMatches.length,
+    resultsCount: resultMatches.length
+  };
+}
+
+export async function deleteCoursePermanently(courseId) {
+  if (!courseId) throw new Error("Course ID is required for deletion.");
+
+  const courses = getCachedCollection(COLLECTIONS.COURSES);
+  const target = courses.find((c) => c.id === courseId);
+  const code = target ? target.courseCode : courseId;
+  const title = target ? target.title : "";
+
+  // Institutional Data Protection Check: Never silently break active academic relationships
+  const depCheck = await checkCourseDependencies(code, courseId);
+  if (depCheck.hasDependencies) {
+    throw new Error(
+      `Cannot permanently delete course [${code}]: It is actively referenced in ${depCheck.references.join(
+        ", "
+      )}. To safeguard academic transcript integrity, please DEACTIVATE this course instead of deleting it.`
+    );
+  }
+
+  // Safe to delete only this isolated course document
+  removeCachedItem(COLLECTIONS.COURSES, courseId);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.COURSES, courseId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn(`[DIMABIN Courses] Firestore delete note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "course_deleted",
+    description: `Permanently deleted course curriculum [${code}] "${title}".`,
+    targetCollection: COLLECTIONS.COURSES,
+    targetDocumentId: courseId
+  });
+
+  return { success: true, courseId, courseCode: code };
 }
 
 /**

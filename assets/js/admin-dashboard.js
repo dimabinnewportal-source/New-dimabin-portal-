@@ -19,7 +19,15 @@ import {
   deleteAnnouncement,
   toggleAnnouncementPublish,
   subscribeAnnouncements,
-  formatDateOnly
+  formatDateOnly,
+  subscribeCourses,
+  createCourse,
+  updateCourse,
+  setCourseStatus,
+  toggleCourseStatus,
+  deleteCoursePermanently,
+  checkCourseDependencies,
+  normalizeCourseCode
 } from "./firebase-backend.js";
 
 // Canonical Administrator Credentials
@@ -287,6 +295,9 @@ export function initDashboard() {
 
   // 8. ADMISSION AVAILABILITY & SESSION MANAGEMENT CONTROLLER (Phase 1)
   initAdmissionManagement();
+
+  // 9. COURSE MANAGEMENT SYSTEM CONTROLLER (Three-Semester Academic System)
+  initCourseManagement();
 }
 
 /**
@@ -691,6 +702,802 @@ export function initAdmissionManagement() {
   }
 }
 
+/**
+ * =========================================================================
+ * 15. GLOBAL ADMIN TOAST NOTIFICATION HELPER
+ * =========================================================================
+ */
+export function showAdminToast(type, message) {
+  const container = document.getElementById("admin-toast-container");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = `admin-toast toast-${type === "error" ? "error" : type === "warning" ? "warning" : "success"}`;
+
+  const icon = type === "error" ? "⚠️" : type === "warning" ? "🔔" : "✓";
+  toast.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <span style="font-size: 1rem;">${icon}</span>
+      <span>${message}</span>
+    </div>
+    <button type="button" class="admin-toast-close" aria-label="Close notification">&times;</button>
+  `;
+
+  const closeBtn = toast.querySelector(".admin-toast-close");
+  const dismiss = () => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(16px)";
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 300);
+  };
+
+  if (closeBtn) closeBtn.addEventListener("click", dismiss);
+  setTimeout(dismiss, 4500);
+
+  container.appendChild(toast);
+}
+
+/**
+ * =========================================================================
+ * 16. COURSE MANAGEMENT SYSTEM CONTROLLER
+ * Full 3-Semester Academic System with Dynamic Filtering, CRUD & Dependency Safety
+ * =========================================================================
+ */
+export function initCourseManagement() {
+  console.log("[DIMABIN Dashboard] Initializing 3-Semester Course Management Controller...");
+
+  // State
+  let allCourses = [];
+  let pendingStatusCourse = null;
+  let pendingDeleteCourse = null;
+
+  const filters = {
+    search: "",
+    session: "all",
+    semester: "all",
+    status: "all",
+    centre: "all",
+    department: "all",
+    sort: "code-asc"
+  };
+
+  // Header and Session Badges
+  const sessionBadge = document.getElementById("courses-active-session-badge");
+  const semesterBadge = document.getElementById("courses-active-semester-badge");
+  const countPill = document.getElementById("courses-count-pill");
+  const filterSummary = document.getElementById("courses-filter-summary");
+
+  // Summary Stat Elements
+  const statTotal = document.getElementById("stat-courses-total");
+  const statActive = document.getElementById("stat-courses-active");
+  const statInactive = document.getElementById("stat-courses-inactive");
+  const statSem1 = document.getElementById("stat-courses-sem1");
+  const statSem2 = document.getElementById("stat-courses-sem2");
+  const statSem3 = document.getElementById("stat-courses-sem3");
+
+  // Filter Elements
+  const searchInput = document.getElementById("course-search-input");
+  const sessionSelect = document.getElementById("filter-course-session");
+  const semesterSelect = document.getElementById("filter-course-semester");
+  const statusSelect = document.getElementById("filter-course-status");
+  const centreSelect = document.getElementById("filter-course-centre");
+  const deptSelect = document.getElementById("filter-course-dept");
+  const sortSelect = document.getElementById("filter-course-sort");
+  const resetBtn = document.getElementById("btn-reset-course-filters");
+
+  // Table Elements
+  const tbody = document.getElementById("courses-table-tbody");
+  const loadingEl = document.getElementById("courses-table-loading");
+  const emptyEl = document.getElementById("courses-table-empty");
+  const errorEl = document.getElementById("courses-table-error");
+  const emptyHeading = document.getElementById("courses-empty-heading");
+
+  // Header Buttons
+  const listViewBtn = document.getElementById("btn-course-list-view");
+  const addCourseBtn = document.getElementById("btn-open-add-course");
+
+  // Add / Edit Modal Elements
+  const modalForm = document.getElementById("modal-course-form");
+  const modalFormTitle = document.getElementById("modal-course-form-title");
+  const formEntry = document.getElementById("form-course-entry");
+  const formAlert = document.getElementById("course-form-alert");
+  const inputId = document.getElementById("course-form-id");
+  const inputCode = document.getElementById("course-form-code");
+  const inputCredit = document.getElementById("course-form-credit");
+  const inputTitle = document.getElementById("course-form-title");
+  const inputSession = document.getElementById("course-form-session");
+  const inputSemester = document.getElementById("course-form-semester");
+  const inputDept = document.getElementById("course-form-department");
+  const inputProg = document.getElementById("course-form-programme");
+  const inputLevel = document.getElementById("course-form-level");
+  const inputCentre = document.getElementById("course-form-centre");
+  const inputStatus = document.getElementById("course-form-status");
+  const inputPrereqs = document.getElementById("course-form-prereqs");
+  const inputDesc = document.getElementById("course-form-desc");
+  const saveBtn = document.getElementById("btn-save-course");
+  const saveSpinner = document.getElementById("course-save-spinner");
+  const saveBtnText = document.getElementById("course-save-btn-text");
+  const cancelFormBtn = document.getElementById("btn-cancel-course");
+  const closeFormModalBtn = document.getElementById("btn-close-course-modal");
+
+  // Status Modal Elements
+  const modalStatus = document.getElementById("modal-course-status-confirm");
+  const statusPromptText = document.getElementById("status-modal-prompt-text");
+  const statusCourseInfo = document.getElementById("status-modal-course-info");
+  const statusCourseMeta = document.getElementById("status-modal-course-meta");
+  const confirmStatusBtn = document.getElementById("btn-confirm-course-status");
+  const cancelStatusBtn = document.getElementById("btn-cancel-course-status");
+  const closeStatusModalBtn = document.getElementById("btn-close-status-modal");
+
+  // Delete Modal Elements
+  const modalDelete = document.getElementById("modal-course-delete-confirm");
+  const deleteCourseTitle = document.getElementById("delete-modal-course-title");
+  const deleteCourseMeta = document.getElementById("delete-modal-course-meta");
+  const deleteDepBlock = document.getElementById("course-delete-dependency-block");
+  const deleteDepMsg = document.getElementById("course-delete-dependency-msg");
+  const confirmDeleteBtn = document.getElementById("btn-confirm-course-delete");
+  const cancelDeleteBtn = document.getElementById("btn-cancel-course-delete");
+  const closeDeleteModalBtn = document.getElementById("btn-close-delete-modal");
+
+  // Helpers to Open / Close Modals
+  const openModal = (m) => {
+    if (!m) return;
+    m.style.display = "flex";
+    m.classList.add("open");
+    m.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  };
+
+  const closeModal = (m) => {
+    if (!m) return;
+    m.style.display = "none";
+    m.classList.remove("open");
+    m.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  };
+
+  // Close modals on overlay backdrop click
+  [modalForm, modalStatus, modalDelete].forEach((overlay) => {
+    if (overlay) {
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) closeModal(overlay);
+      });
+    }
+  });
+
+  if (closeFormModalBtn) closeFormModalBtn.addEventListener("click", () => closeModal(modalForm));
+  if (cancelFormBtn) cancelFormBtn.addEventListener("click", () => closeModal(modalForm));
+  if (closeStatusModalBtn) closeStatusModalBtn.addEventListener("click", () => closeModal(modalStatus));
+  if (cancelStatusBtn) cancelStatusBtn.addEventListener("click", () => closeModal(modalStatus));
+  if (closeDeleteModalBtn) closeDeleteModalBtn.addEventListener("click", () => closeModal(modalDelete));
+  if (cancelDeleteBtn) cancelDeleteBtn.addEventListener("click", () => closeModal(modalDelete));
+
+  // Update Summary Statistics (Dynamically from Real Records)
+  const updateStats = () => {
+    const total = allCourses.length;
+    const active = allCourses.filter((c) => c.status === "active").length;
+    const inactive = allCourses.filter((c) => c.status === "inactive").length;
+    const sem1 = allCourses.filter((c) => (c.semester || "").toLowerCase().includes("first")).length;
+    const sem2 = allCourses.filter((c) => (c.semester || "").toLowerCase().includes("second")).length;
+    const sem3 = allCourses.filter((c) => (c.semester || "").toLowerCase().includes("third")).length;
+
+    if (statTotal) statTotal.textContent = total;
+    if (statActive) statActive.textContent = active;
+    if (statInactive) statInactive.textContent = inactive;
+    if (statSem1) statSem1.textContent = sem1;
+    if (statSem2) statSem2.textContent = sem2;
+    if (statSem3) statSem3.textContent = sem3;
+  };
+
+  // Render Table
+  const renderTable = () => {
+    if (!tbody) return;
+
+    // Filter
+    let list = allCourses.filter((c) => {
+      // 1. Search Query (code, title, department)
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const code = (c.courseCode || "").toLowerCase();
+        const title = (c.title || c.courseTitle || "").toLowerCase();
+        const dept = (c.department || "").toLowerCase();
+        if (!code.includes(q) && !title.includes(q) && !dept.includes(q)) {
+          return false;
+        }
+      }
+
+      // 2. Academic Session
+      if (filters.session !== "all" && c.academicSession !== filters.session) {
+        return false;
+      }
+
+      // 3. Semester (First, Second, Third)
+      if (filters.semester !== "all" && c.semester !== filters.semester) {
+        return false;
+      }
+
+      // 4. Status
+      if (filters.status !== "all" && c.status !== filters.status) {
+        return false;
+      }
+
+      // 5. Study Centre
+      if (filters.centre !== "all" && c.studyCentre !== filters.centre) {
+        return false;
+      }
+
+      // 6. Department
+      if (filters.department !== "all" && c.department !== filters.department) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Sort
+    list.sort((a, b) => {
+      const aCode = (a.courseCode || "").toUpperCase();
+      const bCode = (b.courseCode || "").toUpperCase();
+      const aTitle = (a.title || a.courseTitle || "").toUpperCase();
+      const bTitle = (b.title || b.courseTitle || "").toUpperCase();
+
+      switch (filters.sort) {
+        case "code-asc":
+          return aCode.localeCompare(bCode);
+        case "code-desc":
+          return bCode.localeCompare(aCode);
+        case "title-asc":
+          return aTitle.localeCompare(bTitle);
+        case "title-desc":
+          return bTitle.localeCompare(aTitle);
+        default:
+          return aCode.localeCompare(bCode);
+      }
+    });
+
+    // Update Counter & Summary
+    if (countPill) countPill.textContent = `${list.length} Course${list.length === 1 ? "" : "s"}`;
+    if (filterSummary) {
+      const activeFilters = [];
+      if (filters.search) activeFilters.push(`search: "${filters.search}"`);
+      if (filters.semester !== "all") activeFilters.push(filters.semester);
+      if (filters.session !== "all") activeFilters.push(filters.session);
+      if (filters.status !== "all") activeFilters.push(filters.status);
+      if (filters.department !== "all") activeFilters.push(filters.department);
+      if (filters.centre !== "all") activeFilters.push(filters.centre);
+
+      filterSummary.textContent = activeFilters.length > 0 ? `Filtered by ${activeFilters.join(" · ")}` : "Showing all courses";
+    }
+
+    if (list.length === 0) {
+      tbody.innerHTML = "";
+      if (emptyEl) {
+        emptyEl.style.display = "block";
+        if (emptyHeading) {
+          emptyHeading.textContent = allCourses.length === 0 ? "No courses catalogued in the system." : "No courses found for the selected filters.";
+        }
+      }
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = "none";
+
+    const rowsHtml = list
+      .map((c) => {
+        const title = c.title || c.courseTitle || "Untitled Course";
+        const code = c.courseCode || "N/A";
+        const dept = c.department || "Biblical Studies & Theology";
+        const prog = c.programme || "Diploma in Theology (Dipl.Th.)";
+        const level = c.level ? `${c.level} Lvl` : "100 Lvl";
+        const sem = c.semester || "First Semester";
+        const units = c.creditUnits || c.creditUnit || 3;
+        const centre = c.studyCentre || "Goshen Central Campus, Abeokuta";
+        const isActive = c.status === "active";
+
+        const semClass = sem.includes("Second") ? "sem-2" : sem.includes("Third") ? "sem-3" : "sem-1";
+
+        return `
+        <tr data-course-id="${c.id}">
+          <td>
+            <strong style="color: var(--primary-blue); font-size: 0.875rem;">${code}</strong>
+          </td>
+          <td>
+            <div style="font-weight: 700; color: var(--dark-navy);">${title}</div>
+            ${c.description ? `<div style="font-size: 0.72rem; color: var(--admin-text-muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${c.description}</div>` : ""}
+          </td>
+          <td><span style="color: var(--admin-text-main);">${dept}</span></td>
+          <td><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${prog}</span></td>
+          <td><span class="badge-credit-pill">${level}</span></td>
+          <td><span class="badge-semester-tag ${semClass}">${sem}</span></td>
+          <td><span class="badge-credit-pill" style="font-weight: 800; color: var(--primary-blue);">${units} Units</span></td>
+          <td><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${centre}</span></td>
+          <td>
+            <span class="${isActive ? "badge-course-active" : "badge-course-inactive"}">
+              ${isActive ? "● Active" : "○ Inactive"}
+            </span>
+          </td>
+          <td>
+            <div class="course-actions-cell">
+              <!-- Edit -->
+              <button type="button" class="btn-course-action btn-course-edit action-edit-course" data-id="${c.id}" title="Edit Course Parameters">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                Edit
+              </button>
+
+              <!-- Activate / Deactivate -->
+              <button type="button" class="btn-course-action ${isActive ? "btn-course-deactivate" : "btn-course-activate"} action-toggle-course-status" data-id="${c.id}" data-action="${isActive ? "deactivate" : "activate"}" title="${isActive ? "Deactivate Course" : "Activate Course"}">
+                ${
+                  isActive
+                    ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      Deactivate`
+                    : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                      </svg>
+                      Activate`
+                }
+              </button>
+
+              <!-- Permanently Delete -->
+              <button type="button" class="btn-course-action btn-course-delete action-delete-course" data-id="${c.id}" title="Permanently Delete Course">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+
+    tbody.innerHTML = rowsHtml;
+
+    // Attach row action listeners
+    attachRowListeners();
+  };
+
+  // Row Action Listeners
+  const attachRowListeners = () => {
+    // 1. Edit
+    tbody.querySelectorAll(".action-edit-course").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const course = allCourses.find((c) => c.id === id);
+        if (!course) return;
+        openEditCourseModal(course);
+      });
+    });
+
+    // 2. Status Toggle (Activate / Deactivate)
+    tbody.querySelectorAll(".action-toggle-course-status").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const action = btn.getAttribute("data-action");
+        const course = allCourses.find((c) => c.id === id);
+        if (!course) return;
+        openStatusConfirmModal(course, action);
+      });
+    });
+
+    // 3. Delete Permanently
+    tbody.querySelectorAll(".action-delete-course").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const course = allCourses.find((c) => c.id === id);
+        if (!course) return;
+        openDeleteConfirmModal(course);
+      });
+    });
+  };
+
+  // Open Add Course Modal
+  const openAddCourseModal = () => {
+    if (!modalForm || !formEntry) return;
+    formEntry.reset();
+    if (formAlert) {
+      formAlert.style.display = "none";
+      formAlert.className = "course-modal-feedback";
+    }
+    if (inputId) inputId.value = "";
+    if (modalFormTitle) modalFormTitle.textContent = "Add New Course";
+    if (saveBtnText) saveBtnText.textContent = "Save Course";
+
+    // Default configuration
+    if (inputSession) inputSession.value = ADMIN_CONFIG.SESSION || "2026/2027";
+    if (inputSemester) inputSemester.value = "First Semester";
+    if (inputCredit) inputCredit.value = "3";
+    if (inputStatus) inputStatus.value = "active";
+    if (inputLevel) inputLevel.value = "100";
+    if (inputDept) inputDept.value = "Biblical Studies & Theology";
+    if (inputProg) inputProg.value = "Diploma in Theology (Dipl.Th.)";
+    if (inputCentre) inputCentre.value = "Goshen Central Campus, Abeokuta";
+
+    openModal(modalForm);
+  };
+
+  // Open Edit Course Modal
+  const openEditCourseModal = (course) => {
+    if (!modalForm || !formEntry) return;
+    formEntry.reset();
+    if (formAlert) {
+      formAlert.style.display = "none";
+      formAlert.className = "course-modal-feedback";
+    }
+    if (modalFormTitle) modalFormTitle.textContent = `Edit Course: ${course.courseCode}`;
+    if (saveBtnText) saveBtnText.textContent = "Update Course";
+
+    if (inputId) inputId.value = course.id;
+    if (inputCode) inputCode.value = course.courseCode || "";
+    if (inputTitle) inputTitle.value = course.title || course.courseTitle || "";
+    if (inputCredit) inputCredit.value = course.creditUnits || course.creditUnit || 3;
+    if (inputSession) inputSession.value = course.academicSession || "2026/2027";
+    if (inputSemester) inputSemester.value = course.semester || "First Semester";
+    if (inputDept) inputDept.value = course.department || "Biblical Studies & Theology";
+    if (inputProg) inputProg.value = course.programme || "Diploma in Theology (Dipl.Th.)";
+    if (inputLevel) inputLevel.value = course.level || "100";
+    if (inputCentre) inputCentre.value = course.studyCentre || "Goshen Central Campus, Abeokuta";
+    if (inputStatus) inputStatus.value = course.status || "active";
+    if (inputDesc) inputDesc.value = course.description || "";
+
+    if (inputPrereqs) {
+      const p = Array.isArray(course.prerequisiteCourseIds) ? course.prerequisiteCourseIds.join(", ") : course.prerequisiteCourseIds || "";
+      inputPrereqs.value = p;
+    }
+
+    openModal(modalForm);
+  };
+
+  // Open Status Confirmation Modal
+  const openStatusConfirmModal = (course, action) => {
+    pendingStatusCourse = { course, action };
+    const isActivating = action === "activate";
+
+    const modalTitle = document.getElementById("modal-status-confirm-title");
+    if (modalTitle) modalTitle.textContent = isActivating ? "Activate Course" : "Deactivate Course";
+
+    if (statusPromptText) {
+      statusPromptText.textContent = isActivating
+        ? `Are you sure you want to ACTIVATE this course for enrollment?`
+        : `Are you sure you want to DEACTIVATE this course?`;
+    }
+
+    if (statusCourseInfo) {
+      statusCourseInfo.textContent = `${course.courseCode} — ${course.title || course.courseTitle}`;
+    }
+
+    if (statusCourseMeta) {
+      statusCourseMeta.textContent = `${course.semester} · ${course.academicSession} · ${course.department}`;
+    }
+
+    if (confirmStatusBtn) {
+      confirmStatusBtn.textContent = isActivating ? "Confirm Activate" : "Confirm Deactivate";
+      confirmStatusBtn.style.background = isActivating ? "#16A34A" : "#D97706";
+    }
+
+    openModal(modalStatus);
+  };
+
+  // Open Delete Confirmation Modal
+  const openDeleteConfirmModal = async (course) => {
+    pendingDeleteCourse = course;
+
+    if (deleteCourseTitle) {
+      deleteCourseTitle.textContent = `${course.courseCode} — ${course.title || course.courseTitle}`;
+    }
+
+    if (deleteCourseMeta) {
+      deleteCourseMeta.textContent = `Academic Session: ${course.academicSession} · Semester: ${course.semester} · Dept: ${course.department}`;
+    }
+
+    // Check dependencies
+    const depCheck = await checkCourseDependencies(course.courseCode, course.id);
+    if (depCheck.hasDependencies) {
+      if (deleteDepBlock) deleteDepBlock.style.display = "flex";
+      if (deleteDepMsg) {
+        deleteDepMsg.textContent = `This course is actively referenced by ${depCheck.references.join(
+          ", "
+        )}. Permanent deletion is disabled to prevent academic transcript corruption. Please DEACTIVATE the course instead.`;
+      }
+      if (confirmDeleteBtn) {
+        confirmDeleteBtn.disabled = true;
+        confirmDeleteBtn.style.opacity = "0.5";
+        confirmDeleteBtn.textContent = "Deletion Blocked";
+      }
+    } else {
+      if (deleteDepBlock) deleteDepBlock.style.display = "none";
+      if (confirmDeleteBtn) {
+        confirmDeleteBtn.disabled = false;
+        confirmDeleteBtn.style.opacity = "1";
+        confirmDeleteBtn.textContent = "Permanently Delete Course";
+      }
+    }
+
+    openModal(modalDelete);
+  };
+
+  // Save Form Handler (Add or Update)
+  if (saveBtn && formEntry) {
+    saveBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      const id = inputId?.value?.trim();
+      const code = normalizeCourseCode(inputCode?.value);
+      const title = (inputTitle?.value || "").trim();
+      const credits = parseInt(inputCredit?.value, 10);
+      const session = (inputSession?.value || "2026/2027").trim();
+      const semester = (inputSemester?.value || "First Semester").trim();
+      const dept = (inputDept?.value || "Biblical Studies & Theology").trim();
+      const prog = (inputProg?.value || "Diploma in Theology (Dipl.Th.)").trim();
+      const level = (inputLevel?.value || "100").trim();
+      const centre = (inputCentre?.value || "Goshen Central Campus, Abeokuta").trim();
+      const status = inputStatus?.value === "inactive" ? "inactive" : "active";
+      const desc = (inputDesc?.value || "").trim();
+      const prereqs = (inputPrereqs?.value || "").trim();
+
+      // Clear alerts
+      if (formAlert) {
+        formAlert.style.display = "none";
+        formAlert.className = "course-modal-feedback";
+      }
+
+      // Validations
+      if (!code) {
+        showFormAlert("Please enter a valid Course Code (e.g. THY-101).");
+        inputCode?.focus();
+        return;
+      }
+
+      if (!title) {
+        showFormAlert("Please enter a Course Title.");
+        inputTitle?.focus();
+        return;
+      }
+
+      if (isNaN(credits) || credits <= 0) {
+        showFormAlert("Please enter valid positive Credit Units (min 1).");
+        inputCredit?.focus();
+        return;
+      }
+
+      if (!session) {
+        showFormAlert("Please select or enter the Academic Session.");
+        inputSession?.focus();
+        return;
+      }
+
+      if (!["First Semester", "Second Semester", "Third Semester"].includes(semester)) {
+        showFormAlert("Semester must be First Semester, Second Semester, or Third Semester.");
+        inputSemester?.focus();
+        return;
+      }
+
+      // Prevent duplicate double submission
+      saveBtn.disabled = true;
+      if (saveSpinner) saveSpinner.style.display = "inline-block";
+
+      try {
+        const payload = {
+          courseCode: code,
+          title,
+          courseTitle: title,
+          description: desc,
+          department: dept,
+          programme: prog,
+          level,
+          academicSession: session,
+          semester,
+          creditUnits: credits,
+          creditUnit: credits,
+          studyCentre: centre,
+          status,
+          prerequisiteCourseIds: prereqs
+        };
+
+        if (id) {
+          // UPDATE
+          await updateCourse(id, payload);
+          showAdminToast("success", "Course updated successfully.");
+        } else {
+          // CREATE
+          await createCourse(payload);
+          showAdminToast("success", "Course saved successfully.");
+        }
+
+        closeModal(modalForm);
+      } catch (err) {
+        console.error("[DIMABIN Courses] Save Error:", err);
+        showFormAlert(err.message || "Failed to save course. Please check inputs and try again.");
+      } finally {
+        saveBtn.disabled = false;
+        if (saveSpinner) saveSpinner.style.display = "none";
+      }
+    });
+  }
+
+  const showFormAlert = (msg) => {
+    if (!formAlert) return;
+    formAlert.textContent = msg;
+    formAlert.className = "course-modal-feedback error";
+    formAlert.style.display = "block";
+  };
+
+  // Confirm Status Change Handler
+  if (confirmStatusBtn) {
+    confirmStatusBtn.addEventListener("click", async () => {
+      if (!pendingStatusCourse) return;
+      const { course, action } = pendingStatusCourse;
+      const newStatus = action === "activate" ? "active" : "inactive";
+
+      confirmStatusBtn.disabled = true;
+      try {
+        await setCourseStatus(course.id, newStatus);
+        showAdminToast("success", "Course status updated successfully.");
+        closeModal(modalStatus);
+      } catch (err) {
+        showAdminToast("error", `Failed to update status: ${err.message}`);
+      } finally {
+        confirmStatusBtn.disabled = false;
+        pendingStatusCourse = null;
+      }
+    });
+  }
+
+  // Confirm Permanent Deletion Handler
+  if (confirmDeleteBtn) {
+    confirmDeleteBtn.addEventListener("click", async () => {
+      if (!pendingDeleteCourse) return;
+      const course = pendingDeleteCourse;
+
+      confirmDeleteBtn.disabled = true;
+      try {
+        await deleteCoursePermanently(course.id);
+        showAdminToast("success", "Course permanently deleted.");
+        closeModal(modalDelete);
+      } catch (err) {
+        showAdminToast("error", err.message);
+      } finally {
+        confirmDeleteBtn.disabled = false;
+        pendingDeleteCourse = null;
+      }
+    });
+  }
+
+  // Filter Event Listeners
+  if (searchInput) {
+    let debounceTimer;
+    searchInput.addEventListener("input", (e) => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        filters.search = e.target.value.trim();
+        renderTable();
+      }, 250);
+    });
+  }
+
+  if (sessionSelect) {
+    sessionSelect.addEventListener("change", (e) => {
+      filters.session = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (semesterSelect) {
+    semesterSelect.addEventListener("change", (e) => {
+      filters.semester = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (statusSelect) {
+    statusSelect.addEventListener("change", (e) => {
+      filters.status = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (centreSelect) {
+    centreSelect.addEventListener("change", (e) => {
+      filters.centre = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (deptSelect) {
+    deptSelect.addEventListener("change", (e) => {
+      filters.department = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener("change", (e) => {
+      filters.sort = e.target.value;
+      renderTable();
+    });
+  }
+
+  // Reset Filters Handler
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      filters.search = "";
+      filters.session = "all";
+      filters.semester = "all";
+      filters.status = "all";
+      filters.centre = "all";
+      filters.department = "all";
+      filters.sort = "code-asc";
+
+      if (searchInput) searchInput.value = "";
+      if (sessionSelect) sessionSelect.value = "all";
+      if (semesterSelect) semesterSelect.value = "all";
+      if (statusSelect) statusSelect.value = "all";
+      if (centreSelect) centreSelect.value = "all";
+      if (deptSelect) deptSelect.value = "all";
+      if (sortSelect) sortSelect.value = "code-asc";
+
+      renderTable();
+      showAdminToast("success", "Filters reset to all courses.");
+    });
+  }
+
+  // Header Buttons
+  if (addCourseBtn) {
+    addCourseBtn.addEventListener("click", openAddCourseModal);
+  }
+
+  if (listViewBtn) {
+    listViewBtn.addEventListener("click", () => {
+      const tableCard = document.getElementById("course-table-card");
+      if (tableCard) tableCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  // Subscribe to Real-Time Courses from Firestore / Local Cache
+  if (loadingEl) loadingEl.style.display = "block";
+  subscribeCourses((courses) => {
+    if (loadingEl) loadingEl.style.display = "none";
+    allCourses = courses || [];
+
+    // Dynamically populate session dropdown if new sessions exist
+    if (sessionSelect) {
+      const existingSessions = new Set(["all", "2026/2027", "2025/2026", "2024/2025"]);
+      allCourses.forEach((c) => {
+        if (c.academicSession && !existingSessions.has(c.academicSession)) {
+          existingSessions.add(c.academicSession);
+          const opt = document.createElement("option");
+          opt.value = c.academicSession;
+          opt.textContent = c.academicSession;
+          sessionSelect.appendChild(opt);
+        }
+      });
+    }
+
+    // Sync session and semester summary strip
+    if (sessionBadge) {
+      sessionBadge.textContent = ADMIN_CONFIG.SESSION || "2026/2027";
+    }
+    if (semesterBadge) {
+      semesterBadge.textContent = ADMIN_CONFIG.SEMESTER || "First Semester";
+    }
+
+    updateStats();
+    renderTable();
+  });
+}
+
 // Auto-run on DOM ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initDashboard);
@@ -705,6 +1512,9 @@ if (typeof window !== "undefined") {
     navigateToSection,
     createPublicNotificationModel,
     createPortalNotificationModel,
-    handleAdminSignOut
+    handleAdminSignOut,
+    initCourseManagement,
+    showAdminToast
   };
 }
+
