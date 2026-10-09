@@ -969,12 +969,82 @@ export async function toggleStudentStatus(studentId, currentStatus) {
 /**
  * =========================================================================
  * 5. LECTURER MANAGEMENT (lecturers)
+ * Institutional Faculty Directory with Single Account Principle
  * =========================================================================
  */
+export const DEFAULT_DIMABIN_LECTURERS = Object.freeze([
+  {
+    id: "lec_olubunmi_01",
+    staffId: "DIMABIN/FAC/2026/01",
+    fullName: "Rev. Dr. E. A. Olubunmi",
+    email: "e.olubunmi@dimabin.edu.ng",
+    phone: "+234 803 111 2233",
+    department: "Biblical Studies & Theology",
+    qualification: "Ph.D. Biblical Theology, M.Th., B.Th.",
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    createdAt: "2026-01-10T08:00:00.000Z"
+  },
+  {
+    id: "lec_adebayo_02",
+    staffId: "DIMABIN/FAC/2026/02",
+    fullName: "Pastor M. O. Adebayo",
+    email: "m.adebayo@dimabin.edu.ng",
+    phone: "+234 802 334 4556",
+    department: "Practical Theology & Pastoral Ministry",
+    qualification: "M.Div., B.Th.",
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    status: "active",
+    createdAt: "2026-01-10T08:00:00.000Z"
+  },
+  {
+    id: "lec_adeleke_03",
+    staffId: "DIMABIN/FAC/2026/03",
+    fullName: "Rev. Deborah F. Adeleke",
+    email: "d.adeleke@dimabin.edu.ng",
+    phone: "+234 805 445 5667",
+    department: "Church Administration & Leadership",
+    qualification: "M.Th., PGD Th., B.A. Rel.",
+    studyCentre: "Lagos Outreach Coordination Centre",
+    status: "active",
+    createdAt: "2026-01-10T08:00:00.000Z"
+  },
+  {
+    id: "lec_ogundipe_04",
+    staffId: "DIMABIN/FAC/2026/04",
+    fullName: "Pastor Samuel K. Ogundipe",
+    email: "s.ogundipe@dimabin.edu.ng",
+    phone: "+234 807 556 6778",
+    department: "Missions & Evangelism",
+    qualification: "M.A. Missiology, Dipl.Th.",
+    studyCentre: "Ibadan Regional Study Centre",
+    status: "active",
+    createdAt: "2026-01-10T08:00:00.000Z"
+  },
+  {
+    id: "lec_babalola_05",
+    staffId: "DIMABIN/FAC/2026/05",
+    fullName: "Rev. Dr. J. A. Babalola",
+    email: "j.babalola@dimabin.edu.ng",
+    phone: "+234 809 667 7889",
+    department: "Systematic Theology & Apologetics",
+    qualification: "Ph.D. Systematic Theology, M.Th.",
+    studyCentre: "Online & Distance Learning Hub",
+    status: "active",
+    createdAt: "2026-01-10T08:00:00.000Z"
+  }
+]);
+
 export function subscribeLecturers(callback) {
   if (typeof callback !== "function") return () => {};
 
-  callback(getCachedCollection(COLLECTIONS.LECTURERS));
+  // Hydrate with default faculty roster if completely empty
+  let currentList = getCachedCollection(COLLECTIONS.LECTURERS);
+  if (!Array.isArray(currentList) || currentList.length === 0) {
+    currentList = [...DEFAULT_DIMABIN_LECTURERS];
+    setCachedCollection(COLLECTIONS.LECTURERS, currentList);
+  }
+  callback(currentList);
 
   const localListener = (e) => {
     if (e.detail) callback(e.detail);
@@ -987,9 +1057,14 @@ export function subscribeLecturers(callback) {
     unsubscribe = onSnapshot(
       collRef,
       (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setCachedCollection(COLLECTIONS.LECTURERS, list);
-        callback(list);
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setCachedCollection(COLLECTIONS.LECTURERS, list);
+          callback(list);
+        } else {
+          const cache = getCachedCollection(COLLECTIONS.LECTURERS);
+          callback(cache.length > 0 ? cache : [...DEFAULT_DIMABIN_LECTURERS]);
+        }
       },
       (err) => {
         console.warn("[DIMABIN Lecturers] onSnapshot note:", err.message);
@@ -1674,12 +1749,64 @@ export async function deleteCoursePermanently(courseId) {
 /**
  * =========================================================================
  * 7. COURSE ALLOCATION (course_allocations)
+ * Real-Time Offering Assignment with Multi-Centre Independence & Audit History
  * =========================================================================
  */
+export const DEFAULT_DIMABIN_ALLOCATIONS = Object.freeze([
+  {
+    id: "alloc_crs_THY_101_goshen_sem1",
+    courseCode: "THY-101",
+    courseTitle: "Christology & The Person of Christ",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "First Semester",
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    lecturerId: "DIMABIN/FAC/2026/01",
+    lecturerName: "Rev. Dr. E. A. Olubunmi",
+    status: "active", // active (Assigned)
+    assignmentHistory: [],
+    allocatedAt: "2026-01-15T09:00:00.000Z",
+    allocatedBy: "DIMABIN/ADM/2026/01",
+    notes: "Lead instructor for core foundational christology curriculum."
+  },
+  {
+    id: "alloc_crs_BIB_101_goshen_sem1",
+    courseCode: "BIB-101",
+    courseTitle: "Old Testament Survey & Covenant History",
+    programme: "Diploma in Theology (Dipl.Th.)",
+    level: "100",
+    academicSession: "2026/2027",
+    semester: "First Semester",
+    studyCentre: "Goshen Central Campus, Abeokuta",
+    lecturerId: "DIMABIN/FAC/2026/04",
+    lecturerName: "Pastor Samuel K. Ogundipe",
+    status: "reassigned", // reassigned (Reassigned)
+    assignmentHistory: [
+      {
+        lecturerId: "DIMABIN/FAC/2026/01",
+        lecturerName: "Rev. Dr. E. A. Olubunmi",
+        assignedAt: "2026-01-10T08:00:00.000Z",
+        endedAt: "2026-01-20T10:00:00.000Z",
+        reason: "Trimester curriculum rotation and missiology alignment"
+      }
+    ],
+    allocatedAt: "2026-01-20T10:00:00.000Z",
+    allocatedBy: "DIMABIN/ADM/2026/01",
+    notes: "Transferred to Pastor Ogundipe for specialized Hebrew covenant history track."
+  }
+]);
+
 export function subscribeCourseAllocations(callback) {
   if (typeof callback !== "function") return () => {};
 
-  callback(getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS));
+  // Hydrate with default allocations if completely empty
+  let currentList = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS);
+  if (!Array.isArray(currentList) || currentList.length === 0) {
+    currentList = [...DEFAULT_DIMABIN_ALLOCATIONS];
+    setCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS, currentList);
+  }
+  callback(currentList);
 
   const localListener = (e) => {
     if (e.detail) callback(e.detail);
@@ -1692,9 +1819,15 @@ export function subscribeCourseAllocations(callback) {
     unsubscribe = onSnapshot(
       collRef,
       (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS, list);
-        callback(list);
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS, list);
+          callback(list);
+          refreshLecturerDashboardData();
+        } else {
+          const cache = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS);
+          callback(cache.length > 0 ? cache : [...DEFAULT_DIMABIN_ALLOCATIONS]);
+        }
       },
       (err) => {
         console.warn("[DIMABIN Allocations] onSnapshot note:", err.message);
@@ -1712,40 +1845,203 @@ export function subscribeCourseAllocations(callback) {
 }
 
 export async function createCourseAllocation(allocData) {
+  return assignCourseOffering(allocData);
+}
+
+export async function assignCourseOffering(allocData) {
+  const courseCode = normalizeCourseCode(allocData.courseCode);
+  if (!courseCode) throw new Error("Course Code is required.");
+
+  const studyCentre = (allocData.studyCentre || "Goshen Central Campus, Abeokuta").trim();
+  const session = (allocData.academicSession || "2026/2027").trim();
+  const semester = (allocData.semester || "First Semester").trim();
+  const lecturerId = (allocData.lecturerId || "").trim();
+  const lecturerName = (allocData.lecturerName || "").trim();
+
+  if (!lecturerId || !lecturerName) {
+    throw new Error("Assigned Lecturer (Full Name and Institutional Staff ID) is required.");
+  }
+
+  // Prevent duplicate active assignments for the same course offering:
+  // An offering is uniquely identified by (courseCode, studyCentre, academicSession, semester)
+  const currentAllocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS);
+  const existingActive = currentAllocations.find((a) => {
+    return (
+      normalizeCourseCode(a.courseCode) === courseCode &&
+      (a.studyCentre || "").trim() === studyCentre &&
+      (a.academicSession || "").trim() === session &&
+      (a.semester || "").trim() === semester &&
+      a.status !== "ended"
+    );
+  });
+
+  if (existingActive) {
+    throw new Error(
+      `Course offering [${courseCode}] at ${studyCentre} (${semester}, ${session}) is already actively assigned to ${existingActive.lecturerName} (${existingActive.lecturerId}). Duplicate active assignments are prohibited. Please use 'Reassign / Transfer' to reallocate this offering.`
+    );
+  }
+
+  const nowIso = new Date().toISOString();
   const record = {
-    lecturerName: (allocData.lecturerName || "").trim(),
-    lecturerId: (allocData.lecturerId || "").trim(),
-    courseCode: (allocData.courseCode || "").trim().toUpperCase(),
-    courseTitle: (allocData.courseTitle || "").trim(),
-    programme: allocData.programme || "Diploma in Theology (Dipl.Th.)",
-    level: allocData.level || "Diploma I",
-    semester: allocData.semester || "First Semester",
-    studyCentre: allocData.studyCentre || "Goshen Central Campus, Abeokuta",
-    academicSession: allocData.academicSession || "2026/2027",
-    allocatedAt: new Date().toISOString(),
-    allocatedBy: ADMIN_CREDENTIALS.ADMIN_ID
+    courseCode,
+    courseTitle: (allocData.courseTitle || "").trim() || courseCode,
+    programme: (allocData.programme || "Diploma in Theology (Dipl.Th.)").trim(),
+    level: (allocData.level || "100").trim(),
+    academicSession: session,
+    semester,
+    studyCentre,
+    lecturerId,
+    lecturerName,
+    status: "active",
+    assignmentHistory: [],
+    allocatedAt: nowIso,
+    allocatedBy: ADMIN_CREDENTIALS.ADMIN_ID,
+    notes: (allocData.notes || "").trim()
   };
 
-  const localId = `alloc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const localId = `alloc_${courseCode.replace(/[^A-Z0-9]/g, "_")}_${studyCentre.replace(/[^A-Za-z0-9]/g, "_")}_${session.replace(/[^0-9]/g, "_")}_${semester.replace(/\s+/g, "_")}`;
   upsertCachedItem(COLLECTIONS.COURSE_ALLOCATIONS, { id: localId, ...record });
 
+  let savedId = localId;
   try {
-    await addDoc(collection(db, COLLECTIONS.COURSE_ALLOCATIONS), {
+    const docRef = await addDoc(collection(db, COLLECTIONS.COURSE_ALLOCATIONS), {
       ...record,
       allocatedAt: serverTimestamp()
     });
+    savedId = docRef.id;
+    removeCachedItem(COLLECTIONS.COURSE_ALLOCATIONS, localId);
+    upsertCachedItem(COLLECTIONS.COURSE_ALLOCATIONS, { id: savedId, ...record });
   } catch (err) {
-    console.warn(`[DIMABIN Allocations] Firestore create note: ${err.message}`);
+    console.warn(`[DIMABIN Allocations] Firestore add note: ${err.message}`);
   }
 
   await logActivity({
     action: "course_allocated",
-    description: `Allocated ${record.courseCode} to ${record.lecturerName} (${record.semester}, ${record.academicSession}).`,
+    description: `Assigned course offering [${courseCode}] at ${studyCentre} to ${lecturerName} (${lecturerId}) for ${semester} (${session}).`,
     targetCollection: COLLECTIONS.COURSE_ALLOCATIONS,
-    targetDocumentId: `${record.courseCode}_${record.lecturerId}`
+    targetDocumentId: savedId
   });
 
-  return { success: true, ...record };
+  refreshLecturerDashboardData();
+  return { success: true, id: savedId, ...record };
+}
+
+export async function reassignCourseAllocation(allocId, { newLecturerId, newLecturerName, reason, notes }) {
+  if (!allocId) throw new Error("Allocation ID is required.");
+  if (!newLecturerId || !newLecturerName) throw new Error("New Lecturer selection is required.");
+
+  const currentAllocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS);
+  const existing = currentAllocations.find((a) => a.id === allocId);
+  if (!existing) throw new Error("Allocation record not found in system.");
+
+  if (existing.lecturerId === newLecturerId) {
+    throw new Error(`This course offering is already assigned to ${newLecturerName}. Please select a different faculty instructor.`);
+  }
+
+  const nowIso = new Date().toISOString();
+  // Preserve previous assignment history
+  const previousRecord = {
+    lecturerId: existing.lecturerId,
+    lecturerName: existing.lecturerName,
+    assignedAt: existing.allocatedAt || nowIso,
+    endedAt: nowIso,
+    reason: (reason || "Transferred to new instructor for trimester rotation").trim()
+  };
+
+  const updatedHistory = [previousRecord, ...(existing.assignmentHistory || [])];
+
+  const updatedRecord = {
+    ...existing,
+    lecturerId: newLecturerId.trim(),
+    lecturerName: newLecturerName.trim(),
+    status: "reassigned",
+    assignmentHistory: updatedHistory,
+    reassignedAt: nowIso,
+    reassignedBy: ADMIN_CREDENTIALS.ADMIN_ID,
+    notes: notes ? `${existing.notes ? existing.notes + " | " : ""}${notes}` : existing.notes,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.COURSE_ALLOCATIONS, { id: allocId, ...updatedRecord });
+
+  try {
+    const docRef = doc(db, COLLECTIONS.COURSE_ALLOCATIONS, allocId);
+    await updateDoc(docRef, {
+      lecturerId: updatedRecord.lecturerId,
+      lecturerName: updatedRecord.lecturerName,
+      status: "reassigned",
+      assignmentHistory: updatedHistory,
+      reassignedAt: serverTimestamp(),
+      reassignedBy: ADMIN_CREDENTIALS.ADMIN_ID,
+      notes: updatedRecord.notes || "",
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.warn(`[DIMABIN Allocations] Reassign note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "course_reassigned",
+    description: `Transferred course offering [${existing.courseCode}] at ${existing.studyCentre} from ${existing.lecturerName} (${existing.lecturerId}) to ${newLecturerName} (${newLecturerId}). Reason: ${reason || "Faculty reallocation"}.`,
+    targetCollection: COLLECTIONS.COURSE_ALLOCATIONS,
+    targetDocumentId: allocId
+  });
+
+  refreshLecturerDashboardData();
+  return { success: true, id: allocId, ...updatedRecord };
+}
+
+export async function endCourseAllocation(allocId, { reason } = {}) {
+  if (!allocId) throw new Error("Allocation ID is required.");
+
+  const currentAllocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS);
+  const existing = currentAllocations.find((a) => a.id === allocId);
+  if (!existing) throw new Error("Allocation record not found.");
+
+  const nowIso = new Date().toISOString();
+  const previousRecord = {
+    lecturerId: existing.lecturerId,
+    lecturerName: existing.lecturerName,
+    assignedAt: existing.allocatedAt || nowIso,
+    endedAt: nowIso,
+    reason: (reason || "Assignment concluded / course offering released").trim()
+  };
+
+  const updatedHistory = [previousRecord, ...(existing.assignmentHistory || [])];
+
+  const updatedRecord = {
+    ...existing,
+    status: "ended",
+    assignmentHistory: updatedHistory,
+    endedAt: nowIso,
+    endReason: (reason || "Assignment concluded").trim(),
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.COURSE_ALLOCATIONS, { id: allocId, ...updatedRecord });
+
+  try {
+    const docRef = doc(db, COLLECTIONS.COURSE_ALLOCATIONS, allocId);
+    await updateDoc(docRef, {
+      status: "ended",
+      assignmentHistory: updatedHistory,
+      endedAt: serverTimestamp(),
+      endReason: updatedRecord.endReason,
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.warn(`[DIMABIN Allocations] End allocation note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "course_allocation_ended",
+    description: `Concluded assignment for [${existing.courseCode}] at ${existing.studyCentre} (previously taught by ${existing.lecturerName}). Offering is now Available.`,
+    targetCollection: COLLECTIONS.COURSE_ALLOCATIONS,
+    targetDocumentId: allocId
+  });
+
+  refreshLecturerDashboardData();
+  return { success: true, id: allocId, ...updatedRecord };
 }
 
 export async function deleteCourseAllocation(allocId) {
@@ -1760,12 +2056,60 @@ export async function deleteCourseAllocation(allocId) {
 
   await logActivity({
     action: "course_allocation_revoked",
-    description: `Revoked course allocation ${allocId}.`,
+    description: `Revoked course allocation record ${allocId}.`,
     targetCollection: COLLECTIONS.COURSE_ALLOCATIONS,
     targetDocumentId: allocId
   });
 
+  refreshLecturerDashboardData();
   return { success: true, allocId };
+}
+
+export function refreshLecturerDashboardData() {
+  try {
+    const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+    const activeAllocations = allocations.filter((a) => a.status === "active" || a.status === "reassigned");
+
+    const workloadByLecturer = {};
+    activeAllocations.forEach((alloc) => {
+      if (!alloc.lecturerId) return;
+      if (!workloadByLecturer[alloc.lecturerId]) {
+        workloadByLecturer[alloc.lecturerId] = {
+          lecturerId: alloc.lecturerId,
+          lecturerName: alloc.lecturerName,
+          coursesCount: 0,
+          studyCentres: new Set(),
+          offerings: []
+        };
+      }
+      workloadByLecturer[alloc.lecturerId].coursesCount += 1;
+      if (alloc.studyCentre) {
+        workloadByLecturer[alloc.lecturerId].studyCentres.add(alloc.studyCentre);
+      }
+      workloadByLecturer[alloc.lecturerId].offerings.push({
+        courseCode: alloc.courseCode,
+        courseTitle: alloc.courseTitle,
+        studyCentre: alloc.studyCentre,
+        semester: alloc.semester,
+        academicSession: alloc.academicSession,
+        status: alloc.status,
+        allocatedAt: alloc.allocatedAt
+      });
+    });
+
+    const serialized = {};
+    Object.keys(workloadByLecturer).forEach((lecId) => {
+      serialized[lecId] = {
+        ...workloadByLecturer[lecId],
+        studyCentres: Array.from(workloadByLecturer[lecId].studyCentres)
+      };
+    });
+
+    localStorage.setItem("dimabin_lecturer_dashboard_data", JSON.stringify(serialized));
+    window.dispatchEvent(new CustomEvent("dimabin:lecturer-allocations-updated", { detail: serialized }));
+  } catch (err) {
+    console.warn("[DIMABIN Dashboard] refreshLecturerDashboardData note:", err.message);
+  }
 }
 
 /**

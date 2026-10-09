@@ -27,7 +27,15 @@ import {
   toggleCourseStatus,
   deleteCoursePermanently,
   checkCourseDependencies,
-  normalizeCourseCode
+  normalizeCourseCode,
+  subscribeCourseAllocations,
+  assignCourseOffering,
+  reassignCourseAllocation,
+  endCourseAllocation,
+  deleteCourseAllocation,
+  subscribeLecturers,
+  createLecturer,
+  refreshLecturerDashboardData
 } from "./firebase-backend.js";
 
 // Canonical Administrator Credentials
@@ -298,6 +306,9 @@ export function initDashboard() {
 
   // 9. COURSE MANAGEMENT SYSTEM CONTROLLER (Three-Semester Academic System)
   initCourseManagement();
+
+  // 10. COURSE ALLOCATION MODULE CONTROLLER (Multi-Centre Scoped Offering Assignments & Audit)
+  initCourseAllocation();
 }
 
 /**
@@ -1498,6 +1509,1062 @@ export function initCourseManagement() {
   });
 }
 
+/**
+ * =========================================================================
+ * 17. COURSE ALLOCATION MODULE CONTROLLER
+ * Multi-Centre Scoped Offering Assignments, Lecturer Visibility & Audit Trail
+ * =========================================================================
+ */
+export function initCourseAllocation() {
+  console.log("[DIMABIN Dashboard] Initializing Course Allocation Controller...");
+
+  // State
+  let catalogCourses = [];
+  let allocations = [];
+  let lecturers = [];
+  let currentOfferings = [];
+  let pendingReassignAlloc = null;
+  let pendingEndAlloc = null;
+  let isWorkloadView = false;
+
+  const filters = {
+    search: "",
+    session: "all",
+    semester: "all",
+    centre: "all",
+    status: "all",
+    sort: "code-asc"
+  };
+
+  // Header & Badges
+  const sessionBadge = document.getElementById("alloc-active-session-badge");
+  const semesterBadge = document.getElementById("alloc-active-semester-badge");
+  const countPill = document.getElementById("alloc-count-pill");
+  const filterSummary = document.getElementById("alloc-filter-summary");
+  const headingText = document.getElementById("alloc-card-heading");
+
+  // Summary Stat Counters
+  const statTotal = document.getElementById("stat-alloc-total");
+  const statAssigned = document.getElementById("stat-alloc-assigned");
+  const statAvailable = document.getElementById("stat-alloc-available");
+  const statReassigned = document.getElementById("stat-alloc-reassigned");
+  const statInactive = document.getElementById("stat-alloc-inactive");
+  const statLecturers = document.getElementById("stat-alloc-lecturers");
+
+  // Filter Elements
+  const searchInput = document.getElementById("alloc-search-input");
+  const sessionSelect = document.getElementById("filter-alloc-session");
+  const semesterSelect = document.getElementById("filter-alloc-semester");
+  const centreSelect = document.getElementById("filter-alloc-centre");
+  const statusSelect = document.getElementById("filter-alloc-status");
+  const sortSelect = document.getElementById("filter-alloc-sort");
+  const resetBtn = document.getElementById("btn-reset-alloc-filters");
+
+  // View Switchers
+  const toggleWorkloadBtn = document.getElementById("btn-toggle-workload-view");
+  const toggleWorkloadText = document.getElementById("btn-toggle-workload-text");
+  const tableContainer = document.getElementById("alloc-table-container");
+  const workloadContainer = document.getElementById("alloc-workload-container");
+  const workloadGrid = document.getElementById("faculty-workload-grid");
+
+  // Table Elements
+  const tbody = document.getElementById("allocations-table-tbody");
+  const loadingEl = document.getElementById("allocations-table-loading");
+  const emptyEl = document.getElementById("allocations-table-empty");
+  const emptyHeading = document.getElementById("alloc-empty-heading");
+
+  // Assign Modal Elements
+  const modalAssign = document.getElementById("modal-assign-lecturer");
+  const openAssignBtn = document.getElementById("btn-open-assign-modal");
+  const closeAssignBtn = document.getElementById("btn-close-assign-modal");
+  const cancelAssignBtn = document.getElementById("btn-cancel-assign-modal");
+  const confirmAssignBtn = document.getElementById("btn-confirm-assign-offering");
+  const formAssign = document.getElementById("form-assign-offering");
+  const assignAlert = document.getElementById("assign-modal-alert");
+  const assignCourseSelect = document.getElementById("assign-modal-course-select");
+  const assignCentreSelect = document.getElementById("assign-modal-centre-select");
+  const assignSessionSelect = document.getElementById("assign-modal-session-select");
+  const assignSemesterSelect = document.getElementById("assign-modal-semester-select");
+  const assignLecturerSelect = document.getElementById("assign-modal-lecturer-select");
+  const assignNotes = document.getElementById("assign-modal-notes");
+  const assignSpinner = document.getElementById("assign-save-spinner");
+
+  // Reassign Modal Elements
+  const modalReassign = document.getElementById("modal-reassign-lecturer");
+  const closeReassignBtn = document.getElementById("btn-close-reassign-modal");
+  const cancelReassignBtn = document.getElementById("btn-cancel-reassign-modal");
+  const confirmReassignBtn = document.getElementById("btn-confirm-reassign-offering");
+  const formReassign = document.getElementById("form-reassign-offering");
+  const reassignAlert = document.getElementById("reassign-modal-alert");
+  const reassignAllocId = document.getElementById("reassign-alloc-id");
+  const reassignCourseTitle = document.getElementById("reassign-modal-course-title");
+  const reassignCourseMeta = document.getElementById("reassign-modal-course-meta");
+  const reassignCurrentLecturer = document.getElementById("reassign-modal-current-lecturer");
+  const reassignLecturerSelect = document.getElementById("reassign-modal-lecturer-select");
+  const reassignReason = document.getElementById("reassign-modal-reason");
+  const reassignNotes = document.getElementById("reassign-modal-notes");
+  const reassignSpinner = document.getElementById("reassign-save-spinner");
+
+  // End Allocation Modal Elements
+  const modalEnd = document.getElementById("modal-end-allocation");
+  const closeEndBtn = document.getElementById("btn-close-end-modal");
+  const cancelEndBtn = document.getElementById("btn-cancel-end-modal");
+  const confirmEndBtn = document.getElementById("btn-confirm-end-allocation");
+  const endAllocId = document.getElementById("end-alloc-id");
+  const endModalTitle = document.getElementById("end-alloc-modal-title");
+  const endModalMeta = document.getElementById("end-alloc-modal-meta");
+  const endModalLecturer = document.getElementById("end-alloc-modal-lecturer");
+  const endReason = document.getElementById("end-alloc-reason");
+
+  // History Modal Elements
+  const modalHistory = document.getElementById("modal-allocation-history");
+  const closeHistoryBtn = document.getElementById("btn-close-history-modal");
+  const closeHistoryBtnFooter = document.getElementById("btn-close-history-btn");
+  const historyCode = document.getElementById("history-modal-course-code");
+  const historyTitle = document.getElementById("history-modal-course-title");
+  const historyCentre = document.getElementById("history-modal-centre-info");
+  const historyCurrent = document.getElementById("history-modal-current-block");
+  const historyTimeline = document.getElementById("history-modal-timeline-list");
+
+  // Quick Add Lecturer Modal Elements
+  const modalQuickLec = document.getElementById("modal-add-lecturer-quick");
+  const openQuickLecBtn = document.getElementById("btn-open-quick-add-lecturer");
+  const closeQuickLecBtn = document.getElementById("btn-close-quick-lec-modal");
+  const cancelQuickLecBtn = document.getElementById("btn-cancel-quick-lec-modal");
+  const saveQuickLecBtn = document.getElementById("btn-save-quick-lecturer");
+  const formQuickLec = document.getElementById("form-quick-add-lecturer");
+  const quickLecAlert = document.getElementById("quick-lec-alert");
+  const quickStaffId = document.getElementById("quick-lecturer-staff-id");
+  const quickName = document.getElementById("quick-lecturer-name");
+  const quickEmail = document.getElementById("quick-lecturer-email");
+  const quickDept = document.getElementById("quick-lecturer-dept");
+  const quickQual = document.getElementById("quick-lecturer-qual");
+  const quickCentre = document.getElementById("quick-lecturer-centre");
+  const quickSpinner = document.getElementById("quick-lec-spinner");
+
+  // Modal helpers
+  const openModal = (m) => {
+    if (!m) return;
+    m.style.display = "flex";
+    m.classList.add("open");
+    m.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  };
+
+  const closeModal = (m) => {
+    if (!m) return;
+    m.style.display = "none";
+    m.classList.remove("open");
+    m.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  };
+
+  [modalAssign, modalReassign, modalEnd, modalHistory, modalQuickLec].forEach((overlay) => {
+    if (overlay) {
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) closeModal(overlay);
+      });
+    }
+  });
+
+  if (closeAssignBtn) closeAssignBtn.addEventListener("click", () => closeModal(modalAssign));
+  if (cancelAssignBtn) cancelAssignBtn.addEventListener("click", () => closeModal(modalAssign));
+  if (closeReassignBtn) closeReassignBtn.addEventListener("click", () => closeModal(modalReassign));
+  if (cancelReassignBtn) cancelReassignBtn.addEventListener("click", () => closeModal(modalReassign));
+  if (closeEndBtn) closeEndBtn.addEventListener("click", () => closeModal(modalEnd));
+  if (cancelEndBtn) cancelEndBtn.addEventListener("click", () => closeModal(modalEnd));
+  if (closeHistoryBtn) closeHistoryBtn.addEventListener("click", () => closeModal(modalHistory));
+  if (closeHistoryBtnFooter) closeHistoryBtnFooter.addEventListener("click", () => closeModal(modalHistory));
+  if (closeQuickLecBtn) closeQuickLecBtn.addEventListener("click", () => closeModal(modalQuickLec));
+  if (cancelQuickLecBtn) cancelQuickLecBtn.addEventListener("click", () => closeModal(modalQuickLec));
+
+  // Populate Select Dropdowns
+  const populateLecturerDropdowns = () => {
+    [assignLecturerSelect, reassignLecturerSelect].forEach((sel) => {
+      if (!sel) return;
+      const currentVal = sel.value;
+      sel.innerHTML = `<option value="">-- Select Verified Faculty Instructor --</option>`;
+      lecturers.forEach((lec) => {
+        const opt = document.createElement("option");
+        opt.value = lec.staffId;
+        opt.textContent = `${lec.fullName} (${lec.staffId}) — ${lec.department || "Faculty"}`;
+        sel.appendChild(opt);
+      });
+      if (currentVal) sel.value = currentVal;
+    });
+  };
+
+  const populateCourseDropdown = () => {
+    if (!assignCourseSelect) return;
+    const currentVal = assignCourseSelect.value;
+    assignCourseSelect.innerHTML = `<option value="">-- Select Academic Course Module --</option>`;
+    catalogCourses.forEach((crs) => {
+      const opt = document.createElement("option");
+      opt.value = crs.courseCode;
+      opt.textContent = `[${crs.courseCode}] ${crs.title || crs.courseTitle} (${crs.semester || "First Semester"})`;
+      assignCourseSelect.appendChild(opt);
+    });
+    if (currentVal) assignCourseSelect.value = currentVal;
+  };
+
+  // Re-calculate Offerings dynamically from real Firestore records
+  const calculateOfferings = () => {
+    const offeringsMap = new Map();
+
+    // 1. From catalog courses: include primary study centre offering
+    catalogCourses.forEach((c) => {
+      const code = normalizeCourseCode(c.courseCode);
+      if (!code) return;
+      const centre = (c.studyCentre || "Goshen Central Campus, Abeokuta").trim();
+      const session = (c.academicSession || ADMIN_CONFIG.SESSION || "2026/2027").trim();
+      const semester = (c.semester || "First Semester").trim();
+      const key = `${code}__${centre}__${session}__${semester}`;
+
+      offeringsMap.set(key, {
+        courseCode: code,
+        courseTitle: c.title || c.courseTitle || code,
+        studyCentre: centre,
+        academicSession: session,
+        semester,
+        department: c.department || "Biblical Studies & Theology",
+        programme: c.programme || "Diploma in Theology (Dipl.Th.)",
+        level: c.level || "100",
+        creditUnits: c.creditUnits || c.creditUnit || 3,
+        isCourseInactive: c.status === "inactive"
+      });
+    });
+
+    // 2. Also register any offering from the actual allocations collection
+    allocations.forEach((a) => {
+      const code = normalizeCourseCode(a.courseCode);
+      if (!code) return;
+      const centre = (a.studyCentre || "Goshen Central Campus, Abeokuta").trim();
+      const session = (a.academicSession || "2026/2027").trim();
+      const semester = (a.semester || "First Semester").trim();
+      const key = `${code}__${centre}__${session}__${semester}`;
+
+      if (!offeringsMap.has(key)) {
+        const matchedCourse = catalogCourses.find((c) => normalizeCourseCode(c.courseCode) === code);
+        offeringsMap.set(key, {
+          courseCode: code,
+          courseTitle: a.courseTitle || (matchedCourse ? matchedCourse.title || matchedCourse.courseTitle : code),
+          studyCentre: centre,
+          academicSession: session,
+          semester,
+          department: matchedCourse ? matchedCourse.department : "Theology & Ministry",
+          programme: a.programme || (matchedCourse ? matchedCourse.programme : "Diploma in Theology"),
+          level: a.level || (matchedCourse ? matchedCourse.level : "100"),
+          creditUnits: matchedCourse ? matchedCourse.creditUnits || matchedCourse.creditUnit : 3,
+          isCourseInactive: matchedCourse ? matchedCourse.status === "inactive" : false
+        });
+      }
+    });
+
+    // 3. For every offering, evaluate status strictly against active Firestore allocations
+    const computedList = [];
+    offeringsMap.forEach((offering) => {
+      const { courseCode, studyCentre, academicSession, semester, isCourseInactive } = offering;
+
+      // Find active allocation for this EXACT offering (multi-centre independent)
+      const matchingAlloc = allocations.find((a) => {
+        return (
+          normalizeCourseCode(a.courseCode) === courseCode &&
+          (a.studyCentre || "").trim() === studyCentre &&
+          (a.academicSession || "").trim() === academicSession &&
+          (a.semester || "").trim() === semester &&
+          a.status !== "ended"
+        );
+      });
+
+      let status = "available";
+      let statusLabel = "Available";
+      let assignedLecturer = null;
+
+      if (isCourseInactive) {
+        status = "inactive";
+        statusLabel = "Inactive";
+      } else if (matchingAlloc) {
+        if (matchingAlloc.status === "reassigned" || (matchingAlloc.assignmentHistory && matchingAlloc.assignmentHistory.length > 0)) {
+          status = "reassigned";
+          statusLabel = "Reassigned";
+        } else {
+          status = "assigned";
+          statusLabel = "Assigned";
+        }
+        assignedLecturer = {
+          name: matchingAlloc.lecturerName,
+          staffId: matchingAlloc.lecturerId
+        };
+      } else {
+        status = "available";
+        statusLabel = "Available";
+      }
+
+      computedList.push({
+        ...offering,
+        status,
+        statusLabel,
+        assignedLecturer,
+        allocation: matchingAlloc || null
+      });
+    });
+
+    currentOfferings = computedList;
+  };
+
+  // Update Summary Statistics
+  const updateStats = () => {
+    const total = currentOfferings.length;
+    const assigned = currentOfferings.filter((o) => o.status === "assigned").length;
+    const available = currentOfferings.filter((o) => o.status === "available").length;
+    const reassigned = currentOfferings.filter((o) => o.status === "reassigned").length;
+    const inactive = currentOfferings.filter((o) => o.status === "inactive").length;
+    const facultyCount = lecturers.length;
+
+    if (statTotal) statTotal.textContent = total;
+    if (statAssigned) statAssigned.textContent = assigned;
+    if (statAvailable) statAvailable.textContent = available;
+    if (statReassigned) statReassigned.textContent = reassigned;
+    if (statInactive) statInactive.textContent = inactive;
+    if (statLecturers) statLecturers.textContent = facultyCount;
+  };
+
+  // Render Table
+  const renderTable = () => {
+    if (!tbody) return;
+
+    // Filter
+    let list = currentOfferings.filter((o) => {
+      // 1. Search Query
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const code = (o.courseCode || "").toLowerCase();
+        const title = (o.courseTitle || "").toLowerCase();
+        const lecName = o.assignedLecturer ? o.assignedLecturer.name.toLowerCase() : "";
+        const lecId = o.assignedLecturer ? o.assignedLecturer.staffId.toLowerCase() : "";
+        if (!code.includes(q) && !title.includes(q) && !lecName.includes(q) && !lecId.includes(q)) {
+          return false;
+        }
+      }
+
+      // 2. Session
+      if (filters.session !== "all" && o.academicSession !== filters.session) {
+        return false;
+      }
+
+      // 3. Semester
+      if (filters.semester !== "all" && o.semester !== filters.semester) {
+        return false;
+      }
+
+      // 4. Study Centre (Multi-centre scoped)
+      if (filters.centre !== "all" && o.studyCentre !== filters.centre) {
+        return false;
+      }
+
+      // 5. Status
+      if (filters.status !== "all" && o.status !== filters.status) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Sort
+    list.sort((a, b) => {
+      switch (filters.sort) {
+        case "code-asc":
+          return (a.courseCode || "").localeCompare(b.courseCode || "");
+        case "code-desc":
+          return (b.courseCode || "").localeCompare(a.courseCode || "");
+        case "status-assigned":
+          return (a.status === "assigned" ? 0 : 1) - (b.status === "assigned" ? 0 : 1);
+        case "status-available":
+          return (a.status === "available" ? 0 : 1) - (b.status === "available" ? 0 : 1);
+        case "centre-asc":
+          return (a.studyCentre || "").localeCompare(b.studyCentre || "");
+        default:
+          return (a.courseCode || "").localeCompare(b.courseCode || "");
+      }
+    });
+
+    // Counter & Summary
+    if (countPill) countPill.textContent = `${list.length} Offering${list.length === 1 ? "" : "s"}`;
+    if (filterSummary) {
+      const activeFilters = [];
+      if (filters.search) activeFilters.push(`search: "${filters.search}"`);
+      if (filters.centre !== "all") activeFilters.push(filters.centre);
+      if (filters.semester !== "all") activeFilters.push(filters.semester);
+      if (filters.session !== "all") activeFilters.push(filters.session);
+      if (filters.status !== "all") activeFilters.push(`status: ${filters.status}`);
+
+      filterSummary.textContent = activeFilters.length > 0 ? `Filtered by ${activeFilters.join(" · ")}` : "Showing all course offerings";
+    }
+
+    if (list.length === 0) {
+      tbody.innerHTML = "";
+      if (emptyEl) {
+        emptyEl.style.display = "block";
+        if (emptyHeading) {
+          emptyHeading.textContent = currentOfferings.length === 0 ? "No course offerings catalogued in the system." : "No course offerings found for the selected filters.";
+        }
+      }
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = "none";
+
+    const rowsHtml = list
+      .map((o) => {
+        const code = o.courseCode;
+        const title = o.courseTitle;
+        const centre = o.studyCentre;
+        const session = o.academicSession;
+        const semester = o.semester;
+        const isAssigned = o.status === "assigned";
+        const isReassigned = o.status === "reassigned";
+        const isAvailable = o.status === "available";
+
+        // Status Badge HTML
+        let badgeHtml = "";
+        if (isAssigned) {
+          badgeHtml = `<span class="badge-alloc-status badge-alloc-assigned">● Assigned</span>`;
+        } else if (isReassigned) {
+          badgeHtml = `<span class="badge-alloc-status badge-alloc-reassigned">↻ Reassigned</span>`;
+        } else if (isAvailable) {
+          badgeHtml = `<span class="badge-alloc-status badge-alloc-available">○ Available</span>`;
+        } else {
+          badgeHtml = `<span class="badge-alloc-status badge-alloc-inactive">⊘ Inactive</span>`;
+        }
+
+        // Assigned Lecturer HTML
+        let lecturerHtml = "";
+        if (o.assignedLecturer) {
+          lecturerHtml = `
+            <div class="lecturer-cell-wrap">
+              <div class="lecturer-cell-name">${o.assignedLecturer.name}</div>
+              <div class="lecturer-cell-id">${o.assignedLecturer.staffId}</div>
+            </div>
+          `;
+        } else {
+          lecturerHtml = `
+            <div class="unassigned-cell-text">
+              <span class="unassigned-cell-dot">○</span> Not Assigned
+            </div>
+          `;
+        }
+
+        // Actions HTML
+        let actionsHtml = "";
+        if (isAvailable) {
+          actionsHtml = `
+            <button type="button" class="btn-alloc-action btn-alloc-assign action-assign-offering" 
+              data-code="${code}" 
+              data-title="${title}" 
+              data-centre="${centre}" 
+              data-session="${session}" 
+              data-semester="${semester}" 
+              title="Assign verified faculty instructor">
+              + Assign
+            </button>
+          `;
+        } else if (isAssigned || isReassigned) {
+          const allocId = o.allocation ? o.allocation.id : "";
+          actionsHtml = `
+            <div class="alloc-actions-cell">
+              <button type="button" class="btn-alloc-action btn-alloc-reassign action-reassign-offering" 
+                data-id="${allocId}" 
+                title="Transfer to another faculty instructor">
+                Transfer
+              </button>
+              <button type="button" class="btn-alloc-action btn-alloc-end action-end-offering" 
+                data-id="${allocId}" 
+                title="End current assignment and release offering">
+                End
+              </button>
+              <button type="button" class="btn-alloc-action btn-alloc-history action-view-history" 
+                data-id="${allocId}" 
+                title="View full assignment history and audit logs">
+                History
+              </button>
+            </div>
+          `;
+        } else {
+          actionsHtml = `<span style="font-size: 0.72rem; color: #9CA3AF;">Course Inactive</span>`;
+        }
+
+        const semClass = semester.includes("Second") ? "sem-2" : semester.includes("Third") ? "sem-3" : "sem-1";
+
+        return `
+          <tr data-offering-key="${code}__${centre}__${session}__${semester}">
+            <td><strong style="color: var(--primary-blue); font-size: 0.875rem;">${code}</strong></td>
+            <td>
+              <div style="font-weight: 700; color: var(--dark-navy);">${title}</div>
+              <div style="font-size: 0.72rem; color: var(--admin-text-muted);">${o.department}</div>
+            </td>
+            <td>
+              <span style="font-size: 0.78rem; color: var(--admin-text-main); font-weight: 600;">
+                📍 ${centre}
+              </span>
+            </td>
+            <td><span class="badge-credit-pill">${session}</span></td>
+            <td><span class="badge-semester-tag ${semClass}">${semester}</span></td>
+            <td>${lecturerHtml}</td>
+            <td>${badgeHtml}</td>
+            <td style="text-align: right;">${actionsHtml}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    tbody.innerHTML = rowsHtml;
+    attachAllocationRowListeners();
+  };
+
+  // Render Faculty Workload Overview
+  const renderFacultyWorkload = () => {
+    if (!workloadGrid) return;
+
+    if (lecturers.length === 0) {
+      workloadGrid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--admin-text-muted);">
+          No faculty instructors catalogued yet. Use "Add Lecturer (+)" to register an instructor.
+        </div>
+      `;
+      return;
+    }
+
+    const cardsHtml = lecturers
+      .map((lec) => {
+        // Collect all active/reassigned offerings taught by this lecturer
+        const activeAllocs = allocations.filter((a) => {
+          return a.lecturerId === lec.staffId && a.status !== "ended";
+        });
+
+        // Collect distinct study centres
+        const assignedCentres = new Set();
+        activeAllocs.forEach((a) => {
+          if (a.studyCentre) assignedCentres.add(a.studyCentre);
+        });
+
+        const centrePillsHtml = Array.from(assignedCentres)
+          .map((c) => `<span class="workload-centre-tag">📍 ${c}</span>`)
+          .join("");
+
+        const coursesListHtml =
+          activeAllocs.length > 0
+            ? activeAllocs
+                .map((a) => {
+                  return `
+                  <div class="workload-course-item">
+                    <div>
+                      <span class="workload-course-code">${a.courseCode}</span>
+                      <span style="color: var(--dark-navy); margin-left: 4px;">${a.courseTitle || ""}</span>
+                      <div style="font-size: 0.6875rem; color: var(--admin-text-muted);">${a.studyCentre} · ${a.semester}</div>
+                    </div>
+                    <span class="badge-alloc-status ${a.status === "reassigned" ? "badge-alloc-reassigned" : "badge-alloc-assigned"}" style="font-size: 0.65rem; padding: 0.15rem 0.45rem;">
+                      ${a.status === "reassigned" ? "Reassigned" : "Assigned"}
+                    </span>
+                  </div>
+                `;
+                })
+                .join("")
+            : `<div style="font-size: 0.75rem; color: #9CA3AF; font-style: italic; padding: 0.5rem 0;">No active course offerings assigned currently.</div>`;
+
+        return `
+          <div class="workload-card" data-staff-id="${lec.staffId}">
+            <div class="workload-card-header">
+              <div>
+                <div class="workload-lecturer-name">${lec.fullName}</div>
+                <div class="workload-lecturer-dept">${lec.qualification || ""} · ${lec.department || "Faculty"}</div>
+                <div style="font-size: 0.72rem; color: var(--primary-blue); font-weight: 700; margin-top: 2px;">
+                  Staff ID: ${lec.staffId}
+                </div>
+              </div>
+              <span class="workload-stat-pill">
+                ${activeAllocs.length} Course${activeAllocs.length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            <div style="margin-bottom: 0.5rem;">
+              <div style="font-size: 0.72rem; font-weight: 700; color: var(--admin-text-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Assigned Campuses:</div>
+              <div class="workload-centre-tags">
+                ${centrePillsHtml || '<span style="font-size: 0.72rem; color: #9CA3AF;">None yet</span>'}
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size: 0.72rem; font-weight: 700; color: var(--admin-text-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Teaching Offerings:</div>
+              <div class="workload-courses-list">
+                ${coursesListHtml}
+              </div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    workloadGrid.innerHTML = cardsHtml;
+  };
+
+  // Row Action Listeners
+  const attachAllocationRowListeners = () => {
+    // 1. Assign Offering
+    tbody.querySelectorAll(".action-assign-offering").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const code = btn.getAttribute("data-code");
+        const centre = btn.getAttribute("data-centre");
+        const session = btn.getAttribute("data-session");
+        const semester = btn.getAttribute("data-semester");
+
+        openAssignModalWithPreFill({ code, centre, session, semester });
+      });
+    });
+
+    // 2. Reassign / Transfer Offering
+    tbody.querySelectorAll(".action-reassign-offering").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const allocId = btn.getAttribute("data-id");
+        const alloc = allocations.find((a) => a.id === allocId);
+        if (!alloc) return;
+        openReassignModal(alloc);
+      });
+    });
+
+    // 3. End Assignment
+    tbody.querySelectorAll(".action-end-offering").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const allocId = btn.getAttribute("data-id");
+        const alloc = allocations.find((a) => a.id === allocId);
+        if (!alloc) return;
+        openEndAllocationModal(alloc);
+      });
+    });
+
+    // 4. View History / Details
+    tbody.querySelectorAll(".action-view-history").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const allocId = btn.getAttribute("data-id");
+        const alloc = allocations.find((a) => a.id === allocId);
+        if (!alloc) return;
+        openHistoryModal(alloc);
+      });
+    });
+  };
+
+  // Open Assign Modal
+  const openAssignModalWithPreFill = (preFill = {}) => {
+    if (!modalAssign || !formAssign) return;
+    formAssign.reset();
+    if (assignAlert) assignAlert.style.display = "none";
+
+    populateCourseDropdown();
+    populateLecturerDropdowns();
+
+    if (preFill.code && assignCourseSelect) assignCourseSelect.value = preFill.code;
+    if (preFill.centre && assignCentreSelect) assignCentreSelect.value = preFill.centre;
+    if (preFill.session && assignSessionSelect) assignSessionSelect.value = preFill.session;
+    if (preFill.semester && assignSemesterSelect) assignSemesterSelect.value = preFill.semester;
+
+    openModal(modalAssign);
+  };
+
+  // Open Reassign Modal
+  const openReassignModal = (alloc) => {
+    if (!modalReassign || !formReassign) return;
+    pendingReassignAlloc = alloc;
+    formReassign.reset();
+    if (reassignAlert) reassignAlert.style.display = "none";
+
+    populateLecturerDropdowns();
+
+    if (reassignAllocId) reassignAllocId.value = alloc.id;
+    if (reassignCourseTitle) reassignCourseTitle.textContent = `${alloc.courseCode} — ${alloc.courseTitle || ""}`;
+    if (reassignCourseMeta) reassignCourseMeta.textContent = `${alloc.studyCentre} · ${alloc.semester} (${alloc.academicSession})`;
+    if (reassignCurrentLecturer) reassignCurrentLecturer.textContent = `Currently Assigned: ${alloc.lecturerName} (${alloc.lecturerId})`;
+
+    openModal(modalReassign);
+  };
+
+  // Open End Allocation Modal
+  const openEndAllocationModal = (alloc) => {
+    if (!modalEnd) return;
+    pendingEndAlloc = alloc;
+    if (endAllocId) endAllocId.value = alloc.id;
+    if (endModalTitle) endModalTitle.textContent = `${alloc.courseCode} — ${alloc.courseTitle || ""}`;
+    if (endModalMeta) endModalMeta.textContent = `${alloc.studyCentre} · ${alloc.semester} (${alloc.academicSession})`;
+    if (endModalLecturer) endModalLecturer.textContent = `Assigned Instructor: ${alloc.lecturerName} (${alloc.lecturerId})`;
+    if (endReason) endReason.value = "";
+
+    openModal(modalEnd);
+  };
+
+  // Open History Modal
+  const openHistoryModal = (alloc) => {
+    if (!modalHistory) return;
+
+    if (historyCode) historyCode.textContent = alloc.courseCode;
+    if (historyTitle) historyTitle.textContent = alloc.courseTitle || "Course Offering";
+    if (historyCentre) historyCentre.textContent = `${alloc.studyCentre} · ${alloc.semester} (${alloc.academicSession})`;
+
+    if (historyCurrent) {
+      historyCurrent.innerHTML = `
+        <div style="font-weight: 800; font-size: 0.9375rem; color: var(--dark-navy);">${alloc.lecturerName}</div>
+        <div style="font-size: 0.75rem; color: var(--primary-blue); font-weight: 700; margin-top: 2px;">Institutional Staff ID: ${alloc.lecturerId}</div>
+        <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 4px;">Assigned Date: ${alloc.allocatedAt ? new Date(alloc.allocatedAt).toLocaleDateString() : "Active"}</div>
+        ${alloc.notes ? `<div style="font-size: 0.75rem; color: #166534; margin-top: 4px;">Scope Notes: ${alloc.notes}</div>` : ""}
+      `;
+    }
+
+    if (historyTimeline) {
+      const historyList = alloc.assignmentHistory || [];
+      if (historyList.length === 0) {
+        historyTimeline.innerHTML = `
+          <div style="font-size: 0.8125rem; color: var(--admin-text-muted); font-style: italic; padding: 0.75rem 0;">
+            No prior transfers recorded. This instructor is the initial verified assignee.
+          </div>
+        `;
+      } else {
+        historyTimeline.innerHTML = historyList
+          .map((h, idx) => {
+            return `
+            <div class="history-timeline-item">
+              <div class="history-timeline-meta">
+                <span style="font-weight: 700; color: var(--dark-navy);">Previous Assignee #${historyList.length - idx}</span>
+                <span>Term Concluded: ${h.endedAt ? new Date(h.endedAt).toLocaleDateString() : "Archived"}</span>
+              </div>
+              <div style="font-weight: 800; color: #1E3A8A; font-size: 0.875rem;">${h.lecturerName} (${h.lecturerId})</div>
+              <div style="font-size: 0.75rem; color: var(--admin-text-main); margin-top: 3px;">
+                <strong>Transfer Reason:</strong> ${h.reason || "Trimester faculty reallocation"}
+              </div>
+            </div>
+          `;
+          })
+          .join("");
+      }
+    }
+
+    openModal(modalHistory);
+  };
+
+  // Quick Add Lecturer Modal trigger
+  if (openQuickLecBtn) {
+    openQuickLecBtn.addEventListener("click", () => {
+      if (!modalQuickLec || !formQuickLec) return;
+      formQuickLec.reset();
+      if (quickLecAlert) quickLecAlert.style.display = "none";
+      if (quickStaffId) {
+        const nextNum = Math.floor(10 + Math.random() * 90);
+        quickStaffId.value = `DIMABIN/FAC/2026/${nextNum}`;
+      }
+      openModal(modalQuickLec);
+    });
+  }
+
+  // Save Quick Lecturer Handler
+  if (saveQuickLecBtn && formQuickLec) {
+    saveQuickLecBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const staffId = (quickStaffId?.value || "").trim();
+      const name = (quickName?.value || "").trim();
+      const email = (quickEmail?.value || "").trim();
+      const dept = (quickDept?.value || "Biblical Studies & Theology").trim();
+      const qual = (quickQual?.value || "").trim();
+      const centre = (quickCentre?.value || "Goshen Central Campus, Abeokuta").trim();
+
+      if (!staffId || !name) {
+        if (quickLecAlert) {
+          quickLecAlert.textContent = "Please provide both Staff ID and Full Name.";
+          quickLecAlert.className = "course-modal-feedback error";
+          quickLecAlert.style.display = "block";
+        }
+        return;
+      }
+
+      saveQuickLecBtn.disabled = true;
+      if (quickSpinner) quickSpinner.style.display = "inline-block";
+
+      try {
+        await createLecturer({ staffId, fullName: name, email, department: dept, qualification: qual, studyCentre: centre, status: "active" });
+        showAdminToast("success", `Faculty member ${name} (${staffId}) registered successfully.`);
+        closeModal(modalQuickLec);
+      } catch (err) {
+        if (quickLecAlert) {
+          quickLecAlert.textContent = err.message || "Failed to register faculty member.";
+          quickLecAlert.className = "course-modal-feedback error";
+          quickLecAlert.style.display = "block";
+        }
+      } finally {
+        saveQuickLecBtn.disabled = false;
+        if (quickSpinner) quickSpinner.style.display = "none";
+      }
+    });
+  }
+
+  // Confirm Assign Offering Handler
+  if (confirmAssignBtn && formAssign) {
+    confirmAssignBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      const code = (assignCourseSelect?.value || "").trim();
+      const centre = (assignCentreSelect?.value || "").trim();
+      const session = (assignSessionSelect?.value || "2026/2027").trim();
+      const semester = (assignSemesterSelect?.value || "First Semester").trim();
+      const lecturerStaffId = (assignLecturerSelect?.value || "").trim();
+      const notes = (assignNotes?.value || "").trim();
+
+      if (!code) {
+        showAssignAlert("Please select a Course Module to assign.");
+        return;
+      }
+      if (!lecturerStaffId) {
+        showAssignAlert("Please select a verified Faculty Instructor.");
+        return;
+      }
+
+      const lecturerObj = lecturers.find((l) => l.staffId === lecturerStaffId);
+      const lecturerName = lecturerObj ? lecturerObj.fullName : lecturerStaffId;
+      const matchedCourse = catalogCourses.find((c) => normalizeCourseCode(c.courseCode) === normalizeCourseCode(code));
+      const title = matchedCourse ? matchedCourse.title || matchedCourse.courseTitle : code;
+
+      confirmAssignBtn.disabled = true;
+      if (assignSpinner) assignSpinner.style.display = "inline-block";
+
+      try {
+        await assignCourseOffering({
+          courseCode: code,
+          courseTitle: title,
+          studyCentre: centre,
+          academicSession: session,
+          semester,
+          lecturerId: lecturerStaffId,
+          lecturerName,
+          programme: matchedCourse ? matchedCourse.programme : "Diploma in Theology",
+          level: matchedCourse ? matchedCourse.level : "100",
+          notes
+        });
+
+        showAdminToast("success", `Course [${code}] at ${centre} successfully assigned to ${lecturerName}.`);
+        closeModal(modalAssign);
+      } catch (err) {
+        showAssignAlert(err.message || "Failed to complete course allocation.");
+      } finally {
+        confirmAssignBtn.disabled = false;
+        if (assignSpinner) assignSpinner.style.display = "none";
+      }
+    });
+  }
+
+  const showAssignAlert = (msg) => {
+    if (!assignAlert) return;
+    assignAlert.textContent = msg;
+    assignAlert.className = "course-modal-feedback error";
+    assignAlert.style.display = "block";
+  };
+
+  // Confirm Reassign Offering Handler
+  if (confirmReassignBtn && formReassign) {
+    confirmReassignBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      if (!pendingReassignAlloc) return;
+
+      const allocId = pendingReassignAlloc.id;
+      const newStaffId = (reassignLecturerSelect?.value || "").trim();
+      const reason = (reassignReason?.value || "").trim();
+      const notes = (reassignNotes?.value || "").trim();
+
+      if (!newStaffId) {
+        showReassignAlert("Please select a new Faculty Instructor.");
+        return;
+      }
+      if (!reason) {
+        showReassignAlert("Please provide a reason for the transfer (required for audit records).");
+        return;
+      }
+
+      const newLecturerObj = lecturers.find((l) => l.staffId === newStaffId);
+      const newLecturerName = newLecturerObj ? newLecturerObj.fullName : newStaffId;
+
+      confirmReassignBtn.disabled = true;
+      if (reassignSpinner) reassignSpinner.style.display = "inline-block";
+
+      try {
+        await reassignCourseAllocation(allocId, {
+          newLecturerId: newStaffId,
+          newLecturerName,
+          reason,
+          notes
+        });
+
+        showAdminToast("success", `Course offering transferred to ${newLecturerName}. Previous assignment history preserved.`);
+        closeModal(modalReassign);
+      } catch (err) {
+        showReassignAlert(err.message || "Failed to transfer course allocation.");
+      } finally {
+        confirmReassignBtn.disabled = false;
+        if (reassignSpinner) reassignSpinner.style.display = "none";
+        pendingReassignAlloc = null;
+      }
+    });
+  }
+
+  const showReassignAlert = (msg) => {
+    if (!reassignAlert) return;
+    reassignAlert.textContent = msg;
+    reassignAlert.className = "course-modal-feedback error";
+    reassignAlert.style.display = "block";
+  };
+
+  // Confirm End Allocation Handler
+  if (confirmEndBtn) {
+    confirmEndBtn.addEventListener("click", async () => {
+      if (!pendingEndAlloc) return;
+      const allocId = pendingEndAlloc.id;
+      const reason = (endReason?.value || "").trim();
+
+      confirmEndBtn.disabled = true;
+      try {
+        await endCourseAllocation(allocId, { reason });
+        showAdminToast("success", `Course assignment concluded. Offering is now Available.`);
+        closeModal(modalEnd);
+      } catch (err) {
+        showAdminToast("error", err.message || "Failed to end course allocation.");
+      } finally {
+        confirmEndBtn.disabled = false;
+        pendingEndAlloc = null;
+      }
+    });
+  }
+
+  // Open Assign Modal Button
+  if (openAssignBtn) {
+    openAssignBtn.addEventListener("click", () => openAssignModalWithPreFill());
+  }
+
+  // Toggle Workload View
+  if (toggleWorkloadBtn) {
+    toggleWorkloadBtn.addEventListener("click", () => {
+      isWorkloadView = !isWorkloadView;
+      if (isWorkloadView) {
+        if (tableContainer) tableContainer.style.display = "none";
+        if (workloadContainer) workloadContainer.style.display = "block";
+        if (toggleWorkloadText) toggleWorkloadText.textContent = "Offerings Table View";
+        if (headingText) headingText.textContent = "Faculty Workload & Account Registry";
+        renderFacultyWorkload();
+      } else {
+        if (tableContainer) tableContainer.style.display = "block";
+        if (workloadContainer) workloadContainer.style.display = "none";
+        if (toggleWorkloadText) toggleWorkloadText.textContent = "Faculty Workload View";
+        if (headingText) headingText.textContent = "Course Offering Allocations";
+        renderTable();
+      }
+    });
+  }
+
+  // Filter Listeners
+  if (searchInput) {
+    let debounce;
+    searchInput.addEventListener("input", (e) => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        filters.search = e.target.value.trim();
+        renderTable();
+      }, 250);
+    });
+  }
+
+  if (sessionSelect) {
+    sessionSelect.addEventListener("change", (e) => {
+      filters.session = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (semesterSelect) {
+    semesterSelect.addEventListener("change", (e) => {
+      filters.semester = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (centreSelect) {
+    centreSelect.addEventListener("change", (e) => {
+      filters.centre = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (statusSelect) {
+    statusSelect.addEventListener("change", (e) => {
+      filters.status = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener("change", (e) => {
+      filters.sort = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      filters.search = "";
+      filters.session = "all";
+      filters.semester = "all";
+      filters.centre = "all";
+      filters.status = "all";
+      filters.sort = "code-asc";
+
+      if (searchInput) searchInput.value = "";
+      if (sessionSelect) sessionSelect.value = "all";
+      if (semesterSelect) semesterSelect.value = "all";
+      if (centreSelect) centreSelect.value = "all";
+      if (statusSelect) statusSelect.value = "all";
+      if (sortSelect) sortSelect.value = "code-asc";
+
+      renderTable();
+      showAdminToast("success", "Allocation filters reset to all course offerings.");
+    });
+  }
+
+  // Subscriptions to Real-time Collections
+  if (loadingEl) loadingEl.style.display = "block";
+
+  const refreshAll = () => {
+    if (loadingEl) loadingEl.style.display = "none";
+    populateCourseDropdown();
+    populateLecturerDropdowns();
+    calculateOfferings();
+    updateStats();
+
+    if (sessionBadge) sessionBadge.textContent = ADMIN_CONFIG.SESSION || "2026/2027";
+    if (semesterBadge) semesterBadge.textContent = ADMIN_CONFIG.SEMESTER || "First Semester";
+
+    if (isWorkloadView) {
+      renderFacultyWorkload();
+    } else {
+      renderTable();
+    }
+  };
+
+  subscribeCourses((crsList) => {
+    catalogCourses = crsList || [];
+    refreshAll();
+  });
+
+  subscribeCourseAllocations((allocList) => {
+    allocations = allocList || [];
+    refreshAll();
+  });
+
+  subscribeLecturers((lecList) => {
+    lecturers = lecList || [];
+    refreshAll();
+  });
+}
+
 // Auto-run on DOM ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initDashboard);
@@ -1514,6 +2581,7 @@ if (typeof window !== "undefined") {
     createPortalNotificationModel,
     handleAdminSignOut,
     initCourseManagement,
+    initCourseAllocation,
     showAdminToast
   };
 }

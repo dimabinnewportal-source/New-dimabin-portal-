@@ -1626,16 +1626,324 @@
 
         <!-- SECTION 9: COURSE ALLOCATION -->
         <section class="admin-section" id="section-course-allocation" aria-label="Course Allocation">
-          <div class="section-heading-wrap">
-            <h2 class="section-main-title">Course Allocation</h2>
-            <p class="section-sub-title">Assign specific academic modules to verified faculty instructors.</p>
+
+          <!-- Academic Session & Trimester Summary Strip -->
+          <div class="session-info-strip">
+            <div class="session-strip-group">
+              <div class="session-strip-item">
+                <span class="session-strip-label">Academic Session:</span>
+                <span class="session-strip-badge" id="alloc-active-session-badge">2026/2027</span>
+              </div>
+              <div class="session-strip-item">
+                <span class="session-strip-label">Academic Semester:</span>
+                <span class="session-strip-badge" id="alloc-active-semester-badge">First Semester</span>
+              </div>
+              <div class="session-strip-item">
+                <span class="session-strip-label">Academic Model:</span>
+                <span class="session-strip-badge" style="color: var(--gold); border-color: rgba(245, 184, 0, 0.45);">3-Semester Trimester</span>
+              </div>
+            </div>
+            <div class="session-strip-item">
+              <span class="session-strip-label" style="color: #93C5FD;">Allocation Engine:</span>
+              <span class="session-strip-badge" style="background: rgba(22, 163, 74, 0.2); color: #86EFAC; border-color: #86EFAC;" id="alloc-live-sync-badge">● Live Firestore Calculated</span>
+            </div>
           </div>
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">🔀</div>
-            <h3 class="placeholder-title">Teaching Assignment Matrix</h3>
-            <p class="placeholder-desc">Pair course modules with qualified instructors for the active academic semester.</p>
-            <span class="placeholder-tag">Allocation Framework Ready</span>
+
+          <!-- Page Header & Action Controls -->
+          <div class="section-heading-wrap" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 class="section-main-title">Course Allocation</h2>
+              <p class="section-sub-title">Assign specific academic modules to verified faculty instructors across study centres with multi-centre independence and audit history.</p>
+            </div>
+            <div class="section-heading-actions" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+              <button type="button" class="btn-card-action" id="btn-toggle-workload-view" style="padding: 0.55rem 1rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span id="btn-toggle-workload-text">Faculty Workload View</span>
+              </button>
+              <button type="button" class="btn-card-action" id="btn-open-quick-add-lecturer" style="padding: 0.55rem 1rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="8.5" cy="7" r="4"></circle>
+                  <line x1="20" y1="8" x2="20" y2="14"></line>
+                  <line x1="23" y1="11" x2="17" y2="11"></line>
+                </svg>
+                Add Lecturer (+)
+              </button>
+              <button type="button" class="btn-card-action" id="btn-open-assign-modal" style="background: var(--gold); color: var(--dark-navy); font-weight: 800; border-color: var(--gold); padding: 0.55rem 1.15rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <polyline points="16 3 21 3 21 8"></polyline>
+                  <line x1="4" y1="20" x2="21" y2="3"></line>
+                  <polyline points="21 14 21 21 14 21"></polyline>
+                  <line x1="15" y1="15" x2="21" y2="21"></line>
+                </svg>
+                Assign Course (+)
+              </button>
+            </div>
           </div>
+
+          <!-- Allocation Statistics Cards (Calculated Dynamically from Real Records) -->
+          <div class="stats-grid-6" style="margin-bottom: 1.5rem;">
+            <!-- 1. Total Offerings -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Offerings</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-alloc-total">0</div>
+              <span class="stat-foot">Curriculum Offerings Tracked</span>
+            </div>
+
+            <!-- 2. Assigned Offerings -->
+            <div class="stat-card green-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Assigned</span>
+                <div class="stat-icon-wrap" style="color: #16A34A; background: #DCFCE7;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-alloc-assigned">0</div>
+              <span class="stat-foot">Lecturer Active in Offering</span>
+            </div>
+
+            <!-- 3. Available Offerings -->
+            <div class="stat-card gold-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Available</span>
+                <div class="stat-icon-wrap" style="color: #2563EB; background: #EFF6FF;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-alloc-available">0</div>
+              <span class="stat-foot">Unassigned · Ready to Allocate</span>
+            </div>
+
+            <!-- 4. Reassigned Offerings -->
+            <div class="stat-card warning-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Reassigned</span>
+                <div class="stat-icon-wrap" style="color: #D97706; background: #FEF3C7;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-alloc-reassigned">0</div>
+              <span class="stat-foot">Transferred with Audit History</span>
+            </div>
+
+            <!-- 5. Inactive Offerings -->
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Inactive</span>
+                <div class="stat-icon-wrap" style="color: #6B7280; background: #F3F4F6;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-alloc-inactive">0</div>
+              <span class="stat-foot">Paused / Archived Courses</span>
+            </div>
+
+            <!-- 6. Faculty Instructors -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Faculty Roster</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-alloc-lecturers">0</div>
+              <span class="stat-foot">Verified Academic Staff</span>
+            </div>
+          </div>
+
+          <!-- Search and Filter Panel -->
+          <div class="course-filter-panel-card">
+            <div class="filter-panel-header">
+              <div class="filter-panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <span>Filter Course Allocation Matrix</span>
+              </div>
+              <button type="button" class="btn-reset-filters" id="btn-reset-alloc-filters">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+                <span>Reset Filters</span>
+              </button>
+            </div>
+
+            <div class="filter-grid-courses">
+              <!-- 1. Search Field -->
+              <div class="filter-item-search">
+                <label class="filter-label" for="alloc-search-input">Search Course or Lecturer</label>
+                <div class="table-search-box">
+                  <span class="table-search-icon">🔍</span>
+                  <input type="text" class="table-search-input" id="alloc-search-input" placeholder="Search by course code, title, lecturer name, or Staff ID...">
+                </div>
+              </div>
+
+              <!-- 2. Academic Session -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-alloc-session">Academic Session</label>
+                <select class="table-filter-select" id="filter-alloc-session">
+                  <option value="all">All Academic Sessions</option>
+                  <option value="2026/2027">2026/2027</option>
+                  <option value="2025/2026">2025/2026</option>
+                  <option value="2024/2025">2024/2025</option>
+                </select>
+              </div>
+
+              <!-- 3. Semester (Three-Semester Options) -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-alloc-semester">Semester</label>
+                <select class="table-filter-select" id="filter-alloc-semester">
+                  <option value="all">All Semesters</option>
+                  <option value="First Semester">First Semester</option>
+                  <option value="Second Semester">Second Semester</option>
+                  <option value="Third Semester">Third Semester</option>
+                </select>
+              </div>
+
+              <!-- 4. Assignment Status -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-alloc-status">Assignment Status</label>
+                <select class="table-filter-select" id="filter-alloc-status">
+                  <option value="all">All Assignment Statuses</option>
+                  <option value="assigned">Assigned</option>
+                  <option value="available">Available (Unassigned)</option>
+                  <option value="reassigned">Reassigned</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Secondary Filters Row -->
+            <div class="filter-row-secondary">
+              <!-- 5. Study Centre -->
+              <div class="filter-item" style="flex: 2;">
+                <label class="filter-label" for="filter-alloc-centre">Study Centre (Multi-Centre Scoped)</label>
+                <select class="table-filter-select" id="filter-alloc-centre">
+                  <option value="all">All Study Centres</option>
+                  <option value="Goshen Central Campus, Abeokuta">Goshen Central Campus, Abeokuta</option>
+                  <option value="Lagos Outreach Coordination Centre">Lagos Outreach Coordination Centre</option>
+                  <option value="Ibadan Regional Study Centre">Ibadan Regional Study Centre</option>
+                  <option value="Online & Distance Learning Hub">Online & Distance Learning Hub</option>
+                </select>
+              </div>
+
+              <!-- 6. Sort Order -->
+              <div class="filter-item" style="flex: 1;">
+                <label class="filter-label" for="filter-alloc-sort">Sort Order</label>
+                <select class="table-filter-select" id="filter-alloc-sort">
+                  <option value="code-asc">Course Code (A–Z)</option>
+                  <option value="code-desc">Course Code (Z–A)</option>
+                  <option value="status-assigned">Status (Assigned First)</option>
+                  <option value="status-available">Status (Available First)</option>
+                  <option value="centre-asc">Study Centre (A–Z)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Course Allocation Content Card -->
+          <div class="content-card" id="alloc-content-card">
+            <div class="table-toolbar">
+              <div class="table-toolbar-left">
+                <span class="content-card-title" style="margin-right: 0.5rem;" id="alloc-card-heading">Course Offering Allocations</span>
+                <span class="session-strip-badge" id="alloc-count-pill" style="background: #EFF6FF; color: var(--primary-blue); border-color: #BFDBFE;">0 Offerings</span>
+              </div>
+              <div class="table-toolbar-right">
+                <span id="alloc-filter-summary" style="font-size: 0.75rem; color: var(--admin-text-muted);">Showing all course offerings</span>
+              </div>
+            </div>
+
+            <!-- TAB 1: Offerings Table View -->
+            <div id="alloc-table-container">
+              <div class="table-responsive">
+                <table class="admin-table" id="allocations-admin-table">
+                  <thead>
+                    <tr>
+                      <th style="min-width: 110px;">Course Code</th>
+                      <th style="min-width: 220px;">Course Title</th>
+                      <th style="min-width: 190px;">Study Centre</th>
+                      <th style="min-width: 110px;">Academic Session</th>
+                      <th style="min-width: 120px;">Semester</th>
+                      <th style="min-width: 210px;">Assigned Lecturer</th>
+                      <th style="min-width: 130px;">Assignment Status</th>
+                      <th style="text-align: right; min-width: 200px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="allocations-table-tbody">
+                    <!-- Dynamically Populated by Allocation Controller -->
+                  </tbody>
+                </table>
+
+                <!-- Loading State -->
+                <div id="allocations-table-loading" class="empty-state-box" style="display: none;">
+                  <div class="empty-icon">⏳</div>
+                  <div class="empty-state-text">Calculating course allocation status...</div>
+                  <div class="empty-state-sub">Fetching active assignments from Firestore course_allocations collection.</div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="allocations-table-empty" class="empty-state-box" style="display: none;">
+                  <div class="empty-icon">🔀</div>
+                  <div class="empty-state-text" id="alloc-empty-heading">No course offerings found for selected criteria.</div>
+                  <div class="empty-state-sub" id="alloc-empty-sub">Adjust your filters or assign a course to an instructor using "+ Assign Course".</div>
+                </div>
+
+                <!-- Error State -->
+                <div id="allocations-table-error" class="empty-state-box" style="display: none;">
+                  <div class="empty-icon" style="color: #DC2626;">⚠️</div>
+                  <div class="empty-state-text" style="color: #DC2626;">Unable to sync allocation status.</div>
+                  <div class="empty-state-sub">A Firestore connection error occurred while querying assignment records.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 2: Faculty Workload Overview Container (Hidden by default) -->
+            <div id="alloc-workload-container" style="display: none; padding: 1.5rem;">
+              <div style="margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                  <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--dark-navy); margin-bottom: 0.25rem;">Faculty Teaching Assignments</h3>
+                  <p style="font-size: 0.8125rem; color: var(--admin-text-muted);">Each lecturer maintains ONE verified institutional account across all course offerings and study centres.</p>
+                </div>
+                <div style="font-size: 0.75rem; background: #F3F4F6; padding: 0.35rem 0.75rem; border-radius: 9999px; color: var(--admin-text-main); font-weight: 600;">
+                  Institutional Single-Account Rule Enforced
+                </div>
+              </div>
+              <div class="faculty-workload-grid" id="faculty-workload-grid">
+                <!-- Dynamically Rendered Workload Cards -->
+              </div>
+            </div>
+          </div>
+
         </section>
 
         <!-- SECTION 10: STUDY CENTRES -->
@@ -1986,6 +2294,336 @@
         <button type="button" class="btn-admin-cancel" id="btn-cancel-course-delete">Cancel</button>
         <button type="button" class="btn-card-action" id="btn-confirm-course-delete" style="background: #DC2626; color: #FFFFFF; border-color: #DC2626; font-weight: 800; padding: 0.6rem 1.25rem;">
           Permanently Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       COURSE ALLOCATION MODALS & DIALOGS
+       Multi-Centre Scoped Offering Assignments with History Audit
+       ====================================================================== -->
+
+  <!-- Allocation Modal 1: Assign Lecturer to Course Offering -->
+  <div class="admin-modal-overlay" id="modal-assign-lecturer" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-assign-lecturer-title" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modal-assign-lecturer-title">Assign Course Offering</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-assign-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div id="assign-modal-alert" class="course-modal-feedback" role="alert" style="display: none;"></div>
+
+        <!-- Institutional Single Account Reminder Banner -->
+        <div class="allocation-info-banner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <div>
+            <strong>Multi-Centre Independence:</strong> Course offerings at different study centres are managed separately. A lecturer retains one unified institutional account across all assignments.
+          </div>
+        </div>
+
+        <form id="form-assign-offering" novalidate>
+          <div class="course-form-grid">
+            <!-- 1. Select Course -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="assign-modal-course-select">Target Course Offering *</label>
+              <select class="admin-form-select" id="assign-modal-course-select" required>
+                <!-- Populated dynamically with active catalog courses -->
+              </select>
+            </div>
+
+            <!-- 2. Study Centre -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="assign-modal-centre-select">Study Centre (Offering Campus) *</label>
+              <select class="admin-form-select" id="assign-modal-centre-select" required>
+                <option value="Goshen Central Campus, Abeokuta">Goshen Central Campus, Abeokuta</option>
+                <option value="Lagos Outreach Coordination Centre">Lagos Outreach Coordination Centre</option>
+                <option value="Ibadan Regional Study Centre">Ibadan Regional Study Centre</option>
+                <option value="Online &amp; Distance Learning Hub">Online &amp; Distance Learning Hub</option>
+              </select>
+            </div>
+
+            <!-- 3. Academic Session -->
+            <div>
+              <label class="admin-form-label" for="assign-modal-session-select">Academic Session *</label>
+              <select class="admin-form-select" id="assign-modal-session-select" required>
+                <option value="2026/2027">2026/2027</option>
+                <option value="2025/2026">2025/2026</option>
+                <option value="2024/2025">2024/2025</option>
+              </select>
+            </div>
+
+            <!-- 4. Academic Semester (All 3 options) -->
+            <div>
+              <label class="admin-form-label" for="assign-modal-semester-select">Academic Semester *</label>
+              <select class="admin-form-select" id="assign-modal-semester-select" required>
+                <option value="First Semester">First Semester</option>
+                <option value="Second Semester">Second Semester</option>
+                <option value="Third Semester">Third Semester</option>
+              </select>
+            </div>
+
+            <!-- 5. Assigned Lecturer (Unified Institutional Account) -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="assign-modal-lecturer-select">Assign Faculty Instructor *</label>
+              <select class="admin-form-select" id="assign-modal-lecturer-select" required>
+                <!-- Populated dynamically from verified lecturers directory -->
+              </select>
+              <small style="color: var(--admin-text-muted); font-size: 0.72rem; display: block; margin-top: 4px;">Lecturer retains their single institutional credentials regardless of study centre.</small>
+            </div>
+
+            <!-- 6. Allocation Notes -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="assign-modal-notes">Assignment Notes &amp; Teaching Scope</label>
+              <textarea class="admin-form-textarea" id="assign-modal-notes" rows="2" placeholder="e.g. Lead tutor for trimester intake, continuous assessment coordinator..."></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-assign-modal">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-assign-offering">
+          <span class="btn-spinner" id="assign-save-spinner" style="display: none;">⏳</span>
+          <span id="assign-save-btn-text">Confirm Allocation</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Allocation Modal 2: Reassign / Transfer Course Offering -->
+  <div class="admin-modal-overlay" id="modal-reassign-lecturer" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-reassign-title" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header" style="background: #1E3A8A;">
+        <h3 class="admin-modal-title" id="modal-reassign-title" style="color: #FFFFFF;">Transfer Course to Another Lecturer</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-reassign-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div id="reassign-modal-alert" class="course-modal-feedback" role="alert" style="display: none;"></div>
+        <input type="hidden" id="reassign-alloc-id" value="">
+
+        <!-- Current Assignment State Display -->
+        <div class="detail-item-box" style="margin-bottom: 1rem;">
+          <span class="detail-item-label">Current Course Offering</span>
+          <div class="detail-item-val" id="reassign-modal-course-title">THY-101 — Christology</div>
+          <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.25rem;" id="reassign-modal-course-meta">Goshen Central Campus · First Semester (2026/2027)</div>
+          <div style="margin-top: 0.5rem; font-size: 0.8125rem; font-weight: 700; color: #1E40AF;" id="reassign-modal-current-lecturer">
+            Currently Assigned: Rev. Dr. E. A. Olubunmi (DIMABIN/FAC/2026/01)
+          </div>
+        </div>
+
+        <form id="form-reassign-offering" novalidate>
+          <div class="course-form-grid">
+            <!-- New Lecturer Selection -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="reassign-modal-lecturer-select">Transfer To New Lecturer *</label>
+              <select class="admin-form-select" id="reassign-modal-lecturer-select" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <!-- Reason for Transfer (Preserved in Audit Log) -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="reassign-modal-reason">Reason for Transfer / Reassignment *</label>
+              <input type="text" class="admin-form-input" id="reassign-modal-reason" placeholder="e.g. Trimester faculty rotation, ministerial schedule adjustment" required>
+              <small style="color: var(--admin-text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">This reason is permanently preserved in the offering's Firestore assignment audit history.</small>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="reassign-modal-notes">Additional Reassignment Notes</label>
+              <textarea class="admin-form-textarea" id="reassign-modal-notes" rows="2" placeholder="Handover instructions, syllabus materials handed over..."></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-reassign-modal">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-reassign-offering">
+          <span class="btn-spinner" id="reassign-save-spinner" style="display: none;">⏳</span>
+          <span>Confirm Transfer</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Allocation Modal 3: End Course Assignment -->
+  <div class="admin-modal-overlay" id="modal-end-allocation" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-end-title" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header" style="background: #D97706;">
+        <h3 class="admin-modal-title" id="modal-end-title" style="color: #FFFFFF;">End Course Assignment</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-end-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <input type="hidden" id="end-alloc-id" value="">
+        <p style="font-size: 0.9375rem; color: var(--dark-navy); font-weight: 600; margin-bottom: 0.75rem;">
+          Are you sure you want to conclude the current lecturer's assignment for this course offering?
+        </p>
+
+        <div class="detail-item-box" style="margin-bottom: 1rem;">
+          <span class="detail-item-label">Target Offering</span>
+          <div class="detail-item-val" id="end-alloc-modal-title">THY-101 — Christology</div>
+          <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.25rem;" id="end-alloc-modal-meta">Goshen Central Campus · First Semester (2026/2027)</div>
+          <div style="margin-top: 0.35rem; font-size: 0.8125rem; font-weight: 700; color: #B45309;" id="end-alloc-modal-lecturer">Assigned: Rev. Dr. E. A. Olubunmi</div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label class="admin-form-label" for="end-alloc-reason">Reason for Ending Assignment</label>
+          <input type="text" class="admin-form-input" id="end-alloc-reason" placeholder="e.g. Semester examinations concluded, course temporarily paused">
+        </div>
+
+        <p style="font-size: 0.8125rem; color: var(--admin-text-muted); line-height: 1.5;">
+          This will set the course offering status back to <strong>Available</strong> (Not Assigned). The previous lecturer's teaching history will remain safely stored in institutional audit archives.
+        </p>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-end-modal">Cancel</button>
+        <button type="button" class="btn-card-action" id="btn-confirm-end-allocation" style="background: #D97706; color: #FFFFFF; border-color: #D97706; font-weight: 800; padding: 0.6rem 1.25rem;">
+          Conclude Assignment
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Allocation Modal 4: Assignment History & Audit Trail -->
+  <div class="admin-modal-overlay" id="modal-allocation-history" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-history-title" style="display: none;">
+    <div class="admin-modal-card modal-large">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modal-history-title">Course Offering Assignment History</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-history-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div class="history-offering-banner" style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--admin-radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--primary-blue);" id="history-modal-course-code">THY-101</div>
+          <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--dark-navy); margin: 0.25rem 0;" id="history-modal-course-title">Christology &amp; The Person of Christ</h4>
+          <div style="font-size: 0.8125rem; color: var(--admin-text-main);" id="history-modal-centre-info">Goshen Central Campus, Abeokuta · First Semester (2026/2027)</div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <h5 style="font-size: 0.875rem; font-weight: 800; color: var(--dark-navy); margin-bottom: 0.5rem;">Current Assignment</h5>
+          <div id="history-modal-current-block" class="history-current-card">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <div>
+          <h5 style="font-size: 0.875rem; font-weight: 800; color: var(--dark-navy); margin-bottom: 0.5rem;">Prior Assignment Records</h5>
+          <div id="history-modal-timeline-list" class="history-timeline-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-close-history-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Allocation Modal 5: Quick Register Faculty Member -->
+  <div class="admin-modal-overlay" id="modal-add-lecturer-quick" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-quick-lec-title" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modal-quick-lec-title">Register Faculty Member</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-quick-lec-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div id="quick-lec-alert" class="course-modal-feedback" role="alert" style="display: none;"></div>
+
+        <form id="form-quick-add-lecturer" novalidate>
+          <div class="course-form-grid">
+            <!-- Staff ID -->
+            <div>
+              <label class="admin-form-label" for="quick-lecturer-staff-id">Institutional Staff ID *</label>
+              <input type="text" class="admin-form-input" id="quick-lecturer-staff-id" placeholder="DIMABIN/FAC/2026/06" required>
+            </div>
+
+            <!-- Full Name -->
+            <div>
+              <label class="admin-form-label" for="quick-lecturer-name">Full Name &amp; Title *</label>
+              <input type="text" class="admin-form-input" id="quick-lecturer-name" placeholder="e.g. Rev. Paul A. Babatunde" required>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="quick-lecturer-email">Institutional Email</label>
+              <input type="email" class="admin-form-input" id="quick-lecturer-email" placeholder="p.babatunde@dimabin.edu.ng">
+            </div>
+
+            <!-- Department -->
+            <div>
+              <label class="admin-form-label" for="quick-lecturer-dept">Department *</label>
+              <select class="admin-form-select" id="quick-lecturer-dept" required>
+                <option value="Biblical Studies &amp; Theology">Biblical Studies &amp; Theology</option>
+                <option value="Systematic Theology &amp; Apologetics">Systematic Theology &amp; Apologetics</option>
+                <option value="Practical Theology &amp; Pastoral Ministry">Practical Theology &amp; Pastoral Ministry</option>
+                <option value="Missions &amp; Evangelism">Missions &amp; Evangelism</option>
+                <option value="Church Administration &amp; Leadership">Church Administration &amp; Leadership</option>
+                <option value="Christian Education">Christian Education</option>
+              </select>
+            </div>
+
+            <!-- Qualifications -->
+            <div>
+              <label class="admin-form-label" for="quick-lecturer-qual">Academic Qualifications</label>
+              <input type="text" class="admin-form-input" id="quick-lecturer-qual" placeholder="e.g. M.Th., B.Th.">
+            </div>
+
+            <!-- Primary Study Centre -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="quick-lecturer-centre">Primary Campus Base</label>
+              <select class="admin-form-select" id="quick-lecturer-centre">
+                <option value="Goshen Central Campus, Abeokuta">Goshen Central Campus, Abeokuta</option>
+                <option value="Lagos Outreach Coordination Centre">Lagos Outreach Coordination Centre</option>
+                <option value="Ibadan Regional Study Centre">Ibadan Regional Study Centre</option>
+                <option value="Online &amp; Distance Learning Hub">Online &amp; Distance Learning Hub</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-quick-lec-modal">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-save-quick-lecturer">
+          <span class="btn-spinner" id="quick-lec-spinner" style="display: none;">⏳</span>
+          <span>Save Faculty Member</span>
         </button>
       </div>
     </div>
