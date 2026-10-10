@@ -2216,15 +2216,200 @@
 
         <!-- SECTION 10: STUDY CENTRES -->
         <section class="admin-section" id="section-study-centres" aria-label="Study Centres">
-          <div class="section-heading-wrap">
-            <h2 class="section-main-title">Study Centres Oversight</h2>
-            <p class="section-sub-title">Physical campus hubs and designated theological coordination centres.</p>
+          <div class="section-heading-wrap" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 class="section-main-title">Official Study Centres Management</h2>
+              <p class="section-sub-title">Authoritative single source of truth for physical campuses, regional hubs, and digital delivery citadels.</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button type="button" class="btn-card-action" id="btn-refresh-centres" style="padding: 0.55rem 1rem; font-size: 0.8125rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                Refresh Registry
+              </button>
+              <button type="button" class="btn-card-action btn-open-add-centre" id="btn-open-add-centre" data-action="open-add-centre" style="background: var(--gold); color: var(--dark-navy); font-weight: 800; border-color: var(--gold); padding: 0.55rem 1.15rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Study Centre (+)
+              </button>
+            </div>
           </div>
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">📍</div>
-            <h3 class="placeholder-title">Study Centres Registry</h3>
-            <p class="placeholder-desc">Goshen 13, Kusimo Street, Abeokuta (Central Campus) and regional partner centres.</p>
-            <span class="placeholder-tag">1 Physical Campus Hub</span>
+
+          <!-- Summary Statistics Grid -->
+          <div class="stats-grid-5" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <!-- 1. Total Official Centres -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Centres</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-centres-total">4</div>
+              <span class="stat-foot">Registered Delivery Citadels</span>
+            </div>
+
+            <!-- 2. Active Centres -->
+            <div class="stat-card green-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Active Centres</span>
+                <div class="stat-icon-wrap" style="color: #16A34A; background: #DCFCE7;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-centres-active">4</div>
+              <span class="stat-foot">Open for Admissions &amp; Courses</span>
+            </div>
+
+            <!-- 3. Inactive Centres -->
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-label">Inactive Centres</span>
+                <div class="stat-icon-wrap" style="color: #6B7280; background: #F3F4F6;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-centres-inactive">0</div>
+              <span class="stat-foot">Suspended or Historical Sites</span>
+            </div>
+
+            <!-- 4. Enrolled Students Across Centres -->
+            <div class="stat-card gold-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Enrolled Students</span>
+                <div class="stat-icon-wrap" style="color: #2563EB; background: #EFF6FF;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-centres-students">0</div>
+              <span class="stat-foot">Active Student Body</span>
+            </div>
+
+            <!-- 5. Active Course Offerings -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Course Offerings</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-centres-courses">0</div>
+              <span class="stat-foot">Multi-Campus Offerings</span>
+            </div>
+          </div>
+
+          <!-- Search and Filter Panel -->
+          <div class="course-filter-panel-card" style="margin-bottom: 1.5rem;">
+            <div class="filter-panel-header">
+              <div class="filter-panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <span>Filter Study Centres Directory</span>
+              </div>
+              <button type="button" class="btn-reset-filters" id="btn-reset-centre-filters">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+                <span>Reset Filters</span>
+              </button>
+            </div>
+
+            <div class="filter-grid-courses">
+              <!-- 1. Search Field -->
+              <div class="filter-item-search">
+                <label class="filter-label" for="filter-centre-search">Search Centres</label>
+                <div class="table-search-box">
+                  <span class="table-search-icon">🔍</span>
+                  <input type="text" class="table-search-input" id="filter-centre-search" placeholder="Search by centre code, name, city, address, coordinator, phone...">
+                </div>
+              </div>
+
+              <!-- 2. Status Filter -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-centre-status">Operational Status</label>
+                <select class="table-filter-select" id="filter-centre-status">
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active Only</option>
+                  <option value="inactive">Inactive Only</option>
+                </select>
+              </div>
+
+              <!-- 3. Sort Order -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-centre-sort">Sort Registry By</label>
+                <select class="table-filter-select" id="filter-centre-sort">
+                  <option value="code">Centre Code (A–Z)</option>
+                  <option value="name">Centre Name (A–Z)</option>
+                  <option value="recent">Recently Added</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Official Centres Table Content Card -->
+          <div class="content-card">
+            <div class="table-toolbar">
+              <div class="table-toolbar-left">
+                <span style="font-size: 0.875rem; font-weight: 700; color: var(--admin-navy);" id="centres-count-badge">
+                  Loading Official Study Centres...
+                </span>
+              </div>
+              <div class="table-toolbar-right">
+                <span style="font-size: 0.75rem; color: var(--admin-text-muted);">
+                  Authoritative Source of Truth
+                </span>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th style="min-width: 130px;">Centre Code</th>
+                    <th style="min-width: 220px;">Official Centre Name</th>
+                    <th style="min-width: 240px;">Physical Address / Location</th>
+                    <th style="min-width: 180px;">Coordinator / Director</th>
+                    <th style="min-width: 170px;">Contact (Phone &amp; Email)</th>
+                    <th style="min-width: 130px;">Academic Load</th>
+                    <th style="min-width: 100px;">Status</th>
+                    <th style="min-width: 160px; text-align: right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-study-centres-tbody">
+                  <tr>
+                    <td colspan="8">
+                      <div class="empty-state-box" id="centres-loading-state">
+                        <div class="empty-icon">📍</div>
+                        <div class="empty-state-text">Loading Official Study Centres...</div>
+                        <div class="empty-state-sub">Connecting to the authoritative institutional study centres registry.</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -3299,6 +3484,294 @@
       <div class="admin-modal-footer">
         <button type="button" class="btn-admin-cancel" id="btn-cancel-toggle-lec-modal">Cancel</button>
         <button type="button" class="btn-admin-primary" id="btn-confirm-toggle-status" style="background: #DC2626; border-color: #DC2626;">
+          Confirm Status Change
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       STUDY CENTRES MODALS (Authoritative Institutional Management)
+       ============================================================== -->
+
+  <!-- Study Centre Modal 1: Register New Study Centre -->
+  <div class="admin-modal-overlay" id="modal-add-study-centre" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-add-centre-title" style="display: none;">
+    <div class="admin-modal-card" style="max-width: 650px;">
+      <div class="admin-modal-header" style="background: var(--dark-navy);">
+        <h3 class="admin-modal-title" id="modal-add-centre-title" style="color: var(--white);">Register Official Study Centre</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-add-centre-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div class="allocation-info-banner" style="margin-bottom: 1.25rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <div>
+            <strong>Institutional Source of Truth:</strong> Registering an official centre makes it immediately available across all modules—including applicant admissions, student profiles, faculty assignments, and course allocations.
+          </div>
+        </div>
+
+        <div id="centre-add-alert" style="display: none; padding: 0.75rem 1rem; border-radius: var(--admin-radius-sm); font-size: 0.8125rem; font-weight: 600; margin-bottom: 1rem;"></div>
+
+        <form id="form-add-study-centre" novalidate>
+          <div class="course-form-grid">
+            <!-- 1. Centre Name -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="centre-add-name">Official Study Centre Name *</label>
+              <input type="text" class="admin-form-input" id="centre-add-name" placeholder="e.g. Abeokuta Regional Campus / Lagos Outreach Centre" required>
+              <small style="color: var(--admin-text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">Full institutional name as recognized by the Academic Board.</small>
+            </div>
+
+            <!-- 2. Centre Code -->
+            <div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
+                <label class="admin-form-label" for="centre-add-code" style="margin-bottom: 0;">Centre Code *</label>
+                <button type="button" id="btn-auto-gen-centre-code" style="background: none; border: none; color: var(--primary-blue); font-size: 0.75rem; font-weight: 700; cursor: pointer; text-decoration: underline;">
+                  ⚡ Suggest Code
+                </button>
+              </div>
+              <input type="text" class="admin-form-input" id="centre-add-code" placeholder="DIMABIN-CTR-05" style="text-transform: uppercase;" required>
+              <small style="color: var(--admin-text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">Unique institutional code (e.g. DIMABIN-CTR-05).</small>
+            </div>
+
+            <!-- 3. Initial Operational Status -->
+            <div>
+              <label class="admin-form-label" for="centre-add-status">Operational Status *</label>
+              <select class="admin-form-select" id="centre-add-status" required>
+                <option value="active">Active (Open for Admissions &amp; Courses)</option>
+                <option value="inactive">Inactive (Suspended / Historical Site)</option>
+              </select>
+            </div>
+
+            <!-- 4. Physical Campus Address / Delivery Location -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="centre-add-address">Physical Campus Address / Hub Location *</label>
+              <input type="text" class="admin-form-input" id="centre-add-address" placeholder="e.g. 15, Kingdom Avenue, Abeokuta South, Ogun State" required>
+            </div>
+
+            <!-- 5. Hub Coordinator / Regional Director -->
+            <div>
+              <label class="admin-form-label" for="centre-add-coordinator">Coordinator / Regional Director</label>
+              <input type="text" class="admin-form-input" id="centre-add-coordinator" placeholder="e.g. Pastor Paul A. Ogundele">
+            </div>
+
+            <!-- 6. Contact Phone -->
+            <div>
+              <label class="admin-form-label" for="centre-add-phone">Contact Phone Number</label>
+              <input type="tel" class="admin-form-input" id="centre-add-phone" placeholder="+234 803 000 0000">
+            </div>
+
+            <!-- 7. Contact Email -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="centre-add-email">Official Contact Email</label>
+              <input type="email" class="admin-form-input" id="centre-add-email" placeholder="centre@dimabin.org">
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-add-centre-modal">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-add-centre">
+          <span class="btn-spinner" id="add-centre-spinner" style="display: none;">⏳</span>
+          <span id="add-centre-btn-text">Register Study Centre</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Study Centre Modal 2: Edit Study Centre -->
+  <div class="admin-modal-overlay" id="modal-edit-study-centre" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-edit-centre-title" style="display: none;">
+    <div class="admin-modal-card" style="max-width: 650px;">
+      <div class="admin-modal-header" style="background: var(--dark-navy);">
+        <h3 class="admin-modal-title" id="modal-edit-centre-title" style="color: var(--white);">Edit Study Centre Details</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-edit-centre-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <input type="hidden" id="centre-edit-id" value="">
+        <div id="centre-edit-alert" style="display: none; padding: 0.75rem 1rem; border-radius: var(--admin-radius-sm); font-size: 0.8125rem; font-weight: 600; margin-bottom: 1rem;"></div>
+
+        <form id="form-edit-study-centre" novalidate>
+          <div class="course-form-grid">
+            <!-- 1. Centre Name -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="centre-edit-name">Official Study Centre Name *</label>
+              <input type="text" class="admin-form-input" id="centre-edit-name" required>
+            </div>
+
+            <!-- 2. Centre Code -->
+            <div>
+              <label class="admin-form-label" for="centre-edit-code">Institutional Centre Code *</label>
+              <input type="text" class="admin-form-input" id="centre-edit-code" style="text-transform: uppercase;" required>
+            </div>
+
+            <!-- 3. Status -->
+            <div>
+              <label class="admin-form-label" for="centre-edit-status">Operational Status *</label>
+              <select class="admin-form-select" id="centre-edit-status" required>
+                <option value="active">Active (Open)</option>
+                <option value="inactive">Inactive (Suspended)</option>
+              </select>
+            </div>
+
+            <!-- 4. Campus Address -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="centre-edit-address">Physical Campus Address / Hub Location *</label>
+              <input type="text" class="admin-form-input" id="centre-edit-address" required>
+            </div>
+
+            <!-- 5. Coordinator -->
+            <div>
+              <label class="admin-form-label" for="centre-edit-coordinator">Coordinator / Regional Director</label>
+              <input type="text" class="admin-form-input" id="centre-edit-coordinator">
+            </div>
+
+            <!-- 6. Phone -->
+            <div>
+              <label class="admin-form-label" for="centre-edit-phone">Contact Phone Number</label>
+              <input type="tel" class="admin-form-input" id="centre-edit-phone">
+            </div>
+
+            <!-- 7. Email -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="centre-edit-email">Official Contact Email</label>
+              <input type="email" class="admin-form-input" id="centre-edit-email">
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-edit-centre-modal">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-edit-centre">
+          <span class="btn-spinner" id="edit-centre-spinner" style="display: none;">⏳</span>
+          <span id="edit-centre-btn-text">Save Changes</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Study Centre Modal 3: View Details & Academic Dossier -->
+  <div class="admin-modal-overlay" id="modal-view-study-centre" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-view-centre-title" style="display: none;">
+    <div class="admin-modal-card" style="max-width: 720px;">
+      <div class="admin-modal-header" style="background: var(--dark-navy);">
+        <h3 class="admin-modal-title" id="modal-view-centre-title" style="color: var(--white);">Study Centre Institutional Dossier</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-view-centre-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div class="lec-profile-summary-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--admin-border); margin-bottom: 1rem;">
+          <div>
+            <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--primary-blue);" id="view-centre-code-badge">DIMABIN-CTR-HQ</div>
+            <h4 style="font-size: 1.25rem; font-weight: 800; color: var(--dark-navy); margin: 0.25rem 0;" id="view-centre-name-display">Goshen Central Campus, Abeokuta</h4>
+            <div style="font-size: 0.8125rem; color: var(--admin-text-muted);" id="view-centre-address-display">Goshen 13, Kusimo Street, Abeokuta, Ogun State</div>
+          </div>
+          <span class="faculty-badge badge-active" id="view-centre-status-badge">ACTIVE</span>
+        </div>
+
+        <div class="stats-grid-3" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.25rem;">
+          <div style="background: #F8FAFC; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.72rem; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase;">Active Courses</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: var(--dark-navy);" id="view-centre-courses-count">0</div>
+          </div>
+          <div style="background: #F8FAFC; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.72rem; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase;">Assigned Faculty</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: var(--dark-navy);" id="view-centre-faculty-count">0</div>
+          </div>
+          <div style="background: #F8FAFC; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.72rem; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase;">Enrolled Students</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: var(--dark-navy);" id="view-centre-students-count">0</div>
+          </div>
+        </div>
+
+        <div class="lec-profile-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Coordinator / Hub Lead</div>
+            <div class="lec-profile-field-value" id="view-centre-coordinator">-</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Contact Phone</div>
+            <div class="lec-profile-field-value" id="view-centre-phone">-</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Contact Email</div>
+            <div class="lec-profile-field-value" id="view-centre-email">-</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Registered On</div>
+            <div class="lec-profile-field-value" id="view-centre-created">-</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+          <h5 style="font-size: 0.875rem; font-weight: 800; color: var(--dark-navy); margin-bottom: 0.5rem;">Associated Course Allocations</h5>
+          <div id="view-centre-allocations-list" style="max-height: 180px; overflow-y: auto; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-sm); padding: 0.5rem;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-close-view-centre-modal-btn">Close</button>
+        <button type="button" class="btn-admin-primary" id="btn-edit-from-view-modal">Edit Centre Details</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Study Centre Modal 4: Toggle Status Confirmation -->
+  <div class="admin-modal-overlay" id="modal-toggle-centre-status" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-toggle-centre-title" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header" id="modal-toggle-centre-header" style="background: #DC2626;">
+        <h3 class="admin-modal-title" id="modal-toggle-centre-title" style="color: #FFFFFF;">Toggle Centre Status</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-toggle-centre-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <input type="hidden" id="toggle-centre-id" value="">
+        <input type="hidden" id="toggle-centre-target-status" value="">
+
+        <p style="font-size: 0.9375rem; color: var(--dark-navy); font-weight: 600; margin-bottom: 0.75rem;" id="toggle-centre-prompt">
+          Are you sure you want to change this study centre's operational status?
+        </p>
+
+        <div class="detail-item-box" style="margin-bottom: 1rem;">
+          <span class="detail-item-label">Study Centre</span>
+          <div class="detail-item-val" id="toggle-centre-name-display">Goshen Central Campus, Abeokuta</div>
+          <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.25rem;" id="toggle-centre-code-display">DIMABIN-CTR-HQ</div>
+        </div>
+
+        <p style="font-size: 0.8125rem; color: var(--admin-text-muted); line-height: 1.5;" id="toggle-centre-explanation">
+          Deactivating a study centre suspends it from accepting new student admission applications and course offering allocations. Existing records will remain archived safely.
+        </p>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-toggle-centre-modal">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-toggle-centre-status" style="background: #DC2626; border-color: #DC2626;">
           Confirm Status Change
         </button>
       </div>

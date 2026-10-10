@@ -531,6 +531,21 @@
                 </select>
               </div>
 
+              <!-- Preferred Study Centre Selection (Authoritative Source of Truth) -->
+              <div class="form-group">
+                <label for="app-study-centre" class="form-label">PREFERRED STUDY CENTRE / CAMPUS *</label>
+                <select id="app-study-centre" class="form-select" required>
+                  <option value="">Select Preferred Study Centre *</option>
+                  <option value="Goshen Central Campus, Abeokuta">Goshen Central Campus, Abeokuta (DIMABIN-CTR-HQ)</option>
+                  <option value="Lagos Outreach Coordination Centre">Lagos Outreach Coordination Centre (DIMABIN-CTR-LAG)</option>
+                  <option value="Ibadan Regional Study Centre">Ibadan Regional Study Centre (DIMABIN-CTR-IBD)</option>
+                  <option value="Online &amp; Distance Learning Hub">Online &amp; Distance Learning Hub (DIMABIN-CTR-ODL)</option>
+                </select>
+                <span class="form-hint" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; display: block;">
+                  Select your primary physical campus or distance learning coordination hub.
+                </span>
+              </div>
+
               <!-- Gender & Date of Birth -->
               <div class="form-row-2">
                 <div class="form-group">
@@ -855,6 +870,10 @@
               <div class="success-summary-row">
                 <span style="font-weight: 700; color: var(--dark-navy);">Selected Program:</span>
                 <span id="summary-candidate-program" style="font-weight: 700; color: var(--gold-hover);">-</span>
+              </div>
+              <div class="success-summary-row">
+                <span style="font-weight: 700; color: var(--dark-navy);">Study Centre:</span>
+                <span id="summary-candidate-centre" style="font-weight: 600; color: var(--primary-blue);">-</span>
               </div>
               <div class="success-summary-row">
                 <span style="font-weight: 700; color: var(--dark-navy);">Application Number:</span>

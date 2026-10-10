@@ -33,11 +33,20 @@ import {
   reassignCourseAllocation,
   endCourseAllocation,
   deleteCourseAllocation,
+  subscribeAdmissions,
+  updateAdmissionStatus,
   subscribeLecturers,
   createLecturer,
   updateLecturer,
   setLecturerStatus,
-  refreshLecturerDashboardData
+  refreshLecturerDashboardData,
+  subscribeStudyCentres,
+  createStudyCentre,
+  updateStudyCentre,
+  toggleStudyCentreStatus,
+  deleteStudyCentre,
+  getStudyCentres,
+  getStudyCentreMetrics
 } from "./firebase-backend.js";
 
 // Canonical Administrator Credentials
@@ -314,6 +323,9 @@ export function initDashboard() {
 
   // 11. LECTURER MANAGEMENT MODULE CONTROLLER (Faculty Directory & Multi-Assignment Tracking)
   initLecturerManagement();
+
+  // 12. STUDY CENTRES MANAGEMENT MODULE CONTROLLER (Authoritative Single Source of Truth)
+  initStudyCentresManagement();
 }
 
 /**
@@ -716,6 +728,157 @@ export function initAdmissionManagement() {
       }
     });
   }
+
+  // Admissions Registry Table & Live Applications Handling (with Study Centre Display)
+  const appTableBody = document.getElementById("table-all-applications-tbody");
+  const searchAppInput = document.getElementById("search-applications-input");
+  const filterAppSelect = document.getElementById("filter-applications-select");
+  const btnRefreshApps = document.getElementById("btn-refresh-applications");
+
+  let allApplications = [];
+  const appFilters = {
+    search: "",
+    status: "all"
+  };
+
+  const renderApplicationsTable = () => {
+    if (!appTableBody) return;
+
+    let filtered = [...allApplications];
+    if (appFilters.search) {
+      filtered = filtered.filter((a) => {
+        const text = [
+          a.applicationId || "",
+          a.fullName || "",
+          a.email || "",
+          a.phone || "",
+          a.studyCentre || "",
+          a.programme || ""
+        ].join(" ").toLowerCase();
+        return text.includes(appFilters.search);
+      });
+    }
+
+    if (appFilters.status !== "all") {
+      filtered = filtered.filter((a) => (a.status || "pending").toLowerCase() === appFilters.status.toLowerCase());
+    }
+
+    if (filtered.length === 0) {
+      appTableBody.innerHTML = `
+        <tr>
+          <td colspan="7">
+            <div class="empty-state-box">
+              <div class="empty-icon">📋</div>
+              <div class="empty-state-text">No admission applications match current criteria.</div>
+              <div class="empty-state-sub">New submissions through admissions.html will populate here live with their official study centre.</div>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    appTableBody.innerHTML = filtered
+      .map((app) => {
+        const status = (app.status || "pending").toLowerCase();
+        const statusClass = status === "approved" ? "badge-active" : status === "rejected" ? "badge-inactive" : "badge-gold";
+        const dateStr = app.createdAt ? new Date(app.createdAt).toLocaleDateString() : "Recent";
+        const centreDisplay = app.studyCentre || "Goshen Central Campus, Abeokuta";
+
+        return `
+        <tr data-app-id="${app.id || app.applicationId}">
+          <td>
+            <div style="font-weight: 700; color: var(--dark-navy);">${app.fullName || "Candidate"}</div>
+            <div style="font-size: 0.75rem; color: var(--admin-text-muted);">${app.email || "No email"} · ${app.phone || "No phone"}</div>
+          </td>
+          <td>
+            <span class="session-strip-badge" style="background: #EFF6FF; color: var(--primary-blue); font-weight: 700;">
+              ${app.applicationId || "APP"}
+            </span>
+          </td>
+          <td>
+            <div style="font-size: 0.8125rem; font-weight: 600; color: var(--dark-navy);">${app.programme || "Diploma in Theology"}</div>
+          </td>
+          <td>
+            <span style="font-size: 0.8125rem; font-weight: 700; color: var(--primary-blue);">📍 ${centreDisplay}</span>
+          </td>
+          <td>
+            <div style="font-size: 0.75rem; color: var(--admin-text-muted);">${dateStr}</div>
+          </td>
+          <td>
+            <span class="faculty-badge ${statusClass}">${status.toUpperCase()}</span>
+          </td>
+          <td>
+            <div style="display: flex; gap: 4px;">
+              ${
+                status !== "approved"
+                  ? `<button type="button" class="btn-table-action btn-approve-app" data-id="${app.id || app.applicationId}" style="color: #16A34A;" title="Approve Admission">✓ Approve</button>`
+                  : ""
+              }
+              ${
+                status !== "rejected"
+                  ? `<button type="button" class="btn-table-action btn-reject-app" data-id="${app.id || app.applicationId}" style="color: #DC2626;" title="Reject Application">✕ Reject</button>`
+                  : ""
+              }
+            </div>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+
+    appTableBody.querySelectorAll(".btn-approve-app").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        try {
+          await updateAdmissionStatus(id, "approved", "Approved by Academic Registry Committee");
+          showAdminToast(`Application ${id} approved successfully.`, "success");
+        } catch (e) {
+          showAdminToast(`Error approving: ${e.message}`, "error");
+        }
+      });
+    });
+
+    appTableBody.querySelectorAll(".btn-reject-app").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const reason = prompt("Enter reason for rejection (optional):", "Incomplete credentials or prerequisite vetting");
+        if (reason === null) return;
+        try {
+          await updateAdmissionStatus(id, "rejected", reason);
+          showAdminToast(`Application ${id} marked as rejected.`, "info");
+        } catch (e) {
+          showAdminToast(`Error rejecting: ${e.message}`, "error");
+        }
+      });
+    });
+  };
+
+  if (searchAppInput) {
+    searchAppInput.addEventListener("input", (e) => {
+      appFilters.search = e.target.value.trim().toLowerCase();
+      renderApplicationsTable();
+    });
+  }
+
+  if (filterAppSelect) {
+    filterAppSelect.addEventListener("change", (e) => {
+      appFilters.status = e.target.value;
+      renderApplicationsTable();
+    });
+  }
+
+  if (btnRefreshApps) {
+    btnRefreshApps.addEventListener("click", () => {
+      renderApplicationsTable();
+      showAdminToast("Admissions list refreshed.", "info");
+    });
+  }
+
+  subscribeAdmissions((apps) => {
+    allApplications = apps || [];
+    renderApplicationsTable();
+  });
 }
 
 /**
@@ -3529,6 +3692,721 @@ export function initLecturerManagement() {
   });
 }
 
+/**
+ * Dynamically populate all Study Centre dropdowns across the Admin Dashboard
+ * Keeps the official study centres collection as the single source of truth.
+ */
+export function populateStudyCentreSelects(centresList) {
+  const activeCentres = (centresList || []).filter((c) => c.status === "active");
+  const allCentres = centresList || [];
+
+  const updateSelect = (selectEl, options, includeAllOption = false, allLabel = "All Study Centres") => {
+    if (!selectEl) return;
+    const currentVal = selectEl.value;
+    selectEl.innerHTML = "";
+
+    if (includeAllOption) {
+      const allOpt = document.createElement("option");
+      allOpt.value = "all";
+      allOpt.textContent = allLabel;
+      selectEl.appendChild(allOpt);
+    }
+
+    options.forEach((centre) => {
+      const opt = document.createElement("option");
+      opt.value = centre.centreName;
+      opt.textContent = `${centre.centreName} (${centre.centreCode || "CTR"})`;
+      selectEl.appendChild(opt);
+    });
+
+    if (currentVal && Array.from(selectEl.options).some((o) => o.value === currentVal)) {
+      selectEl.value = currentVal;
+    } else if (includeAllOption) {
+      selectEl.value = "all";
+    }
+  };
+
+  // Filter dropdowns
+  updateSelect(document.getElementById("filter-lec-centre"), allCentres, true);
+  updateSelect(document.getElementById("filter-course-centre"), allCentres, true);
+  updateSelect(document.getElementById("filter-alloc-centre"), allCentres, true);
+
+  // Form selects (active only)
+  updateSelect(document.getElementById("add-lec-centre"), activeCentres, false);
+  updateSelect(document.getElementById("edit-lec-centre"), activeCentres, false);
+  updateSelect(document.getElementById("quick-lecturer-centre"), activeCentres, false);
+  updateSelect(document.getElementById("course-form-centre"), activeCentres, false);
+  updateSelect(document.getElementById("assign-modal-centre-select"), activeCentres, false);
+}
+
+/**
+ * =========================================================================
+ * 12. STUDY CENTRES MANAGEMENT CONTROLLER
+ * Authoritative single source of truth for physical campuses and learning hubs.
+ * =========================================================================
+ */
+export function initStudyCentresManagement() {
+  console.log("[DIMABIN Dashboard] Initializing Official Study Centres Management...");
+
+  let centresList = [];
+  const filters = {
+    search: "",
+    status: "all",
+    sort: "code"
+  };
+
+  // DOM Elements
+  const statTotal = document.getElementById("stat-centres-total");
+  const statActive = document.getElementById("stat-centres-active");
+  const statInactive = document.getElementById("stat-centres-inactive");
+  const statStudents = document.getElementById("stat-centres-students");
+  const statCourses = document.getElementById("stat-centres-courses");
+
+  const filterSearch = document.getElementById("filter-centre-search");
+  const filterStatus = document.getElementById("filter-centre-status");
+  const filterSort = document.getElementById("filter-centre-sort");
+  const btnResetFilters = document.getElementById("btn-reset-centre-filters");
+  const btnRefresh = document.getElementById("btn-refresh-centres");
+
+  const tableBody = document.getElementById("table-study-centres-tbody");
+  const countBadge = document.getElementById("centres-count-badge");
+
+  // Modals
+  const modalAdd = document.getElementById("modal-add-study-centre");
+  const modalEdit = document.getElementById("modal-edit-study-centre");
+  const modalView = document.getElementById("modal-view-study-centre");
+  const modalToggle = document.getElementById("modal-toggle-centre-status");
+
+  // Add Form Elements
+  const btnOpenAdd = document.getElementById("btn-open-add-centre");
+  const btnCloseAdd = document.getElementById("btn-close-add-centre-modal");
+  const btnCancelAdd = document.getElementById("btn-cancel-add-centre-modal");
+  const btnConfirmAdd = document.getElementById("btn-confirm-add-centre");
+  const btnAutoGenCode = document.getElementById("btn-auto-gen-centre-code");
+  const formAdd = document.getElementById("form-add-study-centre");
+  const alertAdd = document.getElementById("centre-add-alert");
+  const spinnerAdd = document.getElementById("add-centre-spinner");
+  const btnTextAdd = document.getElementById("add-centre-btn-text");
+
+  // Edit Form Elements
+  const btnCloseEdit = document.getElementById("btn-close-edit-centre-modal");
+  const btnCancelEdit = document.getElementById("btn-cancel-edit-centre-modal");
+  const btnConfirmEdit = document.getElementById("btn-confirm-edit-centre");
+  const formEdit = document.getElementById("form-edit-study-centre");
+  const alertEdit = document.getElementById("centre-edit-alert");
+  const spinnerEdit = document.getElementById("edit-centre-spinner");
+  const btnTextEdit = document.getElementById("edit-centre-btn-text");
+
+  // View Modal Elements
+  const btnCloseView = document.getElementById("btn-close-view-centre-modal");
+  const btnCloseViewBtn = document.getElementById("btn-close-view-centre-modal-btn");
+  const btnEditFromView = document.getElementById("btn-edit-from-view-modal");
+
+  // Toggle Modal Elements
+  const btnCloseToggle = document.getElementById("btn-close-toggle-centre-modal");
+  const btnCancelToggle = document.getElementById("btn-cancel-toggle-centre-modal");
+  const btnConfirmToggle = document.getElementById("btn-confirm-toggle-centre-status");
+
+  let activeViewCentreId = null;
+
+  // 1. Suggest Next Centre Code
+  function suggestNextCentreCode() {
+    const existing = getStudyCentres() || [];
+    let maxNum = 0;
+    existing.forEach((c) => {
+      const match = (c.centreCode || "").match(/DIMABIN-CTR-(\d+)/i) || (c.centreCode || "").match(/CTR-(\d+)/i);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
+    });
+    const nextNum = Math.max(maxNum + 1, 5);
+    return `DIMABIN-CTR-${String(nextNum).padStart(2, "0")}`;
+  }
+
+  if (btnAutoGenCode) {
+    btnAutoGenCode.addEventListener("click", () => {
+      const codeInput = document.getElementById("centre-add-code");
+      if (codeInput) {
+        codeInput.value = suggestNextCentreCode();
+        codeInput.focus();
+      }
+    });
+  }
+
+  // 2. Open / Close Modals
+  function openAddModal() {
+    if (alertAdd) {
+      alertAdd.style.display = "none";
+      alertAdd.textContent = "";
+    }
+    if (formAdd) formAdd.reset();
+    const codeInput = document.getElementById("centre-add-code");
+    if (codeInput) codeInput.value = suggestNextCentreCode();
+    const statusSelect = document.getElementById("centre-add-status");
+    if (statusSelect) statusSelect.value = "active";
+    if (modalAdd) modalAdd.style.display = "flex";
+  }
+
+  function closeAddModal() {
+    if (modalAdd) modalAdd.style.display = "none";
+  }
+
+  function openEditModal(centre) {
+    if (!centre) return;
+    if (alertEdit) {
+      alertEdit.style.display = "none";
+      alertEdit.textContent = "";
+    }
+    document.getElementById("centre-edit-id").value = centre.id || centre.centreId;
+    document.getElementById("centre-edit-name").value = centre.centreName || "";
+    document.getElementById("centre-edit-code").value = centre.centreCode || "";
+    document.getElementById("centre-edit-status").value = centre.status || "active";
+    document.getElementById("centre-edit-address").value = centre.address || centre.location || "";
+    document.getElementById("centre-edit-coordinator").value = centre.coordinator || "";
+    document.getElementById("centre-edit-phone").value = centre.contactPhone || centre.phone || "";
+    document.getElementById("centre-edit-email").value = centre.contactEmail || centre.email || "";
+
+    if (modalEdit) modalEdit.style.display = "flex";
+  }
+
+  function closeEditModal() {
+    if (modalEdit) modalEdit.style.display = "none";
+  }
+
+  function openViewModal(centre) {
+    if (!centre) return;
+    activeViewCentreId = centre.id || centre.centreId;
+
+    const metrics = getStudyCentreMetrics();
+    const cMeta = metrics[centre.id || centre.centreId] || { coursesCount: 0, facultyCount: 0, studentsCount: 0 };
+
+    document.getElementById("view-centre-code-badge").textContent = centre.centreCode || "CTR";
+    document.getElementById("view-centre-name-display").textContent = centre.centreName;
+    document.getElementById("view-centre-address-display").textContent = centre.address || centre.location || "N/A";
+
+    const badge = document.getElementById("view-centre-status-badge");
+    if (badge) {
+      badge.textContent = (centre.status || "active").toUpperCase();
+      badge.className = `faculty-badge ${centre.status === "active" ? "badge-active" : "badge-inactive"}`;
+    }
+
+    document.getElementById("view-centre-courses-count").textContent = cMeta.coursesCount;
+    document.getElementById("view-centre-faculty-count").textContent = cMeta.facultyCount;
+    document.getElementById("view-centre-students-count").textContent = cMeta.studentsCount;
+
+    document.getElementById("view-centre-coordinator").textContent = centre.coordinator || "Registry Appointed";
+    document.getElementById("view-centre-phone").textContent = centre.contactPhone || centre.phone || "N/A";
+    document.getElementById("view-centre-email").textContent = centre.contactEmail || centre.email || "N/A";
+    document.getElementById("view-centre-created").textContent = centre.createdAt ? new Date(centre.createdAt).toLocaleDateString() : "Founding Registry";
+
+    // Associated allocations list
+    const allocsContainer = document.getElementById("view-centre-allocations-list");
+    if (allocsContainer) {
+      const allAllocs = JSON.parse(localStorage.getItem("dimabin_db_cache_course_allocations") || "[]");
+      const matched = allAllocs.filter((a) => a.studyCentre === centre.centreName && (a.status === "active" || a.status === "reassigned"));
+
+      if (matched.length === 0) {
+        allocsContainer.innerHTML = '<div style="font-size: 0.8125rem; color: var(--admin-text-muted); padding: 0.5rem;">No active course offerings currently scheduled at this centre.</div>';
+      } else {
+        allocsContainer.innerHTML = matched
+          .map(
+            (a) => `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0.25rem; border-bottom: 1px solid var(--admin-border-subtle); font-size: 0.8125rem;">
+            <div>
+              <strong style="color: var(--primary-blue);">${a.courseCode}</strong> — <span style="color: var(--dark-navy);">${a.courseTitle}</span>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--admin-text-muted);">
+              ${a.lecturerName || "Unassigned"} (${a.semester || "Semester"})
+            </div>
+          </div>
+        `
+          )
+          .join("");
+      }
+    }
+
+    if (modalView) modalView.style.display = "flex";
+  }
+
+  function closeViewModal() {
+    if (modalView) modalView.style.display = "none";
+    activeViewCentreId = null;
+  }
+
+  function openToggleModal(centre) {
+    if (!centre) return;
+    document.getElementById("toggle-centre-id").value = centre.id || centre.centreId;
+    document.getElementById("toggle-centre-target-status").value = centre.status === "active" ? "inactive" : "active";
+
+    const isDeactivating = centre.status === "active";
+    const titleEl = document.getElementById("modal-toggle-centre-title");
+    const headerEl = document.getElementById("modal-toggle-centre-header");
+    const promptEl = document.getElementById("toggle-centre-prompt");
+    const nameEl = document.getElementById("toggle-centre-name-display");
+    const codeEl = document.getElementById("toggle-centre-code-display");
+    const expEl = document.getElementById("toggle-centre-explanation");
+    const confirmBtn = document.getElementById("btn-confirm-toggle-centre-status");
+
+    nameEl.textContent = centre.centreName;
+    codeEl.textContent = centre.centreCode;
+
+    if (isDeactivating) {
+      titleEl.textContent = "Deactivate Study Centre";
+      headerEl.style.background = "#DC2626";
+      promptEl.textContent = `Are you sure you want to deactivate "${centre.centreName}"?`;
+      expEl.textContent = "Deactivating this centre immediately removes it from online applicant dropdowns and prevents new course allocations. Existing academic records, students, and courses remain securely archived.";
+      confirmBtn.style.background = "#DC2626";
+      confirmBtn.style.borderColor = "#DC2626";
+      confirmBtn.textContent = "Confirm Deactivation";
+    } else {
+      titleEl.textContent = "Activate Study Centre";
+      headerEl.style.background = "#16A34A";
+      promptEl.textContent = `Activate "${centre.centreName}" for academic delivery?`;
+      expEl.textContent = "Activating this centre immediately makes it available across all admissions intake forms, faculty teaching allocations, and student enrollments.";
+      confirmBtn.style.background = "#16A34A";
+      confirmBtn.style.borderColor = "#16A34A";
+      confirmBtn.textContent = "Confirm Activation";
+    }
+
+    if (modalToggle) modalToggle.style.display = "flex";
+  }
+
+  function closeToggleModal() {
+    if (modalToggle) modalToggle.style.display = "none";
+  }
+
+  // 3. Event Listeners for Modals
+  if (btnOpenAdd) btnOpenAdd.addEventListener("click", openAddModal);
+  if (btnCloseAdd) btnCloseAdd.addEventListener("click", closeAddModal);
+  if (btnCancelAdd) btnCancelAdd.addEventListener("click", closeAddModal);
+
+  if (btnCloseEdit) btnCloseEdit.addEventListener("click", closeEditModal);
+  if (btnCancelEdit) btnCancelEdit.addEventListener("click", closeEditModal);
+
+  if (btnCloseView) btnCloseView.addEventListener("click", closeViewModal);
+  if (btnCloseViewBtn) btnCloseViewBtn.addEventListener("click", closeViewModal);
+  if (btnEditFromView) {
+    btnEditFromView.addEventListener("click", () => {
+      const targetId = activeViewCentreId;
+      closeViewModal();
+      if (targetId) {
+        const c = centresList.find((item) => (item.id === targetId || item.centreId === targetId));
+        if (c) openEditModal(c);
+      }
+    });
+  }
+
+  if (btnCloseToggle) btnCloseToggle.addEventListener("click", closeToggleModal);
+  if (btnCancelToggle) btnCancelToggle.addEventListener("click", closeToggleModal);
+
+  // Close modals on overlay backdrop click
+  [modalAdd, modalEdit, modalView, modalToggle].forEach((m) => {
+    if (m) {
+      m.addEventListener("click", (e) => {
+        if (e.target === m) {
+          m.style.display = "none";
+        }
+      });
+    }
+  });
+
+  // 4. Form Submissions
+  // Submit Add Centre
+  if (btnConfirmAdd) {
+    btnConfirmAdd.addEventListener("click", async () => {
+      const name = (document.getElementById("centre-add-name")?.value || "").trim();
+      const code = (document.getElementById("centre-add-code")?.value || "").trim().toUpperCase();
+      const status = document.getElementById("centre-add-status")?.value || "active";
+      const address = (document.getElementById("centre-add-address")?.value || "").trim();
+      const coordinator = (document.getElementById("centre-add-coordinator")?.value || "").trim();
+      const phone = (document.getElementById("centre-add-phone")?.value || "").trim();
+      const email = (document.getElementById("centre-add-email")?.value || "").trim();
+
+      if (!name || !code || !address) {
+        if (alertAdd) {
+          alertAdd.style.display = "block";
+          alertAdd.style.background = "#FEE2E2";
+          alertAdd.style.color = "#991B1B";
+          alertAdd.textContent = "Please fill in all required fields (Centre Name, Centre Code, Physical Address).";
+        }
+        return;
+      }
+
+      try {
+        if (spinnerAdd) spinnerAdd.style.display = "inline-block";
+        if (btnTextAdd) btnTextAdd.textContent = "Registering...";
+        btnConfirmAdd.disabled = true;
+
+        const result = await createStudyCentre({
+          centreName: name,
+          centreCode: code,
+          status,
+          address,
+          coordinator,
+          contactPhone: phone,
+          contactEmail: email
+        });
+
+        closeAddModal();
+        showAdminToast(`Study centre "${result.centreName}" [${result.centreCode}] registered successfully.`, "success");
+      } catch (err) {
+        if (alertAdd) {
+          alertAdd.style.display = "block";
+          alertAdd.style.background = "#FEE2E2";
+          alertAdd.style.color = "#991B1B";
+          alertAdd.textContent = err.message || "Failed to register study centre. Please review inputs.";
+        }
+      } finally {
+        if (spinnerAdd) spinnerAdd.style.display = "none";
+        if (btnTextAdd) btnTextAdd.textContent = "Register Study Centre";
+        btnConfirmAdd.disabled = false;
+      }
+    });
+  }
+
+  // Submit Edit Centre
+  if (btnConfirmEdit) {
+    btnConfirmEdit.addEventListener("click", async () => {
+      const centreId = document.getElementById("centre-edit-id")?.value;
+      const name = (document.getElementById("centre-edit-name")?.value || "").trim();
+      const code = (document.getElementById("centre-edit-code")?.value || "").trim().toUpperCase();
+      const status = document.getElementById("centre-edit-status")?.value || "active";
+      const address = (document.getElementById("centre-edit-address")?.value || "").trim();
+      const coordinator = (document.getElementById("centre-edit-coordinator")?.value || "").trim();
+      const phone = (document.getElementById("centre-edit-phone")?.value || "").trim();
+      const email = (document.getElementById("centre-edit-email")?.value || "").trim();
+
+      if (!centreId || !name || !code || !address) {
+        if (alertEdit) {
+          alertEdit.style.display = "block";
+          alertEdit.style.background = "#FEE2E2";
+          alertEdit.style.color = "#991B1B";
+          alertEdit.textContent = "Please provide all required fields.";
+        }
+        return;
+      }
+
+      try {
+        if (spinnerEdit) spinnerEdit.style.display = "inline-block";
+        if (btnTextEdit) btnTextEdit.textContent = "Saving...";
+        btnConfirmEdit.disabled = true;
+
+        await updateStudyCentre(centreId, {
+          centreName: name,
+          centreCode: code,
+          status,
+          address,
+          coordinator,
+          contactPhone: phone,
+          contactEmail: email
+        });
+
+        closeEditModal();
+        showAdminToast(`Study centre "${name}" updated successfully.`, "success");
+      } catch (err) {
+        if (alertEdit) {
+          alertEdit.style.display = "block";
+          alertEdit.style.background = "#FEE2E2";
+          alertEdit.style.color = "#991B1B";
+          alertEdit.textContent = err.message || "Failed to update study centre.";
+        }
+      } finally {
+        if (spinnerEdit) spinnerEdit.style.display = "none";
+        if (btnTextEdit) btnTextEdit.textContent = "Save Changes";
+        btnConfirmEdit.disabled = false;
+      }
+    });
+  }
+
+  // Submit Toggle Status
+  if (btnConfirmToggle) {
+    btnConfirmToggle.addEventListener("click", async () => {
+      const centreId = document.getElementById("toggle-centre-id")?.value;
+      const targetStatus = document.getElementById("toggle-centre-target-status")?.value;
+      if (!centreId) return;
+
+      try {
+        btnConfirmToggle.disabled = true;
+        const currentCentre = centresList.find((c) => c.id === centreId || c.centreId === centreId);
+        const currentStatus = currentCentre ? currentCentre.status : (targetStatus === "active" ? "inactive" : "active");
+
+        await toggleStudyCentreStatus(centreId, currentStatus);
+        closeToggleModal();
+        showAdminToast(`Study centre status changed to ${targetStatus.toUpperCase()}.`, "success");
+      } catch (err) {
+        showAdminToast(`Failed to update status: ${err.message}`, "error");
+      } finally {
+        btnConfirmToggle.disabled = false;
+      }
+    });
+  }
+
+  // 5. Delete Centre Handler
+  async function handleDeleteCentre(centre) {
+    if (!centre) return;
+    const confirmDelete = window.confirm(
+      `Are you sure you want to permanently delete "${centre.centreName}" [${centre.centreCode}]?\n\nThis action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      await deleteStudyCentre(centre.id || centre.centreId);
+      showAdminToast(`Study centre "${centre.centreName}" deleted successfully.`, "success");
+    } catch (err) {
+      alert(`Cannot Delete Centre:\n\n${err.message}`);
+    }
+  }
+
+  // 6. Filter & Search Handlers
+  if (filterSearch) {
+    filterSearch.addEventListener("input", (e) => {
+      filters.search = e.target.value.trim().toLowerCase();
+      renderTable();
+    });
+  }
+
+  if (filterStatus) {
+    filterStatus.addEventListener("change", (e) => {
+      filters.status = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (filterSort) {
+    filterSort.addEventListener("change", (e) => {
+      filters.sort = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (btnResetFilters) {
+    btnResetFilters.addEventListener("click", () => {
+      filters.search = "";
+      filters.status = "all";
+      filters.sort = "code";
+      if (filterSearch) filterSearch.value = "";
+      if (filterStatus) filterStatus.value = "all";
+      if (filterSort) filterSort.value = "code";
+      renderTable();
+    });
+  }
+
+  if (btnRefresh) {
+    btnRefresh.addEventListener("click", () => {
+      centresList = getStudyCentres();
+      renderTable();
+      updateStats();
+      showAdminToast("Study centres registry refreshed from Firestore.", "info");
+    });
+  }
+
+  // 7. Update Statistics Cards
+  function updateStats() {
+    const total = centresList.length;
+    const active = centresList.filter((c) => c.status === "active").length;
+    const inactive = total - active;
+
+    const metrics = getStudyCentreMetrics();
+    let totalCourses = 0;
+    let totalStudents = 0;
+    Object.values(metrics).forEach((m) => {
+      totalCourses += m.coursesCount || 0;
+      totalStudents += m.studentsCount || 0;
+    });
+
+    if (statTotal) statTotal.textContent = total;
+    if (statActive) statActive.textContent = active;
+    if (statInactive) statInactive.textContent = inactive;
+    if (statStudents) statStudents.textContent = totalStudents;
+    if (statCourses) statCourses.textContent = totalCourses;
+  }
+
+  // 8. Render Study Centres Table
+  function renderTable() {
+    if (!tableBody) return;
+
+    let filtered = [...centresList];
+
+    // Filter by search query
+    if (filters.search) {
+      filtered = filtered.filter((c) => {
+        const text = [
+          c.centreCode || "",
+          c.centreName || "",
+          c.address || c.location || "",
+          c.coordinator || "",
+          c.contactPhone || c.phone || "",
+          c.contactEmail || c.email || ""
+        ].join(" ").toLowerCase();
+        return text.includes(filters.search);
+      });
+    }
+
+    // Filter by status
+    if (filters.status !== "all") {
+      filtered = filtered.filter((c) => (c.status || "active").toLowerCase() === filters.status.toLowerCase());
+    }
+
+    // Sort
+    if (filters.sort === "code") {
+      filtered.sort((a, b) => (a.centreCode || "").localeCompare(b.centreCode || ""));
+    } else if (filters.sort === "name") {
+      filtered.sort((a, b) => (a.centreName || "").localeCompare(b.centreName || ""));
+    } else if (filters.sort === "recent") {
+      filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    }
+
+    // Update count badge
+    if (countBadge) {
+      countBadge.textContent = `Showing ${filtered.length} of ${centresList.length} Official Centres`;
+    }
+
+    if (filtered.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="8">
+            <div class="empty-state-box">
+              <div class="empty-icon">📍</div>
+              <div class="empty-state-text">No study centres match your filter criteria.</div>
+              <div class="empty-state-sub">Try resetting filters or registering a new institutional study centre.</div>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    const metrics = getStudyCentreMetrics();
+
+    tableBody.innerHTML = filtered
+      .map((centre) => {
+        const cId = centre.id || centre.centreId;
+        const meta = metrics[cId] || { coursesCount: 0, facultyCount: 0, studentsCount: 0 };
+        const isActive = (centre.status || "active").toLowerCase() === "active";
+
+        return `
+        <tr data-centre-id="${cId}">
+          <td>
+            <span class="session-strip-badge" style="background: #EFF6FF; color: var(--primary-blue); font-weight: 800; border: 1px solid #BFDBFE;">
+              ${centre.centreCode || "CTR"}
+            </span>
+          </td>
+          <td>
+            <div style="font-weight: 700; color: var(--dark-navy); font-size: 0.875rem;">
+              ${centre.centreName}
+            </div>
+            <div style="font-size: 0.72rem; color: var(--admin-text-muted);">
+              ID: ${cId}
+            </div>
+          </td>
+          <td>
+            <div style="font-size: 0.8125rem; color: var(--dark-navy); line-height: 1.4;">
+              ${centre.address || centre.location || "N/A"}
+            </div>
+          </td>
+          <td>
+            <div style="font-size: 0.8125rem; font-weight: 600; color: var(--dark-navy);">
+              ${centre.coordinator || "Registry Appointed"}
+            </div>
+          </td>
+          <td>
+            <div style="font-size: 0.75rem; color: var(--admin-text-main);">
+              📞 ${centre.contactPhone || centre.phone || "—"}
+            </div>
+            <div style="font-size: 0.72rem; color: var(--admin-text-muted);">
+              ✉️ ${centre.contactEmail || centre.email || "—"}
+            </div>
+          </td>
+          <td>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              <span style="font-size: 0.75rem; color: var(--primary-blue); font-weight: 700;">
+                📚 ${meta.coursesCount} Offering${meta.coursesCount === 1 ? "" : "s"}
+              </span>
+              <span style="font-size: 0.72rem; color: var(--admin-text-muted);">
+                👥 ${meta.facultyCount} Faculty · 🎓 ${meta.studentsCount} Students
+              </span>
+            </div>
+          </td>
+          <td>
+            <span class="faculty-badge ${isActive ? "badge-active" : "badge-inactive"}">
+              ${isActive ? "ACTIVE" : "INACTIVE"}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end;">
+              <button type="button" class="btn-table-action btn-view-centre" data-centre-id="${cId}" title="View Centre Dossier">
+                👁️ View
+              </button>
+              <button type="button" class="btn-table-action btn-edit-centre" data-centre-id="${cId}" title="Edit Details">
+                ✏️ Edit
+              </button>
+              <button type="button" class="btn-table-action btn-toggle-centre-status" data-centre-id="${cId}" title="${isActive ? "Deactivate Centre" : "Activate Centre"}" style="color: ${isActive ? "#DC2626" : "#16A34A"};">
+                ${isActive ? "⏸ Pause" : "▶ Enable"}
+              </button>
+              <button type="button" class="btn-table-action btn-delete-centre" data-centre-id="${cId}" title="Delete Centre" style="color: #6B7280;">
+                🗑️
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+
+    // Attach row action listeners
+    tableBody.querySelectorAll(".btn-view-centre").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-centre-id");
+        const c = centresList.find((item) => item.id === id || item.centreId === id);
+        if (c) openViewModal(c);
+      });
+    });
+
+    tableBody.querySelectorAll(".btn-edit-centre").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-centre-id");
+        const c = centresList.find((item) => item.id === id || item.centreId === id);
+        if (c) openEditModal(c);
+      });
+    });
+
+    tableBody.querySelectorAll(".btn-toggle-centre-status").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-centre-id");
+        const c = centresList.find((item) => item.id === id || item.centreId === id);
+        if (c) openToggleModal(c);
+      });
+    });
+
+    tableBody.querySelectorAll(".btn-delete-centre").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-centre-id");
+        const c = centresList.find((item) => item.id === id || item.centreId === id);
+        if (c) handleDeleteCentre(c);
+      });
+    });
+  }
+
+  // 9. Real-time Subscription to Firestore Official Study Centres
+  subscribeStudyCentres((centres) => {
+    centresList = centres || [];
+    renderTable();
+    updateStats();
+    populateStudyCentreSelects(centresList);
+  });
+
+  // Listen for allocations and students updates to update live counts
+  window.addEventListener("dimabin:db:course_allocations", () => {
+    renderTable();
+    updateStats();
+  });
+  window.addEventListener("dimabin:db:students", () => {
+    renderTable();
+    updateStats();
+  });
+}
+
 // Auto-run on DOM ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initDashboard);
@@ -3547,6 +4425,8 @@ if (typeof window !== "undefined") {
     initCourseManagement,
     initCourseAllocation,
     initLecturerManagement,
+    initStudyCentresManagement,
+    populateStudyCentreSelects,
     showAdminToast
   };
 }

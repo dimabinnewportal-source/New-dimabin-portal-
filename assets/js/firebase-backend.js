@@ -51,7 +51,8 @@ export const COLLECTIONS = Object.freeze({
   LECTURERS: "lecturers",
   COURSES: "courses",
   COURSE_ALLOCATIONS: "course_allocations",
-  STUDY_CENTRES: "study_centres",
+  STUDY_CENTRES: "studyCentres",
+  STUDY_CENTRES_LEGACY: "study_centres",
   RESULTS: "results",
   ANNOUNCEMENTS: "announcements",
   NOTIFICATIONS: "notifications",
@@ -2600,35 +2601,123 @@ export function refreshLecturerDashboardData() {
 
 /**
  * =========================================================================
- * 8. STUDY CENTRES (study_centres)
+ * 8. OFFICIAL STUDY CENTRES (studyCentres)
+ * Authoritative single source of truth for physical campuses and learning hubs.
  * =========================================================================
+ */
+
+export const CANONICAL_STUDY_CENTRES = Object.freeze([
+  {
+    id: "centre_goshen_central",
+    centreId: "centre_goshen_central",
+    centreCode: "DIMABIN-CTR-HQ",
+    centreName: "Goshen Central Campus, Abeokuta",
+    address: "Goshen 13, Kusimo Street, Abeokuta, Ogun State",
+    location: "Goshen 13, Kusimo Street, Abeokuta, Ogun State",
+    coordinator: "Rev. Dr. E. A. Olubunmi",
+    contactPhone: "+234 803 123 4567",
+    phone: "+234 803 123 4567",
+    contactEmail: "goshen@dimabin.org",
+    email: "goshen@dimabin.org",
+    status: "active",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    createdBy: "DIMABIN/ADM/2026/01"
+  },
+  {
+    id: "centre_lagos_outreach",
+    centreId: "centre_lagos_outreach",
+    centreCode: "DIMABIN-CTR-LAG",
+    centreName: "Lagos Outreach Coordination Centre",
+    address: "12, Apostolic Avenue, Ikeja, Lagos State",
+    location: "12, Apostolic Avenue, Ikeja, Lagos State",
+    coordinator: "Pastor Matthew K. Adeyemi",
+    contactPhone: "+234 802 987 6543",
+    phone: "+234 802 987 6543",
+    contactEmail: "lagos@dimabin.org",
+    email: "lagos@dimabin.org",
+    status: "active",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    createdBy: "DIMABIN/ADM/2026/01"
+  },
+  {
+    id: "centre_ibadan_regional",
+    centreId: "centre_ibadan_regional",
+    centreCode: "DIMABIN-CTR-IBD",
+    centreName: "Ibadan Regional Study Centre",
+    address: "8, Gloryland Drive, Bodija, Ibadan, Oyo State",
+    location: "8, Gloryland Drive, Bodija, Ibadan, Oyo State",
+    coordinator: "Dr. Mrs. Deborah A. Adeleke",
+    contactPhone: "+234 805 456 7890",
+    phone: "+234 805 456 7890",
+    contactEmail: "ibadan@dimabin.org",
+    email: "ibadan@dimabin.org",
+    status: "active",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    createdBy: "DIMABIN/ADM/2026/01"
+  },
+  {
+    id: "centre_online_hub",
+    centreId: "centre_online_hub",
+    centreCode: "DIMABIN-CTR-ODL",
+    centreName: "Online & Distance Learning Hub",
+    address: "DIMABIN Digital Learning Citadel, Cloud & Virtual Delivery",
+    location: "DIMABIN Digital Learning Citadel, Cloud & Virtual Delivery",
+    coordinator: "Director of Distance Education",
+    contactPhone: "+234 800 346 2246",
+    phone: "+234 800 346 2246",
+    contactEmail: "online@dimabin.org",
+    email: "online@dimabin.org",
+    status: "active",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    createdBy: "DIMABIN/ADM/2026/01"
+  }
+]);
+
+export function normalizeCentreCode(code) {
+  return (code || "").trim().toUpperCase();
+}
+
+export function normalizeCentreName(name) {
+  return (name || "").trim().toLowerCase();
+}
+
+/**
+ * Get current cached official study centres
+ */
+export function getStudyCentres() {
+  let list = getCachedCollection(COLLECTIONS.STUDY_CENTRES);
+  if (!list || list.length === 0) {
+    list = [...CANONICAL_STUDY_CENTRES];
+    setCachedCollection(COLLECTIONS.STUDY_CENTRES, list);
+  }
+  return list;
+}
+
+/**
+ * Subscribe to real-time official study centres from Firestore
  */
 export function subscribeStudyCentres(callback) {
   if (typeof callback !== "function") return () => {};
 
-  // If local cache is empty, seed with central campus so it never starts blank
+  // Initialize from cache or canonical seeds
   let list = getCachedCollection(COLLECTIONS.STUDY_CENTRES);
-  if (list.length === 0) {
-    list = [
-      {
-        id: "centre_goshen_central",
-        centreName: "Goshen Central Campus (Main Citadel)",
-        location: "Goshen 13, Kusimo Street, Abeokuta, Ogun State",
-        coordinator: "Registry Central Coordination",
-        phone: "+234 (0) 800-DIMABIN",
-        status: "active",
-        createdAt: "2026-01-01T00:00:00.000Z"
-      }
-    ];
+  if (!list || list.length === 0) {
+    list = [...CANONICAL_STUDY_CENTRES];
     setCachedCollection(COLLECTIONS.STUDY_CENTRES, list);
   }
 
   callback(list);
 
+  // Local storage broadcast listener
   const localListener = (e) => {
     if (e.detail) callback(e.detail);
   };
   window.addEventListener(`dimabin:db:${COLLECTIONS.STUDY_CENTRES}`, localListener);
+  window.addEventListener("dimabin:study-centres-updated", localListener);
 
   let unsubscribe = () => {};
   try {
@@ -2637,16 +2726,62 @@ export function subscribeStudyCentres(callback) {
       collRef,
       (snap) => {
         if (!snap.empty) {
-          const remoteList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const remoteList = snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              centreId: data.centreId || d.id,
+              centreCode: data.centreCode || "DIMABIN-CTR",
+              centreName: data.centreName || "DIMABIN Study Centre",
+              address: data.address || data.location || "Nigeria",
+              location: data.address || data.location || "Nigeria",
+              coordinator: data.coordinator || "Coordinator",
+              contactPhone: data.contactPhone || data.phone || "",
+              phone: data.contactPhone || data.phone || "",
+              contactEmail: data.contactEmail || data.email || "",
+              email: data.contactEmail || data.email || "",
+              status: data.status || "active",
+              createdAt: data.createdAt || new Date().toISOString(),
+              updatedAt: data.updatedAt || new Date().toISOString(),
+              createdBy: data.createdBy || ADMIN_CREDENTIALS.ADMIN_ID,
+              ...data
+            };
+          });
+
+          // Ensure canonical centres are present if remote list doesn't have them
+          CANONICAL_STUDY_CENTRES.forEach((canonical) => {
+            if (!remoteList.some((r) => normalizeCentreName(r.centreName) === normalizeCentreName(canonical.centreName))) {
+              remoteList.push(canonical);
+            }
+          });
+
+          // Sort by centreCode or centreName
+          remoteList.sort((a, b) => (a.centreCode || "").localeCompare(b.centreCode || ""));
+
           setCachedCollection(COLLECTIONS.STUDY_CENTRES, remoteList);
           callback(remoteList);
         } else {
-          callback(getCachedCollection(COLLECTIONS.STUDY_CENTRES));
+          // If remote empty, write canonical centres
+          const cached = getCachedCollection(COLLECTIONS.STUDY_CENTRES);
+          const toUse = cached.length > 0 ? cached : [...CANONICAL_STUDY_CENTRES];
+          setCachedCollection(COLLECTIONS.STUDY_CENTRES, toUse);
+          callback(toUse);
+
+          // Seed canonical centres to Firestore asynchronously
+          Promise.all(
+            CANONICAL_STUDY_CENTRES.map((c) =>
+              setDoc(doc(db, COLLECTIONS.STUDY_CENTRES, c.id), {
+                ...c,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+              }, { merge: true }).catch(() => {})
+            )
+          ).catch(() => {});
         }
       },
       (err) => {
         console.warn("[DIMABIN Centres] onSnapshot note:", err.message);
-        callback(getCachedCollection(COLLECTIONS.STUDY_CENTRES));
+        callback(getStudyCentres());
       }
     );
   } catch (err) {
@@ -2656,39 +2791,304 @@ export function subscribeStudyCentres(callback) {
   return () => {
     try { unsubscribe(); } catch (_) {}
     window.removeEventListener(`dimabin:db:${COLLECTIONS.STUDY_CENTRES}`, localListener);
+    window.removeEventListener("dimabin:study-centres-updated", localListener);
   };
 }
 
+/**
+ * Create a new official study centre
+ */
 export async function createStudyCentre(centreData) {
+  if (!centreData) throw new Error("Study centre parameters are required.");
+
+  const name = (centreData.centreName || "").trim();
+  const rawCode = (centreData.centreCode || "").trim().toUpperCase();
+  const address = (centreData.address || centreData.location || "").trim();
+
+  // 1. Validation
+  if (!name) {
+    throw new Error("Official Study Centre Name is required.");
+  }
+  if (!rawCode) {
+    throw new Error("Institutional Centre Code is required.");
+  }
+  if (!address) {
+    throw new Error("Physical Campus Address / Location is required.");
+  }
+
+  const existingCentres = getStudyCentres();
+
+  // 2. Duplicate Code Check (case-insensitive)
+  const codeConflict = existingCentres.find(
+    (c) => normalizeCentreCode(c.centreCode) === normalizeCentreCode(rawCode)
+  );
+  if (codeConflict) {
+    throw new Error(`Institutional Centre Code "${rawCode}" is already in use by "${codeConflict.centreName}".`);
+  }
+
+  // 3. Duplicate Name Check (case-insensitive)
+  const nameConflict = existingCentres.find(
+    (c) => normalizeCentreName(c.centreName) === normalizeCentreName(name)
+  );
+  if (nameConflict) {
+    throw new Error(`A study centre named "${name}" already exists in the institutional registry.`);
+  }
+
+  const nowIso = new Date().toISOString();
+  const cleanId = `centre_${rawCode.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${Date.now().toString(36).substring(2, 6)}`;
+
   const record = {
-    centreName: (centreData.centreName || "DIMABIN Study Centre").trim(),
-    location: (centreData.location || "Ogun State").trim(),
-    coordinator: (centreData.coordinator || "Coordinator").trim(),
-    phone: (centreData.phone || "+234 (0) 800-DIMABIN").trim(),
-    status: centreData.status || "active",
-    createdAt: new Date().toISOString()
+    id: cleanId,
+    centreId: cleanId,
+    centreCode: rawCode,
+    centreName: name,
+    address,
+    location: address,
+    coordinator: (centreData.coordinator || "Registry Appointed Coordinator").trim(),
+    contactPhone: (centreData.contactPhone || centreData.phone || "").trim(),
+    phone: (centreData.contactPhone || centreData.phone || "").trim(),
+    contactEmail: (centreData.contactEmail || centreData.email || "").trim(),
+    email: (centreData.contactEmail || centreData.email || "").trim(),
+    status: (centreData.status || "active").toLowerCase() === "inactive" ? "inactive" : "active",
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    createdBy: ADMIN_CREDENTIALS.ADMIN_ID
   };
 
-  const localId = `centre_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-  upsertCachedItem(COLLECTIONS.STUDY_CENTRES, { id: localId, ...record });
+  // Upsert to local storage cache immediately
+  upsertCachedItem(COLLECTIONS.STUDY_CENTRES, record);
+  window.dispatchEvent(new CustomEvent("dimabin:study-centres-updated", { detail: getStudyCentres() }));
 
+  // Save to Firestore
   try {
-    await addDoc(collection(db, COLLECTIONS.STUDY_CENTRES), {
+    const docRef = doc(db, COLLECTIONS.STUDY_CENTRES, cleanId);
+    await setDoc(docRef, {
       ...record,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
+    console.log(`[DIMABIN Centres] Study centre created in Firestore: ${record.centreName} (${cleanId}).`);
   } catch (err) {
     console.warn(`[DIMABIN Centres] Firestore create note: ${err.message}`);
   }
 
+  // Institutional Activity Log
   await logActivity({
     action: "study_centre_registered",
-    description: `Added Study Centre: ${record.centreName} (${record.location}).`,
+    description: `Added official Study Centre: ${record.centreName} [${record.centreCode}] located at ${record.address}.`,
     targetCollection: COLLECTIONS.STUDY_CENTRES,
-    targetDocumentId: record.centreName
+    targetDocumentId: cleanId
   });
 
   return { success: true, ...record };
+}
+
+/**
+ * Update an existing official study centre
+ */
+export async function updateStudyCentre(centreId, updateData) {
+  if (!centreId) throw new Error("Study Centre ID is required.");
+  if (!updateData) throw new Error("Update details are required.");
+
+  const existingCentres = getStudyCentres();
+  const target = existingCentres.find((c) => c.id === centreId || c.centreId === centreId);
+  if (!target) {
+    throw new Error("Target study centre could not be found in the registry.");
+  }
+
+  const name = (updateData.centreName || target.centreName).trim();
+  const rawCode = (updateData.centreCode || target.centreCode).trim().toUpperCase();
+  const address = (updateData.address || updateData.location || target.address || target.location).trim();
+
+  // Validate Required
+  if (!name) throw new Error("Official Study Centre Name cannot be blank.");
+  if (!rawCode) throw new Error("Institutional Centre Code cannot be blank.");
+  if (!address) throw new Error("Physical Campus Address cannot be blank.");
+
+  // Check code conflicts with other centres
+  const codeConflict = existingCentres.find(
+    (c) => (c.id !== centreId && c.centreId !== centreId) && normalizeCentreCode(c.centreCode) === normalizeCentreCode(rawCode)
+  );
+  if (codeConflict) {
+    throw new Error(`Institutional Centre Code "${rawCode}" is already in use by "${codeConflict.centreName}".`);
+  }
+
+  // Check name conflicts with other centres
+  const nameConflict = existingCentres.find(
+    (c) => (c.id !== centreId && c.centreId !== centreId) && normalizeCentreName(c.centreName) === normalizeCentreName(name)
+  );
+  if (nameConflict) {
+    throw new Error(`A study centre named "${name}" already exists in the institutional registry.`);
+  }
+
+  const nowIso = new Date().toISOString();
+  const updatedRecord = {
+    ...target,
+    centreCode: rawCode,
+    centreName: name,
+    address,
+    location: address,
+    coordinator: updateData.coordinator !== undefined ? updateData.coordinator.trim() : target.coordinator,
+    contactPhone: updateData.contactPhone !== undefined ? updateData.contactPhone.trim() : (updateData.phone || target.contactPhone),
+    phone: updateData.contactPhone !== undefined ? updateData.contactPhone.trim() : (updateData.phone || target.phone),
+    contactEmail: updateData.contactEmail !== undefined ? updateData.contactEmail.trim() : (updateData.email || target.contactEmail),
+    email: updateData.contactEmail !== undefined ? updateData.contactEmail.trim() : (updateData.email || target.email),
+    status: updateData.status ? updateData.status.toLowerCase() : target.status,
+    updatedAt: nowIso,
+    updatedBy: ADMIN_CREDENTIALS.ADMIN_ID
+  };
+
+  // Upsert to cache
+  upsertCachedItem(COLLECTIONS.STUDY_CENTRES, updatedRecord);
+  window.dispatchEvent(new CustomEvent("dimabin:study-centres-updated", { detail: getStudyCentres() }));
+
+  // Update in Firestore
+  try {
+    const docRef = doc(db, COLLECTIONS.STUDY_CENTRES, centreId);
+    await updateDoc(docRef, {
+      ...updatedRecord,
+      updatedAt: serverTimestamp()
+    });
+    console.log(`[DIMABIN Centres] Study centre ${centreId} updated in Firestore.`);
+  } catch (err) {
+    console.warn(`[DIMABIN Centres] Firestore update note: ${err.message}`);
+  }
+
+  // Institutional Activity Log
+  await logActivity({
+    action: "study_centre_updated",
+    description: `Updated Study Centre details for: ${updatedRecord.centreName} [${updatedRecord.centreCode}].`,
+    targetCollection: COLLECTIONS.STUDY_CENTRES,
+    targetDocumentId: centreId
+  });
+
+  return { success: true, ...updatedRecord };
+}
+
+/**
+ * Toggle Study Centre Status (Active / Inactive)
+ */
+export async function toggleStudyCentreStatus(centreId, currentStatus) {
+  if (!centreId) throw new Error("Study Centre ID is required.");
+
+  const existingCentres = getStudyCentres();
+  const target = existingCentres.find((c) => c.id === centreId || c.centreId === centreId);
+  if (!target) throw new Error("Study centre not found.");
+
+  const newStatus = (currentStatus || target.status) === "active" ? "inactive" : "active";
+
+  const updatedRecord = {
+    ...target,
+    status: newStatus,
+    updatedAt: new Date().toISOString()
+  };
+
+  upsertCachedItem(COLLECTIONS.STUDY_CENTRES, updatedRecord);
+  window.dispatchEvent(new CustomEvent("dimabin:study-centres-updated", { detail: getStudyCentres() }));
+
+  try {
+    const docRef = doc(db, COLLECTIONS.STUDY_CENTRES, centreId);
+    await updateDoc(docRef, {
+      status: newStatus,
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.warn(`[DIMABIN Centres] Status toggle note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "study_centre_status_changed",
+    description: `Study centre "${target.centreName}" status updated to: ${newStatus.toUpperCase()}.`,
+    targetCollection: COLLECTIONS.STUDY_CENTRES,
+    targetDocumentId: centreId
+  });
+
+  return { success: true, centreId, status: newStatus };
+}
+
+/**
+ * Delete a Study Centre (Guarded by relational integrity check)
+ */
+export async function deleteStudyCentre(centreId) {
+  if (!centreId) throw new Error("Study Centre ID is required.");
+
+  const centres = getStudyCentres();
+  const target = centres.find((c) => c.id === centreId || c.centreId === centreId);
+  if (!target) throw new Error("Study centre record not found.");
+
+  // Relational safety check: Do courses or allocations or students belong to this centre?
+  const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS);
+  const allocCount = allocations.filter((a) => a.studyCentre === target.centreName).length;
+
+  const courses = getCachedCollection(COLLECTIONS.COURSES);
+  const courseCount = courses.filter((c) => c.studyCentre === target.centreName).length;
+
+  const students = getCachedCollection(COLLECTIONS.STUDENTS);
+  const studentCount = students.filter((s) => s.studyCentre === target.centreName).length;
+
+  if (allocCount > 0 || courseCount > 0 || studentCount > 0) {
+    throw new Error(
+      `Cannot delete "${target.centreName}" because it is actively associated with ${allocCount} course allocation(s), ${courseCount} course(s), and ${studentCount} student(s). Please deactivate the centre instead to maintain academic record integrity.`
+    );
+  }
+
+  removeCachedItem(COLLECTIONS.STUDY_CENTRES, centreId);
+  window.dispatchEvent(new CustomEvent("dimabin:study-centres-updated", { detail: getStudyCentres() }));
+
+  try {
+    const docRef = doc(db, COLLECTIONS.STUDY_CENTRES, centreId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn(`[DIMABIN Centres] Delete note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "study_centre_deleted",
+    description: `Deleted unassigned Study Centre: ${target.centreName} [${target.centreCode}].`,
+    targetCollection: COLLECTIONS.STUDY_CENTRES,
+    targetDocumentId: centreId
+  });
+
+  return { success: true, centreId };
+}
+
+/**
+ * Get Study Centre Metrics (Allocations & Student enrollments per centre)
+ */
+export function getStudyCentreMetrics() {
+  const centres = getStudyCentres();
+  const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+  const courses = getCachedCollection(COLLECTIONS.COURSES) || [];
+  const students = getCachedCollection(COLLECTIONS.STUDENTS) || [];
+  const lecturers = getCachedCollection(COLLECTIONS.LECTURERS) || [];
+
+  const metrics = {};
+
+  centres.forEach((c) => {
+    const centreName = c.centreName;
+    const activeAllocCount = allocations.filter((a) => a.studyCentre === centreName && (a.status === "active" || a.status === "reassigned")).length;
+    const courseCount = courses.filter((co) => co.studyCentre === centreName && co.status === "active").length;
+    const studentCount = students.filter((s) => s.studyCentre === centreName && s.status === "active").length;
+
+    // Faculty teaching at this centre
+    const facultySet = new Set();
+    allocations.filter((a) => a.studyCentre === centreName && (a.status === "active" || a.status === "reassigned")).forEach((a) => {
+      if (a.lecturerName) facultySet.add(a.lecturerName);
+    });
+    // Also include faculty based at this centre
+    lecturers.filter((l) => l.studyCentre === centreName).forEach((l) => {
+      facultySet.add(l.fullName);
+    });
+
+    metrics[c.id || c.centreId] = {
+      allocationsCount: activeAllocCount,
+      coursesCount: courseCount,
+      studentsCount: studentCount,
+      facultyCount: facultySet.size
+    };
+  });
+
+  return metrics;
 }
 
 /**

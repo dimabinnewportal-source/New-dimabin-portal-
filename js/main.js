@@ -5,7 +5,7 @@
 
 import './firebase-test.js';
 import { subscribeAdmissionSettings, formatAdmissionDate, DEFAULT_ADMISSION_SETTINGS } from './firebase-admissions.js';
-import { savePublicApplication, checkAdmissionStatus } from './firebase-backend.js';
+import { savePublicApplication, checkAdmissionStatus, subscribeStudyCentres } from './firebase-backend.js';
 import { mountPublicNoticeBoard } from './public-announcements.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -245,6 +245,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const successPane = document.getElementById('admission-success-pane');
     const formCard = document.querySelector('.admissions-form-card');
 
+    // Dynamic population of Official Study Centres for application form
+    const appStudyCentreSelect = document.getElementById('app-study-centre');
+    if (appStudyCentreSelect) {
+      subscribeStudyCentres((centres) => {
+        const activeCentres = (centres || []).filter((c) => c.status === 'active');
+        const prevVal = appStudyCentreSelect.value;
+        appStudyCentreSelect.innerHTML = '<option value="">Select Preferred Study Centre *</option>';
+        activeCentres.forEach((c) => {
+          const opt = document.createElement('option');
+          opt.value = c.centreName;
+          opt.textContent = `${c.centreName} (${c.centreCode || 'CTR'})`;
+          appStudyCentreSelect.appendChild(opt);
+        });
+        if (prevVal && Array.from(appStudyCentreSelect.options).some((o) => o.value === prevVal)) {
+          appStudyCentreSelect.value = prevVal;
+        } else if (activeCentres.length > 0 && !appStudyCentreSelect.value) {
+          appStudyCentreSelect.value = activeCentres[0].centreName;
+        }
+      });
+    }
+
     const updateStepUI = (step) => {
       // Hide all step panes
       document.querySelectorAll('.form-step-pane').forEach((pane) => {
@@ -301,6 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'app-phone', name: 'Phone Number' },
         { id: 'app-whatsapp', name: 'WhatsApp Number' },
         { id: 'app-email', name: 'Email Address' },
+        { id: 'app-study-centre', name: 'Preferred Study Centre / Campus' }
       ];
 
       fields.forEach((field) => {
@@ -425,16 +447,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const candidateQual = document.getElementById('academic-qualification')?.value || '';
       const candidateYear = document.getElementById('academic-year')?.value || '';
       const candidateInst = document.getElementById('academic-institution')?.value || '';
+      const candidateCentre = document.getElementById('app-study-centre')?.value || 'Goshen Central Campus, Abeokuta';
 
       const sumName = document.getElementById('summary-candidate-name');
       const sumEmail = document.getElementById('summary-candidate-email');
       const sumPhone = document.getElementById('summary-candidate-phone');
       const sumProgram = document.getElementById('summary-candidate-program');
+      const sumCentre = document.getElementById('summary-candidate-centre');
 
       if (sumName) sumName.textContent = candidateName;
       if (sumEmail) sumEmail.textContent = candidateEmail || 'N/A';
       if (sumPhone) sumPhone.textContent = candidatePhone || 'N/A';
       if (sumProgram) sumProgram.textContent = candidateProgram;
+      if (sumCentre) sumCentre.textContent = candidateCentre;
 
       // Hide form steps and show success pane
       document.querySelectorAll('.form-step-pane').forEach((pane) => pane.classList.remove('active'));
@@ -462,7 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
         graduationYear: candidateYear,
         institution: candidateInst,
         academicSession: currentAdmissionAvailability?.academicSession || '2026/2027',
-        studyCentre: 'Goshen Central Campus, Abeokuta'
+        studyCentre: candidateCentre
       }).then((result) => {
         console.log('[DIMABIN Registry Service]: Application recorded in Firestore.', result);
         const statusEl = document.querySelector('#admission-success-pane .success-summary-row:last-child span:last-child');
