@@ -2797,3 +2797,569 @@ button, input, select, textarea {
   border-left-color: var(--gold);
 }
 
+/* ==========================================================================
+   EXPANDABLE NAVIGATION ACCORDIONS (ADMISSIONS & STUDENT DIRECTORY)
+   ========================================================================== */
+.nav-expandable-group {
+  margin-bottom: 0.25rem;
+}
+
+.nav-expandable-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.7rem 1.25rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  border-left: 4px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  user-select: none;
+  font-family: inherit;
+}
+
+.nav-expandable-header:hover {
+  background-color: rgba(18, 36, 82, 0.55);
+  color: var(--white);
+}
+
+.nav-expandable-header.open {
+  background-color: rgba(18, 36, 82, 0.85);
+  border-left-color: var(--gold);
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.nav-expandable-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.nav-expandable-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.nav-expandable-header.open .nav-expandable-chevron {
+  transform: rotate(180deg);
+  color: var(--gold);
+}
+
+.nav-sub-menu {
+  display: none;
+  background: rgba(10, 22, 51, 0.55);
+  padding: 0.35rem 0;
+  border-left: 2px solid rgba(245, 184, 0, 0.3);
+  margin-left: 1.25rem;
+  margin-bottom: 0.4rem;
+  border-radius: 0 0 var(--admin-radius-sm) 0;
+}
+
+.nav-sub-menu.open {
+  display: block;
+  animation: slideDownMenu 0.2s ease-out;
+}
+
+@keyframes slideDownMenu {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-sub-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0.5rem 1.15rem;
+  width: 100%;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+  font-family: inherit;
+}
+
+.nav-sub-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--white);
+  padding-left: 1.35rem;
+}
+
+.nav-sub-item.active {
+  background: rgba(31, 60, 130, 0.6);
+  color: var(--gold);
+  border-left-color: var(--gold);
+  font-weight: 700;
+}
+
+.nav-sub-divider {
+  padding: 0.5rem 1rem 0.25rem 1.15rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: rgba(245, 184, 0, 0.9);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 0.35rem;
+}
+
+.nav-sub-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--white);
+  line-height: 1.2;
+}
+
+.nav-sub-item.active .nav-sub-badge {
+  background: var(--gold);
+  color: var(--dark-navy);
+}
+
+.nav-centre-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.nav-centre-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.nav-centre-pin {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   CENTRE WORKSPACE BANNER & HEADER CONTROLS
+   ========================================================================== */
+.centre-workspace-banner {
+  background: #FFFFFF;
+  border: 1px solid var(--admin-border);
+  border-left: 5px solid var(--primary-blue);
+  border-radius: var(--admin-radius-md);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--admin-shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.centre-banner-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 650px;
+}
+
+.centre-banner-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.centre-meta-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #EFF6FF;
+  color: var(--primary-blue);
+  border: 1px solid #BFDBFE;
+}
+
+.centre-meta-pill-gold {
+  background: #FEF9E7;
+  color: #B45309;
+  border-color: rgba(245, 184, 0, 0.4);
+}
+
+.centre-banner-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--dark-navy);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.centre-banner-address {
+  font-size: 0.8125rem;
+  color: var(--admin-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.centre-banner-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.centre-quick-switch-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #F8FAFC;
+  border: 1px solid var(--admin-border);
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--admin-radius-sm);
+}
+
+.centre-quick-switch-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--admin-navy);
+  text-transform: uppercase;
+}
+
+.centre-quick-switch-select {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--dark-navy);
+  border: 1px solid var(--admin-border);
+  border-radius: 4px;
+  padding: 0.35rem 0.65rem;
+  background: #FFFFFF;
+  cursor: pointer;
+  outline: none;
+}
+
+.centre-quick-switch-select:focus {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 2px rgba(31, 60, 130, 0.15);
+}
+
+/* ==========================================================================
+   STUDENT DIRECTORY UI & BADGES
+   ========================================================================== */
+.student-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #EFF6FF;
+  border: 2px solid #BFDBFE;
+  color: var(--primary-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.badge-student-active {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+}
+
+.badge-student-graduated {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #93C5FD;
+}
+
+.badge-student-suspended {
+  background: #FEE2E2;
+  color: #B91C1C;
+  border: 1px solid #FCA5A5;
+}
+
+/* ==========================================================================
+   PRINTABLE STUDENT ID CARD PREVIEW
+   ========================================================================== */
+.id-card-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.student-id-card {
+  width: 380px;
+  background: linear-gradient(135deg, #122452 0%, #1F3C82 100%);
+  color: #FFFFFF;
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 10px 25px rgba(18, 36, 82, 0.25);
+  position: relative;
+  overflow: hidden;
+  border: 2px solid rgba(245, 184, 0, 0.5);
+}
+
+.student-id-card::after {
+  content: "";
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(245, 184, 0, 0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.id-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.id-card-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  background: #FFFFFF;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.id-card-inst-title {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #FFFFFF;
+  line-height: 1.2;
+}
+
+.id-card-inst-sub {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.id-card-body {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.id-card-photo {
+  width: 90px;
+  height: 110px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 2px solid var(--gold);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--dark-navy);
+  font-size: 1.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.id-card-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.id-card-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  line-height: 1.2;
+  margin-bottom: 0.15rem;
+}
+
+.id-card-matric {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+}
+
+.id-card-meta-line {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.3;
+}
+
+.id-card-meta-line strong {
+  color: #FFFFFF;
+}
+
+.id-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 0.75rem;
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.id-card-barcode {
+  font-family: monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   OFFICIAL ADMISSION LETTER PREVIEW
+   ========================================================================== */
+.admission-letter-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--admin-radius-md);
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  max-width: 680px;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+  color: #1E293B;
+  position: relative;
+}
+
+.admission-letter-header {
+  text-align: center;
+  border-bottom: 2px solid var(--primary-blue);
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.letter-crest {
+  width: 55px;
+  height: 55px;
+  margin: 0 auto 0.5rem;
+  display: block;
+}
+
+.letter-inst-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--primary-blue);
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.letter-inst-sub {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #B45309;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.letter-contact-line {
+  font-size: 0.72rem;
+  color: #64748B;
+  margin-top: 0.35rem;
+}
+
+.letter-ref-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  font-size: 0.8125rem;
+}
+
+.letter-subject {
+  font-size: 1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--dark-navy);
+  border-bottom: 1px solid #CBD5E1;
+  padding-bottom: 0.35rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+.letter-body {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #334155;
+  margin-bottom: 1.5rem;
+}
+
+.letter-candidate-info-box {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-left: 4px solid var(--gold);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  font-size: 0.8125rem;
+}
+
+.letter-signature-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #E2E8F0;
+}
+
+.letter-signature-block {
+  text-align: center;
+}
+
+.letter-stamp {
+  width: 80px;
+  height: 80px;
+  border: 2px dashed #16A34A;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #16A34A;
+  text-transform: uppercase;
+  transform: rotate(-10deg);
+  margin: 0 auto;
+}
+

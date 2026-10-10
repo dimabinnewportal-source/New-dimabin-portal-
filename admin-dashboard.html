@@ -70,62 +70,81 @@
           </button>
         </div>
 
-        <!-- CATEGORY: ADMISSIONS -->
-        <div class="nav-category">
+        <!-- CATEGORY: ADMISSIONS (EXPANDABLE STUDY CENTRE MENU) -->
+        <div class="nav-category" id="nav-category-admissions">
           <div class="nav-category-title">ADMISSIONS</div>
-          <button type="button" class="nav-item" data-section="admission-control">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 14 14"></polyline>
-            </svg>
-            <span>Admission Control</span>
-          </button>
-          <button type="button" class="nav-item" data-section="applications">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-            <span>Applications</span>
-          </button>
-          <button type="button" class="nav-item" data-section="pending-applications">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            <span>Pending Applications</span>
-          </button>
-          <button type="button" class="nav-item" data-section="approved-admissions">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-            <span>Approved Admissions</span>
-          </button>
-          <button type="button" class="nav-item" data-section="rejected-applications">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="15" y1="9" x2="9" y2="15"></line>
-              <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
-            <span>Rejected Applications</span>
-          </button>
+          <div class="nav-expandable-group" id="nav-group-admissions">
+            <button type="button" class="nav-expandable-header" id="nav-header-admissions" aria-expanded="true" aria-controls="nav-sub-admissions">
+              <div class="nav-expandable-header-left">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <span>Admissions</span>
+              </div>
+              <span class="nav-expandable-chevron">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </span>
+            </button>
+            <div class="nav-sub-menu open" id="nav-sub-admissions">
+              <button type="button" class="nav-sub-item" data-section="admission-control">
+                <span>⚙️ Admission Availability</span>
+              </button>
+              <button type="button" class="nav-sub-item" data-section="applications" data-centre-filter="all">
+                <span>🌐 All Applications (All Centres)</span>
+              </button>
+              <button type="button" class="nav-sub-item" data-section="pending-applications">
+                <span>⏳ Pending Applications</span>
+              </button>
+              <button type="button" class="nav-sub-item" data-section="approved-admissions">
+                <span>🎓 Approved Admissions</span>
+              </button>
+              <button type="button" class="nav-sub-item" data-section="rejected-applications">
+                <span>🚫 Rejected Applications</span>
+              </button>
+              <div class="nav-sub-divider">OFFICIAL STUDY CENTRES</div>
+              <div class="nav-dynamic-centres" id="nav-admissions-centres-list">
+                <div style="padding: 0.4rem 1rem; font-size: 0.72rem; color: rgba(255,255,255,0.5);">Loading official centres...</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- CATEGORY: STUDENTS -->
-        <div class="nav-category">
+        <!-- CATEGORY: STUDENTS (EXPANDABLE STUDY CENTRE MENU) -->
+        <div class="nav-category" id="nav-category-students">
           <div class="nav-category-title">STUDENTS</div>
-          <button type="button" class="nav-item" data-section="student-directory">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-            <span>Student Directory</span>
-          </button>
+          <div class="nav-expandable-group" id="nav-group-students">
+            <button type="button" class="nav-expandable-header" id="nav-header-students" aria-expanded="true" aria-controls="nav-sub-students">
+              <div class="nav-expandable-header-left">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span>Student Directory</span>
+              </div>
+              <span class="nav-expandable-chevron">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </span>
+            </button>
+            <div class="nav-sub-menu open" id="nav-sub-students">
+              <button type="button" class="nav-sub-item" data-section="student-directory" data-centre-id="all">
+                <span>👥 All Students (All Centres)</span>
+              </button>
+              <div class="nav-sub-divider">OFFICIAL STUDY CENTRES</div>
+              <div class="nav-dynamic-centres" id="nav-students-centres-list">
+                <div style="padding: 0.4rem 1rem; font-size: 0.72rem; color: rgba(255,255,255,0.5);">Loading official centres...</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- CATEGORY: ACADEMIC MANAGEMENT -->
@@ -1282,17 +1301,280 @@
           </div>
         </section>
 
-        <!-- SECTION 6: STUDENT DIRECTORY -->
-        <section class="admin-section" id="section-student-directory" aria-label="Student Directory">
-          <div class="section-heading-wrap">
-            <h2 class="section-main-title">Student Directory</h2>
-            <p class="section-sub-title">Comprehensive database of active, matriculated, and graduated students.</p>
+        <!-- SECTION 5B: CENTRE ADMISSIONS WORKSPACE (STUDY-CENTRE SCOPED) -->
+        <section class="admin-section" id="section-centre-admissions" aria-label="Study Centre Admissions Workspace">
+          <!-- Centre Context Banner -->
+          <div class="centre-workspace-banner" id="centre-admissions-banner">
+            <div class="centre-banner-info">
+              <div class="centre-banner-meta-row">
+                <span class="centre-meta-pill" id="centre-adm-code-badge">DIM-CTR-ABK01</span>
+                <span class="faculty-badge badge-active" id="centre-adm-status-badge">ACTIVE CENTRE</span>
+                <span class="centre-meta-pill centre-meta-pill-gold">ADMISSIONS WORKSPACE</span>
+              </div>
+              <h2 class="centre-banner-title" id="centre-adm-name-heading">Goshen Central Campus, Abeokuta</h2>
+              <div class="centre-banner-address">
+                <span>📍 <span id="centre-adm-address-text">Goshen 13, Kusimo Street, Abeokuta</span></span>
+                <span>•</span>
+                <span>📞 <span id="centre-adm-phone-text">+234 803 123 4567</span></span>
+                <span>•</span>
+                <span>✉️ <span id="centre-adm-email-text">admissions@dimabin.org</span></span>
+              </div>
+            </div>
+
+            <div class="centre-banner-controls">
+              <div class="centre-quick-switch-box">
+                <label for="centre-adm-quick-switch" class="centre-quick-switch-label">Switch Centre:</label>
+                <select class="centre-quick-switch-select" id="centre-adm-quick-switch">
+                  <!-- Dynamically populated -->
+                </select>
+              </div>
+              <button type="button" class="btn-card-action" id="btn-goto-centre-students-from-adm" style="background: #EFF6FF; color: var(--primary-blue); border-color: #BFDBFE;">
+                👥 View Centre Students →
+              </button>
+            </div>
           </div>
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">👥</div>
-            <h3 class="placeholder-title">Student Directory Database</h3>
-            <p class="placeholder-desc">Browse students by study centre, programme (Dipl.Th., Certificate, Cohorts), and academic standing.</p>
-            <span class="placeholder-tag">Directory Ready</span>
+
+          <!-- Centre Statistics Cards Grid -->
+          <div class="stats-grid" style="margin-bottom: 1.5rem;">
+            <div class="stat-card">
+              <div class="stat-icon-wrap" style="background: rgba(31, 60, 130, 0.1); color: var(--primary-blue);">📋</div>
+              <div class="stat-info">
+                <div class="stat-label">Total Applications</div>
+                <div class="stat-value" id="centre-adm-stat-total">0</div>
+                <div class="stat-change" style="color: var(--primary-blue);">This Centre Only</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon-wrap" style="background: rgba(245, 184, 0, 0.15); color: #B45309;">⏳</div>
+              <div class="stat-info">
+                <div class="stat-label">Pending Review</div>
+                <div class="stat-value" id="centre-adm-stat-pending" style="color: #B45309;">0</div>
+                <div class="stat-change" style="color: #B45309;">Awaiting Board Clearance</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon-wrap" style="background: rgba(22, 163, 74, 0.1); color: #16A34A;">🎓</div>
+              <div class="stat-info">
+                <div class="stat-label">Approved Admissions</div>
+                <div class="stat-value" id="centre-adm-stat-approved" style="color: #16A34A;">0</div>
+                <div class="stat-change" style="color: #16A34A;">Cleared for Matriculation</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon-wrap" style="background: rgba(220, 38, 38, 0.1); color: #DC2626;">🚫</div>
+              <div class="stat-info">
+                <div class="stat-label">Declined Submissions</div>
+                <div class="stat-value" id="centre-adm-stat-rejected" style="color: #DC2626;">0</div>
+                <div class="stat-change" style="color: #64748B;">Academic or Prerequisite Hold</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Applications Content Card with Filter Subtabs -->
+          <div class="content-card">
+            <!-- Subtab Navigation -->
+            <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--admin-border); padding: 0.75rem 1.25rem; flex-wrap: wrap; background: #F8FAFC;">
+              <button type="button" class="btn-card-action centre-adm-tab active" data-tab-status="all" style="font-weight: 700; border-radius: 6px;">
+                All Applications (<span id="centre-tab-count-all">0</span>)
+              </button>
+              <button type="button" class="btn-card-action centre-adm-tab" data-tab-status="pending" style="font-weight: 700; border-radius: 6px;">
+                ⏳ Pending Review (<span id="centre-tab-count-pending">0</span>)
+              </button>
+              <button type="button" class="btn-card-action centre-adm-tab" data-tab-status="approved" style="font-weight: 700; border-radius: 6px;">
+                🎓 Approved (<span id="centre-tab-count-approved">0</span>)
+              </button>
+              <button type="button" class="btn-card-action centre-adm-tab" data-tab-status="rejected" style="font-weight: 700; border-radius: 6px;">
+                🚫 Declined (<span id="centre-tab-count-rejected">0</span>)
+              </button>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="table-toolbar">
+              <div class="table-toolbar-left">
+                <div class="table-search-box">
+                  <span class="table-search-icon">🔍</span>
+                  <input type="text" class="table-search-input" id="centre-adm-search-input" placeholder="Search applicant name, email, phone, ID...">
+                </div>
+                <select class="table-filter-select" id="centre-adm-filter-programme">
+                  <option value="all">All Academic Programmes</option>
+                  <option value="Diploma in Theology (Dipl.Th.)">Diploma in Theology (Dipl.Th.)</option>
+                  <option value="Certificate in Christian Ministry">Certificate in Christian Ministry</option>
+                  <option value="Christian Leadership Practicum">Christian Leadership Practicum</option>
+                </select>
+              </div>
+              <div class="table-toolbar-right">
+                <button type="button" class="btn-card-action" id="btn-refresh-centre-adm">
+                  ↻ Refresh
+                </button>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Candidate Profile</th>
+                    <th>Application Ref</th>
+                    <th>Programme</th>
+                    <th>Submission Date</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Admission Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="centre-adm-table-tbody">
+                  <tr>
+                    <td colspan="6">
+                      <div class="empty-state-box">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-state-text">No admission applications found for this centre.</div>
+                        <div class="empty-state-sub">New submissions selecting this study centre will appear here automatically.</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 6: STUDENT DIRECTORY (INSTITUTION-WIDE & CENTRE-SCOPED) -->
+        <section class="admin-section" id="section-student-directory" aria-label="Student Directory">
+          <!-- Student Directory Banner -->
+          <div class="centre-workspace-banner" id="student-directory-banner">
+            <div class="centre-banner-info">
+              <div class="centre-banner-meta-row">
+                <span class="centre-meta-pill" id="student-dir-scope-badge">INSTITUTION-WIDE</span>
+                <span class="faculty-badge badge-active" id="student-dir-status-badge">LIVE FIRESTORE</span>
+                <span class="centre-meta-pill centre-meta-pill-gold">STUDENT REGISTRY</span>
+              </div>
+              <h2 class="centre-banner-title" id="student-dir-title-heading">Official Student Directory</h2>
+              <div class="centre-banner-address">
+                <span>📍 <span id="student-dir-centre-subtext">All Official DIMABIN Study Centres</span></span>
+                <span>•</span>
+                <span>Academic Session: <strong id="student-dir-session-text">2026/2027</strong></span>
+              </div>
+            </div>
+
+            <div class="centre-banner-controls">
+              <div class="centre-quick-switch-box">
+                <label for="student-dir-centre-switch" class="centre-quick-switch-label">Study Centre:</label>
+                <select class="centre-quick-switch-select" id="student-dir-centre-switch">
+                  <option value="all">All Official Study Centres</option>
+                  <!-- Dynamically populated from Firestore official centres -->
+                </select>
+              </div>
+              <button type="button" class="btn-card-action" id="btn-open-add-student-modal" style="background: var(--gold); color: var(--dark-navy); font-weight: 800; border-color: var(--gold);">
+                ➕ Add Student
+              </button>
+            </div>
+          </div>
+
+          <!-- Student Directory Statistics Cards Grid -->
+          <div class="stats-grid" style="margin-bottom: 1.5rem;">
+            <div class="stat-card">
+              <div class="stat-icon-wrap" style="background: rgba(31, 60, 130, 0.1); color: var(--primary-blue);">👥</div>
+              <div class="stat-info">
+                <div class="stat-label">Total Enrolled Students</div>
+                <div class="stat-value" id="student-stat-total">0</div>
+                <div class="stat-change" style="color: var(--primary-blue);">Official Registry</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon-wrap" style="background: rgba(22, 163, 74, 0.1); color: #16A34A;">●</div>
+              <div class="stat-info">
+                <div class="stat-label">Active Academic Standing</div>
+                <div class="stat-value" id="student-stat-active" style="color: #16A34A;">0</div>
+                <div class="stat-change" style="color: #16A34A;">Currently In Session</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon-wrap" style="background: rgba(37, 99, 235, 0.1); color: #2563EB;">🎓</div>
+              <div class="stat-info">
+                <div class="stat-label">Graduated Alumni</div>
+                <div class="stat-value" id="student-stat-graduated" style="color: #2563EB;">0</div>
+                <div class="stat-change" style="color: #2563EB;">Completed Programme</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon-wrap" style="background: rgba(220, 38, 38, 0.1); color: #DC2626;">⏸</div>
+              <div class="stat-info">
+                <div class="stat-label">Suspended / Inactive</div>
+                <div class="stat-value" id="student-stat-suspended" style="color: #DC2626;">0</div>
+                <div class="stat-change" style="color: #64748B;">Leave of Absence / Deferred</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Student Directory Table Card -->
+          <div class="content-card">
+            <!-- Toolbar -->
+            <div class="table-toolbar">
+              <div class="table-toolbar-left">
+                <div class="table-search-box">
+                  <span class="table-search-icon">🔍</span>
+                  <input type="text" class="table-search-input" id="search-students-input" placeholder="Search by name, matric no, email...">
+                </div>
+                <select class="table-filter-select" id="filter-students-status">
+                  <option value="all">All Academic Standings</option>
+                  <option value="active">Active Only</option>
+                  <option value="graduated">Graduated</option>
+                  <option value="inactive">Inactive / Suspended</option>
+                </select>
+                <select class="table-filter-select" id="filter-students-programme">
+                  <option value="all">All Programmes</option>
+                  <option value="Diploma in Theology (Dipl.Th.)">Diploma in Theology</option>
+                  <option value="Certificate in Christian Ministry">Certificate in Ministry</option>
+                  <option value="Christian Leadership Practicum">Christian Leadership</option>
+                </select>
+                <select class="table-filter-select" id="filter-students-level">
+                  <option value="all">All Levels</option>
+                  <option value="Diploma I">Diploma I</option>
+                  <option value="Diploma II">Diploma II</option>
+                  <option value="Certificate">Certificate</option>
+                  <option value="Executive Cohort">Executive Cohort</option>
+                </select>
+              </div>
+              <div class="table-toolbar-right">
+                <button type="button" class="btn-card-action" id="btn-refresh-students">
+                  ↻ Refresh
+                </button>
+              </div>
+            </div>
+
+            <!-- Responsive Table -->
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Student Profile</th>
+                    <th>Matriculation No</th>
+                    <th>Programme &amp; Level</th>
+                    <th>Study Centre</th>
+                    <th>Session</th>
+                    <th>Standing</th>
+                    <th style="text-align: right;">Record Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-students-tbody">
+                  <tr>
+                    <td colspan="7">
+                      <div class="empty-state-box">
+                        <div class="empty-icon">👥</div>
+                        <div class="empty-state-text">No student records found in registry.</div>
+                        <div class="empty-state-sub">Approved admissions matriculate into this directory automatically.</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -3773,6 +4055,369 @@
         <button type="button" class="btn-admin-cancel" id="btn-cancel-toggle-centre-modal">Cancel</button>
         <button type="button" class="btn-admin-primary" id="btn-confirm-toggle-centre-status" style="background: #DC2626; border-color: #DC2626;">
           Confirm Status Change
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       STUDENT DIRECTORY MODALS (ADD, VIEW DOSSIER, ID CARD PREVIEW)
+       ====================================================================== -->
+  <!-- Student Modal 1: Add New Student / Direct Matriculation -->
+  <div class="admin-modal-overlay" id="modal-add-student" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-add-student-title" style="display: none;">
+    <div class="admin-modal-card" style="max-width: 640px;">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modal-add-student-title">Matriculate / Enroll New Student</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-add-student-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <form id="form-add-student" novalidate>
+          <div class="admin-form-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+            <div class="form-group-full" style="grid-column: 1 / -1;">
+              <label class="admin-form-label" for="add-student-fullname">Candidate Full Name *</label>
+              <input type="text" class="admin-form-input" id="add-student-fullname" placeholder="e.g. John Oluwaseun Emmanuel" required>
+            </div>
+
+            <div>
+              <label class="admin-form-label" for="add-student-email">Email Address *</label>
+              <input type="email" class="admin-form-input" id="add-student-email" placeholder="student@dimabin.org" required>
+            </div>
+
+            <div>
+              <label class="admin-form-label" for="add-student-phone">Contact Phone *</label>
+              <input type="tel" class="admin-form-input" id="add-student-phone" placeholder="+234 803 123 4567" required>
+            </div>
+
+            <div class="form-group-full" style="grid-column: 1 / -1;">
+              <label class="admin-form-label" for="add-student-centre">Study Centre Base *</label>
+              <select class="admin-form-input" id="add-student-centre" required>
+                <!-- Populated dynamically with active official centres from Firestore -->
+              </select>
+            </div>
+
+            <div>
+              <label class="admin-form-label" for="add-student-programme">Academic Programme *</label>
+              <select class="admin-form-input" id="add-student-programme" required>
+                <option value="Diploma in Theology (Dipl.Th.)">Diploma in Theology (Dipl.Th.)</option>
+                <option value="Certificate in Christian Ministry">Certificate in Christian Ministry</option>
+                <option value="Christian Leadership Practicum">Christian Leadership Practicum</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="admin-form-label" for="add-student-level">Academic Level *</label>
+              <select class="admin-form-input" id="add-student-level" required>
+                <option value="Diploma I">Diploma I</option>
+                <option value="Diploma II">Diploma II</option>
+                <option value="Certificate">Certificate</option>
+                <option value="Executive Cohort">Executive Cohort</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="admin-form-label" for="add-student-session">Academic Session *</label>
+              <input type="text" class="admin-form-input" id="add-student-session" value="2026/2027" required>
+            </div>
+
+            <div>
+              <label class="admin-form-label" for="add-student-matric">Matriculation Number (Optional)</label>
+              <input type="text" class="admin-form-input" id="add-student-matric" placeholder="Auto-generated if blank">
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-add-student">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-add-student">
+          <span class="btn-spinner" id="add-student-spinner" style="display: none;">⏳</span>
+          <span id="add-student-btn-text">Matriculate Student</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Modal 2: View Student Dossier -->
+  <div class="admin-modal-overlay" id="modal-view-student-dossier" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-view-student-title" style="display: none;">
+    <div class="admin-modal-card" style="max-width: 680px;">
+      <div class="admin-modal-header" style="background: var(--dark-navy);">
+        <h3 class="admin-modal-title" id="modal-view-student-title" style="color: #FFFFFF;">Student Registry Dossier</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-view-student-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--admin-border); padding-bottom: 1rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div class="student-avatar" style="width: 52px; height: 52px; font-size: 1.25rem;" id="dossier-student-avatar">ST</div>
+            <div>
+              <h4 style="font-size: 1.2rem; font-weight: 800; color: var(--dark-navy); margin: 0 0 0.2rem 0;" id="dossier-student-fullname">Student Name</h4>
+              <div style="font-size: 0.8125rem; font-weight: 700; color: var(--primary-blue);" id="dossier-student-matric">DIMABIN/STU/2026/001</div>
+            </div>
+          </div>
+          <div>
+            <span class="faculty-badge badge-active" id="dossier-student-status-badge">ACTIVE</span>
+          </div>
+        </div>
+
+        <div class="lec-profile-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Programme of Study</div>
+            <div class="lec-profile-field-value" id="dossier-student-programme">Diploma in Theology</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Current Academic Level</div>
+            <div class="lec-profile-field-value" id="dossier-student-level">Diploma I</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Official Study Centre Base</div>
+            <div class="lec-profile-field-value" id="dossier-student-centre">Goshen Central Campus, Abeokuta</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Academic Session</div>
+            <div class="lec-profile-field-value" id="dossier-student-session">2026/2027</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Email Address</div>
+            <div class="lec-profile-field-value" id="dossier-student-email">student@dimabin.org</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Phone Number</div>
+            <div class="lec-profile-field-value" id="dossier-student-phone">+234 803 123 4567</div>
+          </div>
+        </div>
+
+        <div class="lec-auth-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          <div style="flex: 1;">
+            <div style="font-weight: 700; color: var(--dark-navy); margin-bottom: 0.2rem;">Institutional Identity &amp; Portal Status</div>
+            <p style="color: var(--admin-text-main); font-size: 0.78rem; line-height: 1.45; margin: 0;">
+              This matriculated student is eligible to sign into the Student Portal using their verified matriculation details. All results and course registers are linked to their primary study centre.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-close-view-student">Close</button>
+        <button type="button" class="btn-card-action" id="btn-open-idcard-from-dossier" style="background: #FEF9E7; color: #B45309; border-color: rgba(245, 184, 0, 0.4); font-weight: 700;">
+          🪪 View ID Card
+        </button>
+        <button type="button" class="btn-admin-primary" id="btn-toggle-status-from-dossier">
+          Toggle Standing
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Modal 3: Printable Digital Student ID Card -->
+  <div class="admin-modal-overlay" id="modal-view-student-id-card" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-id-card-title" style="display: none;">
+    <div class="admin-modal-card" style="max-width: 500px;">
+      <div class="admin-modal-header" style="background: var(--dark-navy);">
+        <h3 class="admin-modal-title" id="modal-id-card-title" style="color: #FFFFFF;">Official Student Identity Card</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-id-card-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body" style="background: #F8FAFC;">
+        <!-- Card Container -->
+        <div class="id-card-wrapper">
+          <div class="student-id-card" id="printable-student-id-card">
+            <!-- Header -->
+            <div class="id-card-header">
+              <img src="assets/images/dimabin-logo.png" alt="DIMABIN Seal" class="id-card-logo">
+              <div>
+                <div class="id-card-inst-title">DIVINE MANDATE BIBLE INSTITUTE</div>
+                <div class="id-card-inst-sub">STUDENT IDENTITY CARD · COMMAND</div>
+              </div>
+            </div>
+
+            <!-- Body -->
+            <div class="id-card-body">
+              <div class="id-card-photo" id="idcard-photo-monogram">
+                ST
+              </div>
+              <div class="id-card-details">
+                <div class="id-card-name" id="idcard-name-text">Oluwaseun Adebayo</div>
+                <div class="id-card-matric" id="idcard-matric-text">DIMABIN/STU/2026/001</div>
+                <div class="id-card-meta-line">Programme: <strong id="idcard-programme-text">Diploma in Theology</strong></div>
+                <div class="id-card-meta-line">Level: <strong id="idcard-level-text">Diploma I</strong></div>
+                <div class="id-card-meta-line">Centre: <strong id="idcard-centre-text">Goshen Central Campus</strong></div>
+                <div class="id-card-meta-line">Session: <strong id="idcard-session-text">2026/2027</strong></div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="id-card-footer">
+              <div class="id-card-barcode" id="idcard-barcode-text">*DIMABIN-STU-2026*</div>
+              <div style="font-weight: 700; color: var(--gold);">AUTHORISED BEARER</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-close-id-card">Close</button>
+        <button type="button" class="btn-admin-primary" id="btn-print-id-card">
+          🖨️ Print ID Card
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Modal 1: View Application Dossier -->
+  <div class="admin-modal-overlay" id="modal-view-application-dossier" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-app-dossier-title" style="display: none;">
+    <div class="admin-modal-card" style="max-width: 700px;">
+      <div class="admin-modal-header" style="background: var(--dark-navy);">
+        <h3 class="admin-modal-title" id="modal-app-dossier-title" style="color: #FFFFFF;">Admission Candidate Dossier</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-app-dossier-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--admin-border); padding-bottom: 1rem; margin-bottom: 1.25rem;">
+          <div>
+            <span class="session-strip-badge" style="background: #EFF6FF; color: var(--primary-blue); font-weight: 700;" id="app-dossier-id-badge">DIMABIN/APP/2026/1001</span>
+            <h4 style="font-size: 1.25rem; font-weight: 800; color: var(--dark-navy); margin: 0.25rem 0;" id="app-dossier-name">Candidate Name</h4>
+            <div style="font-size: 0.8125rem; color: var(--admin-text-muted);" id="app-dossier-contact">email@example.com · +234 800 000 0000</div>
+          </div>
+          <span class="faculty-badge badge-active" id="app-dossier-status-badge">PENDING</span>
+        </div>
+
+        <div class="lec-profile-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Intended Programme</div>
+            <div class="lec-profile-field-value" id="app-dossier-programme">Diploma in Theology</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Assigned Official Study Centre</div>
+            <div class="lec-profile-field-value" id="app-dossier-centre">Goshen Central Campus, Abeokuta</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Academic Intake Session</div>
+            <div class="lec-profile-field-value" id="app-dossier-session">2026/2027</div>
+          </div>
+          <div class="lec-profile-field">
+            <div class="lec-profile-field-label">Application Submission Date</div>
+            <div class="lec-profile-field-value" id="app-dossier-date">-</div>
+          </div>
+          <div class="lec-profile-field" style="grid-column: 1 / -1;">
+            <div class="lec-profile-field-label">Registry Committee Status &amp; Notes</div>
+            <div class="lec-profile-field-value" id="app-dossier-reason" style="font-weight: 500; color: var(--admin-text-main);">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-close-app-dossier">Close</button>
+        <button type="button" class="btn-card-action" id="btn-generate-letter-from-dossier" style="background: #EFF6FF; color: var(--primary-blue); border-color: #BFDBFE; font-weight: 700;">
+          📜 Admission Letter
+        </button>
+        <button type="button" class="btn-table-action" id="btn-reject-from-dossier" style="color: #DC2626; font-weight: 700; padding: 0.6rem 1rem;">
+          ✕ Reject
+        </button>
+        <button type="button" class="btn-admin-primary" id="btn-approve-from-dossier" style="background: #16A34A; border-color: #16A34A;">
+          ✓ Approve Admission
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Modal 2: Official Printable Admission Letter -->
+  <div class="admin-modal-overlay" id="modal-view-admission-letter" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-letter-title" style="display: none;">
+    <div class="admin-modal-card" style="max-width: 740px;">
+      <div class="admin-modal-header" style="background: var(--dark-navy);">
+        <h3 class="admin-modal-title" id="modal-letter-title" style="color: #FFFFFF;">Official Provisional Admission Letter</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-letter-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="admin-modal-body" style="background: #F8FAFC;">
+        <div class="admission-letter-card" id="printable-admission-letter">
+          <div class="admission-letter-header">
+            <img src="assets/images/dimabin-logo.png" alt="DIMABIN Seal" class="letter-crest">
+            <h3 class="letter-inst-title">DIVINE MANDATE BIBLE INSTITUTE</h3>
+            <div class="letter-inst-sub">Office of the Registrar &amp; Academic Board</div>
+            <div class="letter-contact-line">National Headquarters: Goshen 13, Kusimo Street, Abeokuta · admissions@dimabin.org</div>
+          </div>
+
+          <div class="letter-ref-row">
+            <div>
+              <strong>Ref:</strong> <span id="letter-ref-id">DIMABIN/ADM/2026/APP</span>
+            </div>
+            <div>
+              <strong>Date:</strong> <span id="letter-current-date">October 10, 2026</span>
+            </div>
+          </div>
+
+          <div class="letter-subject">
+            OFFER OF PROVISIONAL ADMISSION (2026/2027 ACADEMIC SESSION)
+          </div>
+
+          <div class="letter-body">
+            <p>Dear <strong id="letter-candidate-name">Candidate Name</strong>,</p>
+
+            <p>
+              Following the evaluation of your application credentials and ministerial interview by the Academic Admissions Board of Divine Mandate Bible Institute, we are pleased to inform you that you have been offered <strong>Provisional Admission</strong> into the following program:
+            </p>
+
+            <div class="letter-candidate-info-box">
+              <div style="margin-bottom: 0.35rem;"><strong>Academic Programme:</strong> <span id="letter-programme-name">Diploma in Theology (Dipl.Th.)</span></div>
+              <div style="margin-bottom: 0.35rem;"><strong>Official Study Centre:</strong> <span id="letter-centre-name">Goshen Central Campus, Abeokuta</span></div>
+              <div><strong>Academic Session:</strong> <span id="letter-session-val">2026/2027</span></div>
+            </div>
+
+            <p>
+              This offer is subject to your acceptance of the DIMABIN Statement of Faith, observance of institutional student regulations, and completion of matriculation registration at your designated study centre.
+            </p>
+
+            <p style="margin-top: 1rem;">
+              Congratulations on this significant step in your theological calling.
+            </p>
+          </div>
+
+          <div class="letter-signature-row">
+            <div class="letter-signature-block">
+              <div style="font-family: serif; font-size: 1.15rem; font-style: italic; color: var(--primary-blue); margin-bottom: 4px;">Rev. Dr. E. A. Olubunmi</div>
+              <div style="font-size: 0.75rem; font-weight: 700; color: var(--dark-navy);">Registrar &amp; Secretary to Academic Board</div>
+              <div style="font-size: 0.7rem; color: var(--admin-text-muted);">Divine Mandate Bible Institute</div>
+            </div>
+
+            <div class="letter-stamp">
+              OFFICIALLY<br>VERIFIED<br>REGISTRY
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-close-letter">Close</button>
+        <button type="button" class="btn-admin-primary" id="btn-print-admission-letter">
+          🖨️ Print Admission Letter
         </button>
       </div>
     </div>

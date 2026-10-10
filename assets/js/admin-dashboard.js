@@ -35,6 +35,9 @@ import {
   deleteCourseAllocation,
   subscribeAdmissions,
   updateAdmissionStatus,
+  subscribeStudents,
+  createStudent,
+  toggleStudentStatus,
   subscribeLecturers,
   createLecturer,
   updateLecturer,
@@ -114,7 +117,7 @@ export function navigateToSection(sectionId) {
   }
 
   // 3. Update sidebar active item
-  const allNavItems = document.querySelectorAll(".nav-item");
+  const allNavItems = document.querySelectorAll(".nav-item, .nav-sub-item");
   allNavItems.forEach((btn) => {
     if (btn.getAttribute("data-section") === sectionId) {
       btn.classList.add("active");
@@ -126,10 +129,19 @@ export function navigateToSection(sectionId) {
   // 4. Update Header Breadcrumb/Title
   const headerSectionName = document.getElementById("header-current-section");
   if (headerSectionName) {
-    const formattedTitle = sectionId
-      .split("-")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
+    let formattedTitle = "";
+    if (sectionId === "centre-admissions") {
+      formattedTitle = "Study Centre Admissions Workspace";
+    } else if (sectionId === "student-directory") {
+      formattedTitle = "Official Student Directory";
+    } else if (sectionId === "study-centres") {
+      formattedTitle = "Official Study Centres";
+    } else {
+      formattedTitle = sectionId
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    }
     headerSectionName.textContent = formattedTitle;
   }
 
@@ -218,7 +230,7 @@ function initNotificationTabs() {
  */
 export function initDashboard() {
   // 1. Sidebar Nav Click Handlers
-  const navItems = document.querySelectorAll(".nav-item[data-section]");
+  const navItems = document.querySelectorAll(".nav-item[data-section], .nav-sub-item[data-section]");
   navItems.forEach((item) => {
     item.addEventListener("click", (e) => {
       e.preventDefault();
@@ -326,6 +338,12 @@ export function initDashboard() {
 
   // 12. STUDY CENTRES MANAGEMENT MODULE CONTROLLER (Authoritative Single Source of Truth)
   initStudyCentresManagement();
+
+  // 13. STUDY CENTRE EXPANDABLE NAVIGATION & CENTRE-SPECIFIC WORKSPACES
+  initStudyCentreNavAndWorkspaces();
+
+  // 14. STUDENT DIRECTORY MANAGEMENT CONTROLLER
+  initStudentDirectoryManagement();
 }
 
 /**
@@ -3737,6 +3755,37 @@ export function populateStudyCentreSelects(centresList) {
   updateSelect(document.getElementById("quick-lecturer-centre"), activeCentres, false);
   updateSelect(document.getElementById("course-form-centre"), activeCentres, false);
   updateSelect(document.getElementById("assign-modal-centre-select"), activeCentres, false);
+  updateSelect(document.getElementById("add-student-centre"), activeCentres, false);
+
+  // ID-based dropdown switchers for Study Centre Workspaces
+  const updateIdSelect = (selectEl, options, includeAllOption = false, allLabel = "All Study Centres") => {
+    if (!selectEl) return;
+    const currentVal = selectEl.value;
+    selectEl.innerHTML = "";
+
+    if (includeAllOption) {
+      const allOpt = document.createElement("option");
+      allOpt.value = "all";
+      allOpt.textContent = allLabel;
+      selectEl.appendChild(allOpt);
+    }
+
+    options.forEach((centre) => {
+      const opt = document.createElement("option");
+      opt.value = centre.id || centre.centreId;
+      opt.textContent = `${centre.centreName} (${centre.centreCode || "CTR"})`;
+      selectEl.appendChild(opt);
+    });
+
+    if (currentVal && Array.from(selectEl.options).some((o) => o.value === currentVal)) {
+      selectEl.value = currentVal;
+    } else if (includeAllOption) {
+      selectEl.value = "all";
+    }
+  };
+
+  updateIdSelect(document.getElementById("student-dir-centre-switch"), activeCentres, true, "All Official Study Centres");
+  updateIdSelect(document.getElementById("centre-adm-quick-switch"), activeCentres, false);
 }
 
 /**
@@ -4407,6 +4456,1026 @@ export function initStudyCentresManagement() {
   });
 }
 
+/**
+ * Helper: Check if a record (application, student, lecturer) belongs to a target study centre.
+ * Uses the centre's stable Firestore ID as the primary authority,
+ * with normalized code/name matching fallback for legacy data.
+ */
+export function recordMatchesCentre(record, targetCentre) {
+  if (!record || !targetCentre) return false;
+  const targetId = targetCentre.id || targetCentre.centreId;
+  const targetCode = (targetCentre.centreCode || "").trim().toLowerCase();
+  const targetName = (targetCentre.centreName || "").trim().toLowerCase();
+
+  // 1. Stable Firestore ID match (Primary Authority)
+  if (record.centreId && record.centreId === targetId) return true;
+  if (record.studyCentreId && record.studyCentreId === targetId) return true;
+
+  // 2. Exact or normalized matching on code or name (Fallback for legacy data)
+  if (record.centreCode && targetCode && record.centreCode.trim().toLowerCase() === targetCode) return true;
+  if (record.studyCentre) {
+    const sc = record.studyCentre.trim().toLowerCase();
+    if (sc === targetName) return true;
+    if (targetCode && sc.includes(targetCode)) return true;
+    const cleanSC = sc.replace(/study\s+centre|campus|centre|learning\s+hub/g, "").trim();
+    const cleanTarget = targetName.replace(/study\s+centre|campus|centre|learning\s+hub/g, "").trim();
+    if (cleanSC && cleanTarget && (cleanSC.includes(cleanTarget) || cleanTarget.includes(cleanSC))) return true;
+  }
+  return false;
+}
+
+/**
+ * =========================================================================
+ * 13. STUDY CENTRE EXPANDABLE NAVIGATION & CENTRE-SPECIFIC WORKSPACES
+ * Dynamically builds study-centre sub-menus for Admissions and Students.
+ * Manages Centre Admissions Workspace with live Firestore data filtering.
+ * =========================================================================
+ */
+export function initStudyCentreNavAndWorkspaces() {
+  console.log("[DIMABIN Dashboard] Initializing Study Centre Navigation & Centre Workspaces...");
+
+  let officialCentres = [];
+  let allApplications = [];
+  let allStudents = [];
+  let currentAdmissionsCentre = null;
+  let centreAdmFilter = {
+    tab: "all",
+    search: "",
+    programme: "all"
+  };
+
+  // 1. Accordion Toggling for Admissions & Students in Sidebar
+  const admHeader = document.getElementById("nav-header-admissions");
+  const admMenu = document.getElementById("nav-sub-admissions");
+  if (admHeader && admMenu) {
+    admHeader.addEventListener("click", (e) => {
+      e.preventDefault();
+      const isOpen = admMenu.classList.toggle("open");
+      admHeader.classList.toggle("open", isOpen);
+      admHeader.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+  }
+
+  const stuHeader = document.getElementById("nav-header-students");
+  const stuMenu = document.getElementById("nav-sub-students");
+  if (stuHeader && stuMenu) {
+    stuHeader.addEventListener("click", (e) => {
+      e.preventDefault();
+      const isOpen = stuMenu.classList.toggle("open");
+      stuHeader.classList.toggle("open", isOpen);
+      stuHeader.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+  }
+
+  // 2. Render Dynamic Centre Submenus in Sidebar
+  const renderSidebarCentres = () => {
+    const admCentresContainer = document.getElementById("nav-admissions-centres-list");
+    const stuCentresContainer = document.getElementById("nav-students-centres-list");
+    const activeCentres = officialCentres.filter((c) => c.status === "active");
+
+    if (admCentresContainer) {
+      if (activeCentres.length === 0) {
+        admCentresContainer.innerHTML = `
+          <div style="padding: 0.4rem 1rem; font-size: 0.72rem; color: rgba(255,255,255,0.5);">No active centres registered.</div>
+        `;
+      } else {
+        admCentresContainer.innerHTML = activeCentres
+          .map((c) => {
+            const cId = c.id || c.centreId;
+            const count = allApplications.filter((a) => recordMatchesCentre(a, c)).length;
+            const isSelected = currentAdmissionsCentre && (currentAdmissionsCentre.id === cId || currentAdmissionsCentre.centreId === cId);
+            return `
+              <button type="button" class="nav-sub-item nav-centre-item ${isSelected ? "active" : ""}" data-adm-centre-id="${cId}" title="${c.centreName} (${c.centreCode || ""})">
+                <span class="nav-centre-pin">📍</span>
+                <span class="nav-centre-item-name">${c.centreName}</span>
+                <span class="nav-sub-badge">${count}</span>
+              </button>
+            `;
+          })
+          .join("");
+
+        admCentresContainer.querySelectorAll("[data-adm-centre-id]").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            const id = btn.getAttribute("data-adm-centre-id");
+            openCentreAdmissionsWorkspace(id);
+          });
+        });
+      }
+    }
+
+    if (stuCentresContainer) {
+      if (activeCentres.length === 0) {
+        stuCentresContainer.innerHTML = `
+          <div style="padding: 0.4rem 1rem; font-size: 0.72rem; color: rgba(255,255,255,0.5);">No active centres registered.</div>
+        `;
+      } else {
+        stuCentresContainer.innerHTML = activeCentres
+          .map((c) => {
+            const cId = c.id || c.centreId;
+            const count = allStudents.filter((s) => recordMatchesCentre(s, c)).length;
+            return `
+              <button type="button" class="nav-sub-item nav-centre-item" data-stu-centre-id="${cId}" title="${c.centreName} (${c.centreCode || ""})">
+                <span class="nav-centre-pin">📍</span>
+                <span class="nav-centre-item-name">${c.centreName}</span>
+                <span class="nav-sub-badge">${count}</span>
+              </button>
+            `;
+          })
+          .join("");
+
+        stuCentresContainer.querySelectorAll("[data-stu-centre-id]").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            const id = btn.getAttribute("data-stu-centre-id");
+            if (typeof window.dimabinAdminDashboard?.openCentreStudentsWorkspace === "function") {
+              window.dimabinAdminDashboard.openCentreStudentsWorkspace(id);
+            }
+          });
+        });
+      }
+    }
+  };
+
+  // 3. Centre Admissions Workspace: Open and Display
+  const openCentreAdmissionsWorkspace = (centreId) => {
+    const target = officialCentres.find((c) => c.id === centreId || c.centreId === centreId);
+    if (!target) {
+      showAdminToast("Selected study centre was not found in registry.", "error");
+      return;
+    }
+
+    currentAdmissionsCentre = target;
+
+    // Update banner
+    const codeBadge = document.getElementById("centre-adm-code-badge");
+    const statusBadge = document.getElementById("centre-adm-status-badge");
+    const nameHeading = document.getElementById("centre-adm-name-heading");
+    const addrText = document.getElementById("centre-adm-address-text");
+    const phoneText = document.getElementById("centre-adm-phone-text");
+    const emailText = document.getElementById("centre-adm-email-text");
+    const quickSwitch = document.getElementById("centre-adm-quick-switch");
+
+    if (codeBadge) codeBadge.textContent = target.centreCode || "CENTRE";
+    if (statusBadge) {
+      statusBadge.textContent = (target.status || "active").toUpperCase();
+      statusBadge.className = `faculty-badge ${target.status === "active" ? "badge-active" : "badge-inactive"}`;
+    }
+    if (nameHeading) nameHeading.textContent = target.centreName;
+    if (addrText) addrText.textContent = target.address || "Main Institutional Facility";
+    if (phoneText) phoneText.textContent = target.contactPhone || "+234 Registry Contact";
+    if (emailText) emailText.textContent = target.contactEmail || "admissions@dimabin.org";
+
+    if (quickSwitch) {
+      quickSwitch.value = target.id || target.centreId;
+    }
+
+    // Switch section
+    navigateToSection("centre-admissions");
+
+    // Highlight sidebar active centre item
+    document.querySelectorAll("[data-adm-centre-id]").forEach((b) => {
+      if (b.getAttribute("data-adm-centre-id") === (target.id || target.centreId)) {
+        b.classList.add("active");
+      } else {
+        b.classList.remove("active");
+      }
+    });
+
+    renderCentreAdmissionsTable();
+  };
+
+  // 4. Render Table and Calculate Stats for Selected Centre
+  const renderCentreAdmissionsTable = () => {
+    if (!currentAdmissionsCentre) return;
+
+    // Filter applications strictly belonging to this centre
+    const centreApps = allApplications.filter((a) => recordMatchesCentre(a, currentAdmissionsCentre));
+
+    const totalCount = centreApps.length;
+    const pendingCount = centreApps.filter((a) => (a.status || "pending").toLowerCase() === "pending").length;
+    const approvedCount = centreApps.filter((a) => (a.status || "").toLowerCase() === "approved").length;
+    const rejectedCount = centreApps.filter((a) => (a.status || "").toLowerCase() === "rejected").length;
+
+    // Update stat cards
+    const statTotalEl = document.getElementById("centre-adm-stat-total");
+    const statPendingEl = document.getElementById("centre-adm-stat-pending");
+    const statApprovedEl = document.getElementById("centre-adm-stat-approved");
+    const statRejectedEl = document.getElementById("centre-adm-stat-rejected");
+
+    if (statTotalEl) statTotalEl.textContent = totalCount;
+    if (statPendingEl) statPendingEl.textContent = pendingCount;
+    if (statApprovedEl) statApprovedEl.textContent = approvedCount;
+    if (statRejectedEl) statRejectedEl.textContent = rejectedCount;
+
+    // Update subtab count badges
+    const tabAll = document.getElementById("centre-tab-count-all");
+    const tabPending = document.getElementById("centre-tab-count-pending");
+    const tabApproved = document.getElementById("centre-tab-count-approved");
+    const tabRejected = document.getElementById("centre-tab-count-rejected");
+
+    if (tabAll) tabAll.textContent = totalCount;
+    if (tabPending) tabPending.textContent = pendingCount;
+    if (tabApproved) tabApproved.textContent = approvedCount;
+    if (tabRejected) tabRejected.textContent = rejectedCount;
+
+    // Filter by tab, search, programme
+    let filtered = [...centreApps];
+    if (centreAdmFilter.tab !== "all") {
+      filtered = filtered.filter((a) => (a.status || "pending").toLowerCase() === centreAdmFilter.tab.toLowerCase());
+    }
+    if (centreAdmFilter.search) {
+      filtered = filtered.filter((a) => {
+        const text = [
+          a.applicationId || "",
+          a.fullName || "",
+          a.email || "",
+          a.phone || "",
+          a.programme || ""
+        ].join(" ").toLowerCase();
+        return text.includes(centreAdmFilter.search);
+      });
+    }
+    if (centreAdmFilter.programme !== "all") {
+      filtered = filtered.filter((a) => (a.programme || "").toLowerCase() === centreAdmFilter.programme.toLowerCase());
+    }
+
+    const tbody = document.getElementById("centre-adm-table-tbody");
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6">
+            <div class="empty-state-box">
+              <div class="empty-icon">📋</div>
+              <div class="empty-state-text">No admission applications match current criteria for ${currentAdmissionsCentre.centreName}.</div>
+              <div class="empty-state-sub">New applicants selecting this study centre during admissions will populate here live.</div>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = filtered
+      .map((app) => {
+        const status = (app.status || "pending").toLowerCase();
+        const statusClass = status === "approved" ? "badge-active" : status === "rejected" ? "badge-inactive" : "badge-gold";
+        const dateStr = app.createdAt ? new Date(app.createdAt).toLocaleDateString() : "Recent";
+        const appId = app.id || app.applicationId;
+
+        return `
+          <tr data-app-id="${appId}">
+            <td>
+              <div style="font-weight: 700; color: var(--dark-navy);">${app.fullName || "Candidate"}</div>
+              <div style="font-size: 0.75rem; color: var(--admin-text-muted);">${app.email || "No email"} · ${app.phone || "No phone"}</div>
+            </td>
+            <td>
+              <span class="session-strip-badge" style="background: #EFF6FF; color: var(--primary-blue); font-weight: 700;">
+                ${app.applicationId || "APP"}
+              </span>
+            </td>
+            <td>
+              <div style="font-size: 0.8125rem; font-weight: 600; color: var(--dark-navy);">${app.programme || "Diploma in Theology"}</div>
+            </td>
+            <td>
+              <div style="font-size: 0.75rem; color: var(--admin-text-muted);">${dateStr}</div>
+            </td>
+            <td>
+              <span class="faculty-badge ${statusClass}">${status.toUpperCase()}</span>
+            </td>
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end;">
+                <button type="button" class="btn-table-action btn-view-app-dossier" data-app-id="${appId}" title="View Candidate Dossier">
+                  👁️ Dossier
+                </button>
+                ${
+                  status !== "approved"
+                    ? `<button type="button" class="btn-table-action btn-approve-centre-app" data-app-id="${appId}" style="color: #16A34A;" title="Approve Admission">✓ Approve</button>`
+                    : ""
+                }
+                ${
+                  status !== "rejected"
+                    ? `<button type="button" class="btn-table-action btn-reject-centre-app" data-app-id="${appId}" style="color: #DC2626;" title="Reject Application">✕ Reject</button>`
+                    : ""
+                }
+                <button type="button" class="btn-table-action btn-letter-centre-app" data-app-id="${appId}" style="color: var(--primary-blue);" title="Official Admission Letter">
+                  📜 Letter
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    // Wire actions
+    tbody.querySelectorAll(".btn-view-app-dossier").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-app-id");
+        const app = allApplications.find((a) => (a.id || a.applicationId) === id);
+        if (app) openApplicationDossierModal(app);
+      });
+    });
+
+    tbody.querySelectorAll(".btn-approve-centre-app").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-app-id");
+        const app = allApplications.find((a) => (a.id || a.applicationId) === id);
+        if (app) handleApproveApplication(app);
+      });
+    });
+
+    tbody.querySelectorAll(".btn-reject-centre-app").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-app-id");
+        const app = allApplications.find((a) => (a.id || a.applicationId) === id);
+        if (app) handleRejectApplication(app);
+      });
+    });
+
+    tbody.querySelectorAll(".btn-letter-centre-app").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-app-id");
+        const app = allApplications.find((a) => (a.id || a.applicationId) === id);
+        if (app) openAdmissionLetterModal(app);
+      });
+    });
+  };
+
+  // 5. Application Approval Handler (with Auto-Matriculation into Student Directory)
+  const handleApproveApplication = async (app) => {
+    const appId = app.id || app.applicationId;
+    try {
+      await updateAdmissionStatus(appId, "approved", "Approved by Academic Registry Committee");
+      
+      // Auto-matriculate into official students if not already enrolled
+      const existingStudent = allStudents.find((s) => s.email && s.email.toLowerCase() === (app.email || "").toLowerCase());
+      if (!existingStudent) {
+        await createStudent({
+          fullName: app.fullName,
+          email: app.email,
+          phone: app.phone,
+          programme: app.programme,
+          level: "Diploma I",
+          studyCentre: currentAdmissionsCentre ? currentAdmissionsCentre.centreName : app.studyCentre,
+          centreId: currentAdmissionsCentre ? (currentAdmissionsCentre.id || currentAdmissionsCentre.centreId) : app.centreId,
+          centreCode: currentAdmissionsCentre ? currentAdmissionsCentre.centreCode : "",
+          academicSession: app.academicSession || "2026/2027",
+          matricNumber: app.applicationId ? app.applicationId.replace("APP", "STU") : ""
+        });
+      }
+
+      showAdminToast(`Application for ${app.fullName} approved and matriculated successfully!`, "success");
+      renderCentreAdmissionsTable();
+    } catch (err) {
+      showAdminToast(`Error approving application: ${err.message}`, "error");
+    }
+  };
+
+  // 6. Application Rejection Handler
+  const handleRejectApplication = async (app) => {
+    const appId = app.id || app.applicationId;
+    const reason = prompt(`Enter rejection notice for candidate ${app.fullName}:`, "Prerequisite vetting or incomplete documentation");
+    if (reason === null) return;
+    try {
+      await updateAdmissionStatus(appId, "rejected", reason);
+      showAdminToast(`Application ${appId} marked as rejected.`, "info");
+      renderCentreAdmissionsTable();
+    } catch (err) {
+      showAdminToast(`Error rejecting application: ${err.message}`, "error");
+    }
+  };
+
+  // 7. Modal Handlers: Application Dossier
+  let currentDossierApp = null;
+  const dossierModal = document.getElementById("modal-view-application-dossier");
+  const openApplicationDossierModal = (app) => {
+    if (!dossierModal) return;
+    currentDossierApp = app;
+
+    document.getElementById("app-dossier-id-badge").textContent = app.applicationId || "DIMABIN/APP/2026";
+    document.getElementById("app-dossier-name").textContent = app.fullName || "Candidate Name";
+    document.getElementById("app-dossier-contact").textContent = `${app.email || "No email"} · ${app.phone || "No phone"}`;
+    document.getElementById("app-dossier-programme").textContent = app.programme || "Diploma in Theology";
+    document.getElementById("app-dossier-centre").textContent = app.studyCentre || (currentAdmissionsCentre ? currentAdmissionsCentre.centreName : "National Centre");
+    document.getElementById("app-dossier-session").textContent = app.academicSession || "2026/2027";
+    document.getElementById("app-dossier-date").textContent = app.createdAt ? new Date(app.createdAt).toLocaleString() : "Recent";
+    document.getElementById("app-dossier-reason").textContent = app.statusReason || (app.status === "approved" ? "Cleared by Registry." : "Under routine committee assessment.");
+
+    const statusBadge = document.getElementById("app-dossier-status-badge");
+    const st = (app.status || "pending").toLowerCase();
+    statusBadge.textContent = st.toUpperCase();
+    statusBadge.className = `faculty-badge ${st === "approved" ? "badge-active" : st === "rejected" ? "badge-inactive" : "badge-gold"}`;
+
+    dossierModal.style.display = "flex";
+  };
+
+  const closeDossierModal = () => {
+    if (dossierModal) dossierModal.style.display = "none";
+  };
+
+  document.getElementById("btn-close-app-dossier-modal")?.addEventListener("click", closeDossierModal);
+  document.getElementById("btn-close-app-dossier")?.addEventListener("click", closeDossierModal);
+
+  document.getElementById("btn-approve-from-dossier")?.addEventListener("click", async () => {
+    if (currentDossierApp) {
+      await handleApproveApplication(currentDossierApp);
+      closeDossierModal();
+    }
+  });
+
+  document.getElementById("btn-reject-from-dossier")?.addEventListener("click", async () => {
+    if (currentDossierApp) {
+      await handleRejectApplication(currentDossierApp);
+      closeDossierModal();
+    }
+  });
+
+  document.getElementById("btn-generate-letter-from-dossier")?.addEventListener("click", () => {
+    if (currentDossierApp) {
+      closeDossierModal();
+      openAdmissionLetterModal(currentDossierApp);
+    }
+  });
+
+  // 8. Modal Handlers: Official Admission Letter
+  const letterModal = document.getElementById("modal-view-admission-letter");
+  const openAdmissionLetterModal = (app) => {
+    if (!letterModal) return;
+
+    document.getElementById("letter-ref-id").textContent = app.applicationId || "DIMABIN/ADM/2026/APP";
+    document.getElementById("letter-current-date").textContent = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+    document.getElementById("letter-candidate-name").textContent = app.fullName || "Candidate Name";
+    document.getElementById("letter-programme-name").textContent = app.programme || "Diploma in Theology (Dipl.Th.)";
+    document.getElementById("letter-centre-name").textContent = app.studyCentre || (currentAdmissionsCentre ? currentAdmissionsCentre.centreName : "Goshen Central Campus, Abeokuta");
+    document.getElementById("letter-session-val").textContent = app.academicSession || "2026/2027";
+
+    letterModal.style.display = "flex";
+  };
+
+  const closeLetterModal = () => {
+    if (letterModal) letterModal.style.display = "none";
+  };
+
+  document.getElementById("btn-close-letter-modal")?.addEventListener("click", closeLetterModal);
+  document.getElementById("btn-close-letter")?.addEventListener("click", closeLetterModal);
+  document.getElementById("btn-print-admission-letter")?.addEventListener("click", () => {
+    window.print();
+  });
+
+  // 9. Quick Switcher in Centre Admissions Banner
+  const quickSwitch = document.getElementById("centre-adm-quick-switch");
+  if (quickSwitch) {
+    quickSwitch.addEventListener("change", (e) => {
+      const targetId = e.target.value;
+      if (targetId === "all") {
+        navigateToSection("applications");
+      } else {
+        openCentreAdmissionsWorkspace(targetId);
+      }
+    });
+  }
+
+  // 10. "View Centre Students" button in banner
+  document.getElementById("btn-goto-centre-students-from-adm")?.addEventListener("click", () => {
+    if (currentAdmissionsCentre) {
+      if (typeof window.dimabinAdminDashboard?.openCentreStudentsWorkspace === "function") {
+        window.dimabinAdminDashboard.openCentreStudentsWorkspace(currentAdmissionsCentre.id || currentAdmissionsCentre.centreId);
+      }
+    }
+  });
+
+  // 11. Subtab Click Handlers
+  document.querySelectorAll(".centre-adm-tab").forEach((tabBtn) => {
+    tabBtn.addEventListener("click", () => {
+      document.querySelectorAll(".centre-adm-tab").forEach((b) => b.classList.remove("active"));
+      tabBtn.classList.add("active");
+      centreAdmFilter.tab = tabBtn.getAttribute("data-tab-status") || "all";
+      renderCentreAdmissionsTable();
+    });
+  });
+
+  // 12. Search and Programme Filter Inputs
+  const searchInput = document.getElementById("centre-adm-search-input");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      centreAdmFilter.search = e.target.value.trim().toLowerCase();
+      renderCentreAdmissionsTable();
+    });
+  }
+
+  const progFilter = document.getElementById("centre-adm-filter-programme");
+  if (progFilter) {
+    progFilter.addEventListener("change", (e) => {
+      centreAdmFilter.programme = e.target.value;
+      renderCentreAdmissionsTable();
+    });
+  }
+
+  document.getElementById("btn-refresh-centre-adm")?.addEventListener("click", () => {
+    renderCentreAdmissionsTable();
+    showAdminToast("Admissions records refreshed live from Firestore.", "info");
+  });
+
+  // 13. Subscriptions to Live Firestore Collections
+  subscribeStudyCentres((centres) => {
+    officialCentres = centres || [];
+    renderSidebarCentres();
+    if (currentAdmissionsCentre) {
+      const refreshedCentre = officialCentres.find(
+        (c) => c.id === currentAdmissionsCentre.id || c.centreId === currentAdmissionsCentre.centreId
+      );
+      if (refreshedCentre) {
+        currentAdmissionsCentre = refreshedCentre;
+        renderCentreAdmissionsTable();
+      }
+    }
+  });
+
+  subscribeAdmissions((apps) => {
+    allApplications = apps || [];
+    renderSidebarCentres();
+    renderCentreAdmissionsTable();
+  });
+
+  subscribeStudents((students) => {
+    allStudents = students || [];
+    renderSidebarCentres();
+  });
+
+  // Expose on window for inter-module access
+  window.dimabinAdminDashboard = window.dimabinAdminDashboard || {};
+  window.dimabinAdminDashboard.openCentreAdmissionsWorkspace = openCentreAdmissionsWorkspace;
+}
+
+/**
+ * =========================================================================
+ * 14. STUDENT DIRECTORY MANAGEMENT CONTROLLER
+ * Comprehensive Student Registry for both Institution-Wide and Study-Centre Scoped Views.
+ * Provides live search, academic filtering, ID card preview, and student matriculation.
+ * =========================================================================
+ */
+export function initStudentDirectoryManagement() {
+  console.log("[DIMABIN Dashboard] Initializing Student Directory Controller...");
+
+  let studentsList = [];
+  let centresList = [];
+  let currentSelectedCentreId = "all";
+  const studentFilters = {
+    search: "",
+    status: "all",
+    programme: "all",
+    level: "all"
+  };
+
+  const tbody = document.getElementById("table-students-tbody");
+  const statTotal = document.getElementById("student-stat-total");
+  const statActive = document.getElementById("student-stat-active");
+  const statGraduated = document.getElementById("student-stat-graduated");
+  const statSuspended = document.getElementById("student-stat-suspended");
+
+  const searchInput = document.getElementById("search-students-input");
+  const filterStatus = document.getElementById("filter-students-status");
+  const filterProgramme = document.getElementById("filter-students-programme");
+  const filterLevel = document.getElementById("filter-students-level");
+  const centreSwitcher = document.getElementById("student-dir-centre-switch");
+
+  // 1. Open Centre Student Directory Workspace
+  const openCentreStudentsWorkspace = (centreId) => {
+    currentSelectedCentreId = centreId || "all";
+    if (centreSwitcher) centreSwitcher.value = currentSelectedCentreId;
+
+    const bannerTitle = document.getElementById("student-dir-title-heading");
+    const bannerSubtext = document.getElementById("student-dir-centre-subtext");
+    const scopeBadge = document.getElementById("student-dir-scope-badge");
+
+    if (currentSelectedCentreId === "all") {
+      if (bannerTitle) bannerTitle.textContent = "Official Student Directory";
+      if (bannerSubtext) bannerSubtext.textContent = "All Official DIMABIN Study Centres";
+      if (scopeBadge) scopeBadge.textContent = "INSTITUTION-WIDE";
+    } else {
+      const centre = centresList.find((c) => (c.id || c.centreId) === currentSelectedCentreId);
+      if (centre) {
+        if (bannerTitle) bannerTitle.textContent = `${centre.centreName} — Student Registry`;
+        if (bannerSubtext) bannerSubtext.textContent = `📍 ${centre.address || "Active Learning Centre"} · Code: ${centre.centreCode}`;
+        if (scopeBadge) scopeBadge.textContent = centre.centreCode || "CENTRE";
+      }
+    }
+
+    navigateToSection("student-directory");
+
+    // Highlight sidebar item if specific centre
+    document.querySelectorAll("[data-stu-centre-id]").forEach((btn) => {
+      if (btn.getAttribute("data-stu-centre-id") === currentSelectedCentreId) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    renderTable();
+  };
+
+  // 2. Render Table and Calculate Stats
+  const renderTable = () => {
+    if (!tbody) return;
+
+    // Filter by Centre first
+    let baseList = [...studentsList];
+    if (currentSelectedCentreId !== "all") {
+      const targetCentre = centresList.find((c) => (c.id || c.centreId) === currentSelectedCentreId);
+      if (targetCentre) {
+        baseList = baseList.filter((s) => recordMatchesCentre(s, targetCentre));
+      }
+    }
+
+    // Update Stats for the active scope
+    const totalCount = baseList.length;
+    const activeCount = baseList.filter((s) => (s.status || "active").toLowerCase() === "active").length;
+    const graduatedCount = baseList.filter((s) => (s.status || "").toLowerCase() === "graduated").length;
+    const suspendedCount = baseList.filter((s) => {
+      const st = (s.status || "").toLowerCase();
+      return st === "inactive" || st === "suspended" || st === "withdrawn";
+    }).length;
+
+    if (statTotal) statTotal.textContent = totalCount;
+    if (statActive) statActive.textContent = activeCount;
+    if (statGraduated) statGraduated.textContent = graduatedCount;
+    if (statSuspended) statSuspended.textContent = suspendedCount;
+
+    // Apply interactive search and column filters
+    let filtered = [...baseList];
+    if (studentFilters.search) {
+      filtered = filtered.filter((s) => {
+        const text = [
+          s.fullName || "",
+          s.matricNumber || s.admissionNumber || "",
+          s.email || "",
+          s.phone || "",
+          s.programme || "",
+          s.studyCentre || ""
+        ].join(" ").toLowerCase();
+        return text.includes(studentFilters.search);
+      });
+    }
+
+    if (studentFilters.status !== "all") {
+      filtered = filtered.filter((s) => {
+        const st = (s.status || "active").toLowerCase();
+        if (studentFilters.status === "inactive") {
+          return st === "inactive" || st === "suspended";
+        }
+        return st === studentFilters.status.toLowerCase();
+      });
+    }
+
+    if (studentFilters.programme !== "all") {
+      filtered = filtered.filter((s) => (s.programme || "").toLowerCase() === studentFilters.programme.toLowerCase());
+    }
+
+    if (studentFilters.level !== "all") {
+      filtered = filtered.filter((s) => (s.level || "").toLowerCase() === studentFilters.level.toLowerCase());
+    }
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7">
+            <div class="empty-state-box">
+              <div class="empty-icon">👥</div>
+              <div class="empty-state-text">No student records match the active criteria.</div>
+              <div class="empty-state-sub">Matriculate new candidates via Admissions approval or the Add Student button.</div>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = filtered
+      .map((student) => {
+        const sId = student.id || student.matricNumber;
+        const regNo = student.matricNumber || student.admissionNumber || "DIMABIN/STU/2026/000";
+        const st = (student.status || "active").toLowerCase();
+        const statusBadgeClass =
+          st === "active" ? "badge-student-active" : st === "graduated" ? "badge-student-graduated" : "badge-student-suspended";
+
+        const initials = (student.fullName || "Student")
+          .split(" ")
+          .map((w) => w.charAt(0))
+          .slice(0, 2)
+          .join("")
+          .toUpperCase();
+
+        return `
+          <tr data-student-id="${sId}">
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="student-avatar">${initials}</div>
+                <div>
+                  <div style="font-weight: 700; color: var(--dark-navy);">${student.fullName || "Candidate"}</div>
+                  <div style="font-size: 0.75rem; color: var(--admin-text-muted);">${student.email || "No email"} · ${student.phone || "No phone"}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="session-strip-badge" style="background: #EFF6FF; color: var(--primary-blue); font-weight: 700;">
+                ${regNo}
+              </span>
+            </td>
+            <td>
+              <div style="font-size: 0.8125rem; font-weight: 600; color: var(--dark-navy);">${student.programme || "Diploma in Theology"}</div>
+              <div style="font-size: 0.72rem; color: var(--primary-blue); font-weight: 700;">${student.level || "Diploma I"}</div>
+            </td>
+            <td>
+              <span style="font-size: 0.8125rem; font-weight: 700; color: var(--primary-blue);">
+                📍 ${student.studyCentre || "Goshen Central Campus, Abeokuta"}
+              </span>
+            </td>
+            <td>
+              <div style="font-size: 0.8125rem; font-weight: 600; color: var(--dark-navy);">${student.academicSession || "2026/2027"}</div>
+            </td>
+            <td>
+              <span class="faculty-badge ${statusBadgeClass}">
+                ${st.toUpperCase()}
+              </span>
+            </td>
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end;">
+                <button type="button" class="btn-table-action btn-view-student-dossier" data-student-id="${sId}" title="View Student Dossier">
+                  👁️ Dossier
+                </button>
+                <button type="button" class="btn-table-action btn-view-student-idcard" data-student-id="${sId}" title="View Student ID Card" style="color: var(--gold-hover);">
+                  🪪 ID Card
+                </button>
+                <button type="button" class="btn-table-action btn-toggle-student-status" data-student-id="${sId}" title="Toggle Standing" style="color: ${st === "active" ? "#DC2626" : "#16A34A"};">
+                  ${st === "active" ? "⏸ Pause" : "▶ Activate"}
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    // Wire row button events
+    tbody.querySelectorAll(".btn-view-student-dossier").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-student-id");
+        const student = studentsList.find((s) => (s.id || s.matricNumber) === id);
+        if (student) openStudentDossierModal(student);
+      });
+    });
+
+    tbody.querySelectorAll(".btn-view-student-idcard").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-student-id");
+        const student = studentsList.find((s) => (s.id || s.matricNumber) === id);
+        if (student) openStudentIdCardModal(student);
+      });
+    });
+
+    tbody.querySelectorAll(".btn-toggle-student-status").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-student-id");
+        const student = studentsList.find((s) => (s.id || s.matricNumber) === id);
+        if (!student) return;
+        try {
+          await toggleStudentStatus(student.id || student.matricNumber, student.status || "active");
+          showAdminToast(`Student ${student.fullName} standing updated.`, "success");
+        } catch (e) {
+          showAdminToast(`Failed to update status: ${e.message}`, "error");
+        }
+      });
+    });
+  };
+
+  // 3. Student Dossier Modal
+  let activeDossierStudent = null;
+  const studentDossierModal = document.getElementById("modal-view-student-dossier");
+  const openStudentDossierModal = (student) => {
+    if (!studentDossierModal) return;
+    activeDossierStudent = student;
+
+    const initials = (student.fullName || "Student")
+      .split(" ")
+      .map((w) => w.charAt(0))
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+
+    document.getElementById("dossier-student-avatar").textContent = initials;
+    document.getElementById("dossier-student-fullname").textContent = student.fullName || "Student Candidate";
+    document.getElementById("dossier-student-matric").textContent = student.matricNumber || student.admissionNumber || "-";
+    document.getElementById("dossier-student-programme").textContent = student.programme || "Diploma in Theology";
+    document.getElementById("dossier-student-level").textContent = student.level || "Diploma I";
+    document.getElementById("dossier-student-centre").textContent = student.studyCentre || "Goshen Central Campus, Abeokuta";
+    document.getElementById("dossier-student-session").textContent = student.academicSession || "2026/2027";
+    document.getElementById("dossier-student-email").textContent = student.email || "No email on record";
+    document.getElementById("dossier-student-phone").textContent = student.phone || "No phone on record";
+
+    const badge = document.getElementById("dossier-student-status-badge");
+    const st = (student.status || "active").toLowerCase();
+    badge.textContent = st.toUpperCase();
+    badge.className = `faculty-badge ${st === "active" ? "badge-active" : st === "graduated" ? "badge-student-graduated" : "badge-inactive"}`;
+
+    studentDossierModal.style.display = "flex";
+  };
+
+  const closeStudentDossierModal = () => {
+    if (studentDossierModal) studentDossierModal.style.display = "none";
+  };
+
+  document.getElementById("btn-close-view-student-modal")?.addEventListener("click", closeStudentDossierModal);
+  document.getElementById("btn-close-view-student")?.addEventListener("click", closeStudentDossierModal);
+
+  document.getElementById("btn-open-idcard-from-dossier")?.addEventListener("click", () => {
+    if (activeDossierStudent) {
+      closeStudentDossierModal();
+      openStudentIdCardModal(activeDossierStudent);
+    }
+  });
+
+  document.getElementById("btn-toggle-status-from-dossier")?.addEventListener("click", async () => {
+    if (activeDossierStudent) {
+      try {
+        await toggleStudentStatus(activeDossierStudent.id || activeDossierStudent.matricNumber, activeDossierStudent.status || "active");
+        showAdminToast(`Student status updated successfully.`, "success");
+        closeStudentDossierModal();
+      } catch (err) {
+        showAdminToast(`Status update failed: ${err.message}`, "error");
+      }
+    }
+  });
+
+  // 4. Student ID Card Modal
+  const studentIdCardModal = document.getElementById("modal-view-student-id-card");
+  const openStudentIdCardModal = (student) => {
+    if (!studentIdCardModal) return;
+
+    const initials = (student.fullName || "Student")
+      .split(" ")
+      .map((w) => w.charAt(0))
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+
+    document.getElementById("idcard-photo-monogram").textContent = initials;
+    document.getElementById("idcard-name-text").textContent = student.fullName || "Student Name";
+    document.getElementById("idcard-matric-text").textContent = student.matricNumber || student.admissionNumber || "DIMABIN/STU/2026/001";
+    document.getElementById("idcard-programme-text").textContent = student.programme || "Diploma in Theology";
+    document.getElementById("idcard-level-text").textContent = student.level || "Diploma I";
+    document.getElementById("idcard-centre-text").textContent = student.studyCentre || "Goshen Central Campus";
+    document.getElementById("idcard-session-text").textContent = student.academicSession || "2026/2027";
+    document.getElementById("idcard-barcode-text").textContent = `*${student.matricNumber || "DIMABIN-STU"}*`;
+
+    studentIdCardModal.style.display = "flex";
+  };
+
+  const closeStudentIdCardModal = () => {
+    if (studentIdCardModal) studentIdCardModal.style.display = "none";
+  };
+
+  document.getElementById("btn-close-id-card-modal")?.addEventListener("click", closeStudentIdCardModal);
+  document.getElementById("btn-close-id-card")?.addEventListener("click", closeStudentIdCardModal);
+  document.getElementById("btn-print-id-card")?.addEventListener("click", () => {
+    window.print();
+  });
+
+  // 5. Add Student Modal
+  const addStudentModal = document.getElementById("modal-add-student");
+  const addStudentForm = document.getElementById("form-add-student");
+  const openAddStudentModal = () => {
+    if (!addStudentModal) return;
+    if (addStudentForm) addStudentForm.reset();
+
+    // Set default centre if active
+    const centreSelect = document.getElementById("add-student-centre");
+    if (centreSelect && currentSelectedCentreId !== "all") {
+      const activeC = centresList.find((c) => (c.id || c.centreId) === currentSelectedCentreId);
+      if (activeC) centreSelect.value = activeC.centreName;
+    }
+
+    addStudentModal.style.display = "flex";
+  };
+
+  const closeAddStudentModal = () => {
+    if (addStudentModal) addStudentModal.style.display = "none";
+  };
+
+  document.getElementById("btn-open-add-student-modal")?.addEventListener("click", openAddStudentModal);
+  document.getElementById("btn-close-add-student-modal")?.addEventListener("click", closeAddStudentModal);
+  document.getElementById("btn-cancel-add-student")?.addEventListener("click", closeAddStudentModal);
+
+  document.getElementById("btn-confirm-add-student")?.addEventListener("click", async () => {
+    const fullName = document.getElementById("add-student-fullname")?.value.trim();
+    const email = document.getElementById("add-student-email")?.value.trim();
+    const phone = document.getElementById("add-student-phone")?.value.trim();
+    const centreName = document.getElementById("add-student-centre")?.value;
+    const programme = document.getElementById("add-student-programme")?.value;
+    const level = document.getElementById("add-student-level")?.value;
+    const session = document.getElementById("add-student-session")?.value.trim() || "2026/2027";
+    const matric = document.getElementById("add-student-matric")?.value.trim();
+
+    if (!fullName || !email || !phone || !centreName || !programme) {
+      showAdminToast("Please provide all required student details marked with *.", "warning");
+      return;
+    }
+
+    const centreObj = centresList.find((c) => c.centreName === centreName);
+
+    const spinner = document.getElementById("add-student-spinner");
+    const btnText = document.getElementById("add-student-btn-text");
+    if (spinner) spinner.style.display = "inline";
+    if (btnText) btnText.textContent = "Matriculating...";
+
+    try {
+      await createStudent({
+        fullName,
+        email,
+        phone,
+        programme,
+        level,
+        studyCentre: centreName,
+        centreId: centreObj ? (centreObj.id || centreObj.centreId) : "",
+        centreCode: centreObj ? centreObj.centreCode : "",
+        academicSession: session,
+        matricNumber: matric
+      });
+
+      showAdminToast(`Student ${fullName} successfully matriculated and registered in Firestore!`, "success");
+      closeAddStudentModal();
+      renderTable();
+    } catch (err) {
+      showAdminToast(`Matriculation error: ${err.message}`, "error");
+    } finally {
+      if (spinner) spinner.style.display = "none";
+      if (btnText) btnText.textContent = "Matriculate Student";
+    }
+  });
+
+  // 6. Toolbar Event Listeners
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      studentFilters.search = e.target.value.trim().toLowerCase();
+      renderTable();
+    });
+  }
+
+  if (filterStatus) {
+    filterStatus.addEventListener("change", (e) => {
+      studentFilters.status = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (filterProgramme) {
+    filterProgramme.addEventListener("change", (e) => {
+      studentFilters.programme = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (filterLevel) {
+    filterLevel.addEventListener("change", (e) => {
+      studentFilters.level = e.target.value;
+      renderTable();
+    });
+  }
+
+  if (centreSwitcher) {
+    centreSwitcher.addEventListener("change", (e) => {
+      openCentreStudentsWorkspace(e.target.value);
+    });
+  }
+
+  document.getElementById("btn-refresh-students")?.addEventListener("click", () => {
+    renderTable();
+    showAdminToast("Student directory refreshed live from Firestore.", "info");
+  });
+
+  // 7. Subscriptions to Live Firestore Data
+  subscribeStudents((students) => {
+    studentsList = students || [];
+    renderTable();
+  });
+
+  subscribeStudyCentres((centres) => {
+    centresList = centres || [];
+    renderTable();
+  });
+
+  // Expose on namespace
+  window.dimabinAdminDashboard = window.dimabinAdminDashboard || {};
+  window.dimabinAdminDashboard.openCentreStudentsWorkspace = openCentreStudentsWorkspace;
+}
+
 // Auto-run on DOM ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initDashboard);
@@ -4416,7 +5485,7 @@ if (document.readyState === "loading") {
 
 // Expose safe inspection namespace on window
 if (typeof window !== "undefined") {
-  window.dimabinAdminDashboard = {
+  window.dimabinAdminDashboard = Object.assign(window.dimabinAdminDashboard || {}, {
     ADMIN_CONFIG,
     navigateToSection,
     createPublicNotificationModel,
@@ -4426,8 +5495,10 @@ if (typeof window !== "undefined") {
     initCourseAllocation,
     initLecturerManagement,
     initStudyCentresManagement,
+    initStudyCentreNavAndWorkspaces,
+    initStudentDirectoryManagement,
     populateStudyCentreSelects,
     showAdminToast
-  };
+  });
 }
 
