@@ -1321,6 +1321,312 @@ export function getLecturerAssignments(lecturerStaffId) {
 }
 
 /**
+ * Verify whether an email address or Staff ID corresponds to an authorized institutional lecturer
+ * @param {string} identifier - Email address or Staff ID
+ * @returns {Promise<{ success: boolean, authorized?: boolean, lecturer?: Object, notFound?: boolean, inactive?: boolean, error?: string }>}
+ */
+export async function findLecturerByEmailOrStaffId(identifier) {
+  const norm = (identifier || "").trim().toLowerCase();
+  if (!norm) {
+    throw new Error("Please enter your registered institutional email address or Lecturer ID.");
+  }
+
+  // 1. Query Firestore lecturers collection by email or staffId
+  try {
+    const collRef = collection(db, COLLECTIONS.LECTURERS);
+    // Try email first
+    let q = query(collRef, where("email", "==", norm), limit(1));
+    let snap = await getDocs(q);
+
+    // If empty and could be staffId (e.g. uppercase check)
+    if (snap.empty) {
+      q = query(collRef, where("staffId", "==", identifier.trim().toUpperCase()), limit(1));
+      snap = await getDocs(q);
+    }
+
+    if (!snap.empty) {
+      const docSnap = snap.docs[0];
+      const data = { id: docSnap.id, ...docSnap.data() };
+      const status = (data.accountStatus || data.status || "active").toLowerCase();
+      if (status === "active") {
+        return { success: true, authorized: true, lecturer: data };
+      } else {
+        return {
+          success: false,
+          authorized: false,
+          inactive: true,
+          lecturer: data,
+          error: `Your faculty account is currently ${status.toUpperCase()}. Please contact the DIMABIN Academic Administration Office.`
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("[DIMABIN Lecturers] Firestore lookup note:", err.message);
+  }
+
+  // 2. Check local cached collection
+  const cached = getCachedCollection(COLLECTIONS.LECTURERS) || [];
+  const foundCached = cached.find((l) => 
+    (l.email || "").trim().toLowerCase() === norm ||
+    (l.staffId || "").trim().toLowerCase() === norm
+  );
+  if (foundCached) {
+    const status = (foundCached.accountStatus || foundCached.status || "active").toLowerCase();
+    if (status === "active") {
+      return { success: true, authorized: true, lecturer: foundCached };
+    } else {
+      return {
+        success: false,
+        authorized: false,
+        inactive: true,
+        lecturer: foundCached,
+        error: `Your faculty account is currently ${status.toUpperCase()}. Please contact the DIMABIN Academic Administration Office.`
+      };
+    }
+  }
+
+  return {
+    success: false,
+    notFound: true,
+    error: "No authorized faculty member was found matching this institutional email or Lecturer ID. Please contact the administrator if you have not been registered."
+  };
+}
+
+/**
+ * Complete Lecturer Portal Password Setup and Account Activation
+ * Creates or syncs the Firebase Auth account and updates the lecturer's Firestore document.
+ * @param {string} rawEmail - Authorized email address
+ * @param {string} rawPassword - Lecturer's chosen password
+ * @param {Object} lecturerRecord - The authorized lecturer profile
+ */
+export async function completeLecturerPortalSetup(rawEmail, rawPassword, lecturerRecord) {
+  const normEmail = (rawEmail || "").trim().toLowerCase();
+  const password = rawPassword || "";
+
+  if (!normEmail) throw new Error("Email Address is required.");
+  if (!password || password.length < 6) throw new Error("Password must be at least 6 characters long.");
+  if (!lecturerRecord) throw new Error("No authorized faculty profile provided.");
+
+  let userCredential = null;
+  try {
+    userCredential = await createUserWithEmailAndPassword(auth, normEmail, password);
+  } catch (authErr) {
+    if (authErr.code === "auth/email-already-in-use") {
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, normEmail, password);
+      } catch (signInErr) {
+        throw new Error(
+          "A Lecturer Portal account has already been set up for this email address. Please sign in or use 'Forgot Password' if you need to reset it."
+        );
+      }
+    } else if (authErr.code === "auth/weak-password") {
+      throw new Error("Password is too weak. Please use at least 6 characters including letters and numbers.");
+    } else {
+      throw new Error(authErr.message || "Failed to create authentication credentials.");
+    }
+  }
+
+  const user = userCredential.user;
+  const uid = user.uid;
+
+  const updatedProfile = {
+    ...lecturerRecord,
+    uid,
+    authUid: uid,
+    accountStatus: "active",
+    status: "active",
+    passwordConfigured: true,
+    activatedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  // 1. Update lecturers collection document
+  try {
+    const docRef = doc(db, COLLECTIONS.LECTURERS, lecturerRecord.id);
+    await updateDoc(docRef, {
+      uid,
+      authUid: uid,
+      passwordConfigured: true,
+      activatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.warn("[DIMABIN Lecturer Setup] Firestore lecturers update note:", err.message);
+  }
+
+  // 2. Write users/{uid} document for unified identity
+  try {
+    const userDocRef = doc(db, COLLECTIONS.USERS, uid);
+    await setDoc(userDocRef, {
+      uid,
+      staffId: lecturerRecord.staffId,
+      fullName: lecturerRecord.fullName,
+      email: normEmail,
+      phone: lecturerRecord.phone || "",
+      department: lecturerRecord.department || "Biblical Studies & Theology",
+      role: "lecturer",
+      status: "active",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.warn("[DIMABIN Lecturer Setup] Firestore users write note:", err.message);
+  }
+
+  // Update local cache
+  upsertCachedItem(COLLECTIONS.LECTURERS, { id: lecturerRecord.id, ...updatedProfile });
+
+  // Store active lecturer session
+  const sessionData = {
+    uid,
+    staffId: lecturerRecord.staffId,
+    fullName: lecturerRecord.fullName,
+    email: normEmail,
+    department: lecturerRecord.department,
+    qualification: lecturerRecord.qualification,
+    specialization: lecturerRecord.specialization,
+    studyCentre: lecturerRecord.studyCentre,
+    role: "lecturer",
+    authenticatedAt: new Date().toISOString()
+  };
+
+  try {
+    localStorage.setItem("dimabin_lecturer_session", JSON.stringify(sessionData));
+    sessionStorage.setItem("dimabin_lecturer_session", JSON.stringify(sessionData));
+  } catch (_) {}
+
+  await logActivity({
+    action: "lecturer_account_setup",
+    description: `Faculty instructor ${lecturerRecord.fullName} (${lecturerRecord.staffId}) completed portal account setup.`,
+    targetCollection: COLLECTIONS.LECTURERS,
+    targetDocumentId: lecturerRecord.staffId
+  });
+
+  return { success: true, lecturer: updatedProfile, session: sessionData };
+}
+
+/**
+ * Authenticate Lecturer with User ID / Email and Password
+ * @param {string} rawUserId - Institutional Email or Lecturer ID
+ * @param {string} rawPassword - Password
+ * @param {boolean} rememberMe - Whether to persist across sessions
+ */
+export async function authenticateLecturer(rawUserId, rawPassword, rememberMe = false) {
+  const normInput = (rawUserId || "").trim();
+  const password = rawPassword || "";
+
+  if (!normInput || !password) {
+    throw new Error("Please enter both your User ID (or Email) and Password.");
+  }
+
+  // 1. Verify lecturer is registered in institutional database
+  const lookup = await findLecturerByEmailOrStaffId(normInput);
+  if (!lookup.success || !lookup.authorized) {
+    if (lookup.inactive) {
+      throw new Error(lookup.error || "Your faculty account is currently inactive. Please contact the administrator.");
+    }
+    throw new Error(
+      "No authorized faculty member was found matching this institutional ID or email. Please register or complete account setup first."
+    );
+  }
+
+  const lecturer = lookup.lecturer;
+  const email = (lecturer.email || "").trim().toLowerCase();
+
+  // 2. Set persistence
+  try {
+    const persistenceMode = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+    await setPersistence(auth, persistenceMode);
+  } catch (pErr) {
+    console.warn("[DIMABIN Lecturer Login] Persistence note:", pErr.message);
+  }
+
+  // 3. Sign in via Firebase Auth
+  let userCredential;
+  try {
+    userCredential = await signInWithEmailAndPassword(auth, email, password);
+  } catch (authError) {
+    console.warn("[DIMABIN Lecturer Login] Firebase Auth error:", authError.code);
+    if (
+      authError.code === "auth/user-not-found" ||
+      authError.code === "auth/invalid-credential" ||
+      authError.code === "auth/wrong-password"
+    ) {
+      throw new Error(
+        "Invalid password. If this is your first time accessing the portal, please use 'Set Up Password / First Time Login' below."
+      );
+    } else if (authError.code === "auth/too-many-requests") {
+      throw new Error("Too many unsuccessful login attempts. Please wait a few minutes before trying again.");
+    } else {
+      throw new Error(authError.message || "Authentication failed. Please verify your credentials.");
+    }
+  }
+
+  const user = userCredential.user;
+  const uid = user.uid;
+
+  // Session payload
+  const sessionData = {
+    uid,
+    staffId: lecturer.staffId,
+    fullName: lecturer.fullName,
+    email: lecturer.email,
+    phone: lecturer.phone || "",
+    department: lecturer.department,
+    qualification: lecturer.qualification,
+    specialization: lecturer.specialization,
+    studyCentre: lecturer.studyCentre,
+    role: "lecturer",
+    authenticatedAt: new Date().toISOString()
+  };
+
+  try {
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem("dimabin_lecturer_session", JSON.stringify(sessionData));
+  } catch (_) {}
+
+  await logActivity({
+    action: "lecturer_login",
+    description: `Faculty instructor ${lecturer.fullName} (${lecturer.staffId}) signed into Lecturer Portal.`,
+    targetCollection: COLLECTIONS.LECTURERS,
+    targetDocumentId: lecturer.staffId
+  });
+
+  return { success: true, lecturer, session: sessionData };
+}
+
+/**
+ * Dispatch Firebase password reset email to institutional lecturer
+ * @param {string} rawEmailOrId - Institutional Email or Lecturer ID
+ */
+export async function sendLecturerPasswordReset(rawEmailOrId) {
+  const normInput = (rawEmailOrId || "").trim();
+  if (!normInput) {
+    throw new Error("Please enter your registered institutional email address or Lecturer ID.");
+  }
+
+  const lookup = await findLecturerByEmailOrStaffId(normInput);
+  if (!lookup.success || !lookup.authorized) {
+    throw new Error(
+      lookup.error || "No authorized faculty member was found matching this institutional ID or email."
+    );
+  }
+
+  const targetEmail = lookup.lecturer.email;
+  try {
+    await sendPasswordResetEmail(auth, targetEmail);
+    return { success: true, email: targetEmail };
+  } catch (err) {
+    if (err.code === "auth/user-not-found") {
+      throw new Error(
+        "Your account has not completed initial password configuration yet. Please use 'Set Up Password / First Time Login'."
+      );
+    }
+    throw new Error(err.message || "Failed to dispatch password reset email.");
+  }
+}
+
+/**
  * =========================================================================
  * 6. COURSE MANAGEMENT (courses)
  * =========================================================================

@@ -2620,7 +2620,7 @@ export function initLecturerManagement() {
 
   // Navigation / Action Buttons
   const gotoAllocationsBtn = document.getElementById("btn-goto-allocations-from-lec");
-  const openAddLecturerBtn = document.getElementById("btn-open-add-lecturer-modal");
+  const openAddLecturerBtn = document.getElementById("btn-open-add-lecturer") || document.getElementById("btn-open-add-lecturer-modal") || document.querySelector(".btn-open-add-lecturer");
   const quickAddLecBtn = document.getElementById("btn-open-quick-add-lecturer");
 
   // Add Modal Elements
@@ -3510,6 +3510,9 @@ export function initLecturerManagement() {
       closeViewAssignmentsModal();
       closeViewProfileModal();
       navigateToSection("course-allocation");
+    }
+    if (e.target.closest("#btn-open-add-lecturer, .btn-open-add-lecturer, [data-action='open-add-lecturer']")) {
+      openAddLecturerModal();
     }
   });
 

@@ -115,8 +115,11 @@
           </div>
         </div>
 
-        <!-- Auxiliary Row: Forgot Password -->
-        <div class="portal-form-aux-row">
+        <!-- Auxiliary Row: Forgot Password & First Time Setup -->
+        <div class="portal-form-aux-row" style="display: flex; justify-content: space-between; align-items: center;">
+          <a href="lecturer-password-setup.html" style="font-size: 0.8125rem; color: var(--primary-blue); font-weight: 700;">
+            First Time / Set Up Password
+          </a>
           <button type="button" class="forgot-password-link" id="lecturer-forgot-pass">
             Forgot Password?
           </button>
@@ -131,6 +134,12 @@
 
       <!-- Back to Main Website link -->
       <div class="portal-card-back-wrapper">
+        <!-- New Faculty Onboarding Banner -->
+        <div style="background: var(--bg-light); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.75rem 0.85rem; margin-bottom: 1.15rem; font-size: 0.8125rem; color: var(--text-secondary); text-align: center;">
+          <strong style="color: var(--dark-navy);">Newly Appointed Faculty Member?</strong><br>
+          <a href="lecturer-password-setup.html" style="color: var(--primary-blue); font-weight: 700; text-decoration: underline;">Set Up Portal Password</a>
+        </div>
+
         <a href="index.html" class="portal-card-back-link">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -148,6 +157,51 @@
     </div>
   </main>
 
+  <!-- Lecturer Forgot Password Modal -->
+  <div class="portal-modal-overlay" id="lecturer-forgot-modal-overlay" aria-hidden="true" style="display: none;">
+    <div class="portal-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="lecturer-forgot-title">
+      <div class="portal-modal-header">
+        <div>
+          <span class="portal-badge-gold">FACULTY RECOVERY</span>
+          <h2 id="lecturer-forgot-title" class="portal-modal-title">Reset Faculty Password</h2>
+        </div>
+        <button type="button" class="portal-modal-close" id="lecturer-forgot-close" aria-label="Close modal">×</button>
+      </div>
+
+      <div class="portal-modal-body">
+        <p class="portal-modal-desc">
+          Enter your registered institutional email address or Lecturer ID. A secure password reset link will be dispatched to your inbox.
+        </p>
+
+        <div class="portal-alert-box" id="lecturer-forgot-alert-box" role="alert" aria-live="polite"></div>
+
+        <form id="lecturer-forgot-form" novalidate>
+          <div class="portal-form-group">
+            <label for="lecturer-reset-email" class="portal-form-label">Registered Institutional Email or ID</label>
+            <div class="portal-input-container">
+              <input 
+                type="text" 
+                id="lecturer-reset-email" 
+                name="resetEmail" 
+                class="portal-form-input" 
+                placeholder="e.g. pastor.solomon@dimabin.org or DIMABIN/LEC/2026/01" 
+                autocomplete="email" 
+                required
+              >
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+            <button type="button" class="btn btn-outline-blue btn-sm" id="lecturer-forgot-cancel" style="flex: 1;">Cancel</button>
+            <button type="submit" class="btn-portal-login btn-lecturer-login" id="lecturer-forgot-submit" style="flex: 2; min-height: 42px; font-size: 0.875rem;">
+              <span>SEND RESET LINK</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Institutional Footer -->
   <footer class="portal-login-footer" role="contentinfo">
     <p class="portal-footer-motto">MOTTO: FEAR OF GOD WITHOUT A MESS</p>
@@ -156,5 +210,6 @@
 
   <!-- Pure Vanilla JavaScript -->
   <script type="module" src="js/main.js"></script>
+  <script type="module" src="assets/js/lecturer-login.js"></script>
 </body>
 </html>
