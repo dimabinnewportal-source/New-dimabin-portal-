@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Faculty Lecturer Portal | Divine Mandate Bible Institute (DIMABIN)</title>
+  <meta name="description" content="DIMABIN Faculty Lecturer Information System for course allocations, student rosters, grading, and academic notices.">
+  <meta name="theme-color" content="#122452">
+
+  <!-- Open Graph Metadata -->
+  <meta property="og:site_name" content="Divine Mandate Bible Institute (DIMABIN)">
+  <meta property="og:title" content="Faculty Lecturer Portal | Divine Mandate Bible Institute (DIMABIN)">
+  <meta property="og:description" content="Institutional Academic Portal for DIMABIN Faculty Lecturers.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/images/dimabin-logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="assets/images/dimabin-logo.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/images/favicon.png">
+  <link rel="apple-touch-icon" href="assets/images/favicon-192.png">
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="assets/css/lecturer-dashboard.css">
+</head>
+<body class="student-body">
+
+  <div class="student-layout">
+
+    <!-- Mobile Drawer Overlay -->
+    <div class="student-drawer-overlay" id="lecturer-drawer-overlay"></div>
+
+    <!-- ======================================================================
+         SIDEBAR NAVIGATION
+         ====================================================================== -->
+    <aside class="student-sidebar" id="lecturer-sidebar" aria-label="Faculty Navigation">
+
+      <!-- Institutional Branding -->
+      <a href="index.html" class="student-sidebar-brand" aria-label="DIMABIN Home">
+        <img src="assets/images/dimabin-logo.png" alt="Divine Mandate Bible Institute (DIMABIN) logo" width="38" height="38" style="object-fit: contain; border-radius: 6px; background: #FFFFFF; padding: 2px;">
+        <div class="student-brand-text">
+          <h1>DIVINE MANDATE</h1>
+          <span class="student-brand-sub">BIBLE INSTITUTE · FACULTY PORTAL</span>
+        </div>
+      </a>
+
+      <!-- Navigation Links -->
+      <nav class="student-sidebar-nav">
+
+        <!-- OVERVIEW -->
+        <div class="student-nav-group-title">OVERVIEW</div>
+        <button type="button" class="student-nav-item active" data-section="dashboard">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Faculty Dashboard</span>
+        </button>
+
+        <!-- ACADEMIC & TEACHING -->
+        <div class="student-nav-group-title">TEACHING &amp; COURSES</div>
+        <button type="button" class="student-nav-item" data-section="my-courses">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+          <span>Assigned Courses</span>
+        </button>
+        <button type="button" class="student-nav-item" data-section="assessments">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span>Grading &amp; Assessment</span>
+        </button>
+        <button type="button" class="student-nav-item" data-section="announcements">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span>Academic Notices</span>
+        </button>
+
+        <!-- FACULTY PROFILE -->
+        <div class="student-nav-group-title">MY ACCOUNT</div>
+        <button type="button" class="student-nav-item" data-section="profile">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span>Faculty Profile</span>
+        </button>
+        <button type="button" class="student-nav-item" data-section="support">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>Academic Registry Desk</span>
+        </button>
+
+      </nav>
+
+      <!-- Sidebar Footer (Faculty Account Quick Details) -->
+      <div class="student-sidebar-footer">
+        <div class="student-user-avatar" id="lec-avatar-initials">DR</div>
+        <div class="student-user-info">
+          <span class="student-user-name" id="lec-sidebar-name">Rev. Dr. Faculty</span>
+          <span class="student-user-mat" id="lec-sidebar-id">DIMABIN/FAC/2026/01</span>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ======================================================================
+         MAIN CONTENT AREA
+         ====================================================================== -->
+    <div class="student-main-wrapper">
+
+      <!-- TOP BAR -->
+      <header class="student-topbar">
+        <div class="student-topbar-left">
+          <button type="button" class="student-mobile-toggle" id="lecturer-mobile-toggle" aria-label="Open navigation menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <div class="student-topbar-breadcrumb">
+            <span class="breadcrumb-root">Faculty Portal</span>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-current" id="lecturer-section-title">Dashboard</span>
+          </div>
+        </div>
+
+        <div class="student-topbar-right">
+          <div class="student-centre-badge" id="lec-topbar-centre">
+            <span class="centre-dot"></span>
+            <span id="lec-topbar-centre-name">Goshen Central Campus</span>
+          </div>
+
+          <!-- Academic Session Badge -->
+          <div style="background: var(--student-gold-subtle); color: #B45309; border: 1px solid #FDE68A; font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: var(--student-radius-sm);">
+            2026/2027 ACADEMIC YEAR
+          </div>
+
+          <!-- Sign Out Button -->
+          <button type="button" class="btn btn-outline-blue btn-sm" id="btn-lecturer-logout" style="font-size: 0.75rem; font-weight: 700; padding: 0.4rem 0.85rem; border-color: var(--student-border);">
+            <span>SIGN OUT</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- VIEW CONTAINER -->
+      <main class="student-content-container" id="lecturer-content">
+
+        <!-- 1. DASHBOARD OVERVIEW -->
+        <section class="student-section active" id="section-dashboard" aria-label="Faculty Dashboard">
+
+          <!-- Welcome Banner -->
+          <div class="student-welcome-banner" style="background: linear-gradient(135deg, var(--student-navy) 0%, #1A326E 60%, var(--student-blue) 100%);">
+            <div class="student-welcome-text">
+              <div class="student-welcome-badge">ACADEMIC FACULTY APPOINTMENT · ACTIVE</div>
+              <h2 class="student-welcome-title">Welcome, <span id="lec-banner-name">Faculty Member</span></h2>
+              <p class="student-welcome-desc">
+                Welcome to your DIMABIN Faculty Command Center. Oversee assigned course syllabi, verify student rosters, submit continuous assessment grades, and access institutional resources.
+              </p>
+            </div>
+            <div class="student-welcome-stats">
+              <div class="student-wstat-item">
+                <span class="student-wstat-val" id="stat-banner-courses">0</span>
+                <span class="student-wstat-label">Assigned Courses</span>
+              </div>
+              <div class="student-wstat-item">
+                <span class="student-wstat-val" id="stat-banner-centres">1</span>
+                <span class="student-wstat-label">Study Centres</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Metrics Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
+            
+            <div class="student-content-card" style="padding: 1.25rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Active Courses Assigned</span>
+              <div class="lecturer-stat-highlight" id="stat-card-courses" style="margin-top: 0.4rem;">0</div>
+              <span style="font-size: 0.8125rem; color: var(--student-success); font-weight: 600;">Authorized by Registry</span>
+            </div>
+
+            <div class="student-content-card" style="padding: 1.25rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Primary Campus Base</span>
+              <div style="font-size: 1.05rem; font-weight: 700; color: var(--student-navy); margin-top: 0.4rem;" id="stat-card-centre">Goshen Central Campus</div>
+              <span style="font-size: 0.8125rem; color: var(--student-text-muted);">Abeokuta, Ogun State</span>
+            </div>
+
+            <div class="student-content-card" style="padding: 1.25rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Faculty Department</span>
+              <div style="font-size: 1.05rem; font-weight: 700; color: var(--student-navy); margin-top: 0.4rem;" id="stat-card-dept">Biblical Studies &amp; Theology</div>
+              <span style="font-size: 0.8125rem; color: var(--student-blue); font-weight: 600;">Academic Division</span>
+            </div>
+
+            <div class="student-content-card" style="padding: 1.25rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Institutional Status</span>
+              <div style="margin-top: 0.4rem;">
+                <span class="faculty-badge badge-active" id="stat-card-status">Active Faculty Member</span>
+              </div>
+              <span style="font-size: 0.8125rem; color: var(--student-text-muted); display: block; margin-top: 0.25rem;">Institutional Credentials Active</span>
+            </div>
+
+          </div>
+
+          <!-- Assigned Courses Section on Overview -->
+          <div class="student-content-card">
+            <div class="student-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+              <div>
+                <h3 class="student-card-title">Currently Assigned Course Offerings</h3>
+                <span class="student-card-subtitle">Official allocations connected from the DIMABIN Course Allocation Management system</span>
+              </div>
+              <button type="button" class="btn btn-outline-blue btn-sm" id="btn-jump-to-all-courses">
+                View All Details →
+              </button>
+            </div>
+            <div class="student-card-body" id="overview-courses-container">
+              <div class="student-table-loading" id="overview-courses-loading">
+                <span class="btn-spinner" style="display: inline-block; width: 24px; height: 24px; border: 3px solid #1E3A8A; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
+                <span style="display: block; margin-top: 0.5rem; font-size: 0.875rem; color: var(--student-text-muted);">Synchronizing course allocations...</span>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- 2. MY ASSIGNED COURSES SECTION -->
+        <section class="student-section" id="section-my-courses" aria-label="Assigned Courses">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Institutional Course Allocation Ledger</h3>
+              <span class="student-card-subtitle">All academic courses assigned to you across DIMABIN study centres</span>
+            </div>
+            <div class="student-card-body">
+              <div id="full-courses-container">
+                <!-- Dynamically rendered course cards/table -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. GRADING & ASSESSMENTS -->
+        <section class="student-section" id="section-assessments" aria-label="Grading & Assessments">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Continuous Assessment &amp; Grade Book</h3>
+              <span class="student-card-subtitle">Submit examination scores, ministerial assessments, and project marks directly to Academic Registry</span>
+            </div>
+            <div class="student-card-body">
+              <div class="student-info-alert" style="background: var(--student-blue-subtle); border: 1px solid #BFDBFE; border-radius: var(--student-radius-sm); padding: 1rem; margin-bottom: 1.5rem; color: var(--student-navy);">
+                <strong>Grading Instructions:</strong> Select an assigned course from your schedule below to enter continuous assessment scores (30%) and final examination marks (70%). Submitted scores are saved securely to Firestore for Registry compilation.
+              </div>
+
+              <div id="assessments-course-list">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. ACADEMIC NOTICES & ANNOUNCEMENTS -->
+        <section class="student-section" id="section-announcements" aria-label="Academic Notices">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Institutional Announcements &amp; Circulars</h3>
+              <span class="student-card-subtitle">Official notifications from the Registrar, Academic Dean, and Rectorate</span>
+            </div>
+            <div class="student-card-body" id="announcements-container">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. FACULTY PROFILE -->
+        <section class="student-section" id="section-profile" aria-label="Faculty Profile">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Official Faculty Identity Record</h3>
+              <span class="student-card-subtitle">Institutional profile recorded in DIMABIN central database</span>
+            </div>
+            <div class="student-card-body">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                
+                <div style="background: var(--student-bg); padding: 1.25rem; border-radius: var(--student-radius-sm);">
+                  <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Full Name</span>
+                  <div style="font-size: 1.1rem; font-weight: 700; color: var(--student-navy); margin-top: 0.25rem;" id="prof-fullname">—</div>
+                </div>
+
+                <div style="background: var(--student-bg); padding: 1.25rem; border-radius: var(--student-radius-sm);">
+                  <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Institutional Lecturer ID</span>
+                  <div style="font-size: 1.1rem; font-weight: 800; color: var(--student-blue); margin-top: 0.25rem;" id="prof-staffid">—</div>
+                </div>
+
+                <div style="background: var(--student-bg); padding: 1.25rem; border-radius: var(--student-radius-sm);">
+                  <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Institutional Email</span>
+                  <div style="font-size: 0.95rem; font-weight: 600; color: var(--student-text-main); margin-top: 0.25rem;" id="prof-email">—</div>
+                </div>
+
+                <div style="background: var(--student-bg); padding: 1.25rem; border-radius: var(--student-radius-sm);">
+                  <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Contact Phone</span>
+                  <div style="font-size: 0.95rem; font-weight: 600; color: var(--student-text-main); margin-top: 0.25rem;" id="prof-phone">—</div>
+                </div>
+
+                <div style="background: var(--student-bg); padding: 1.25rem; border-radius: var(--student-radius-sm);">
+                  <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Academic Department</span>
+                  <div style="font-size: 0.95rem; font-weight: 600; color: var(--student-text-main); margin-top: 0.25rem;" id="prof-dept">—</div>
+                </div>
+
+                <div style="background: var(--student-bg); padding: 1.25rem; border-radius: var(--student-radius-sm);">
+                  <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Qualifications</span>
+                  <div style="font-size: 0.95rem; font-weight: 600; color: var(--student-text-main); margin-top: 0.25rem;" id="prof-qualification">—</div>
+                </div>
+
+                <div style="background: var(--student-bg); padding: 1.25rem; border-radius: var(--student-radius-sm);">
+                  <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Theological Specialization</span>
+                  <div style="font-size: 0.95rem; font-weight: 600; color: var(--student-text-main); margin-top: 0.25rem;" id="prof-specialization">—</div>
+                </div>
+
+                <div style="background: var(--student-bg); padding: 1.25rem; border-radius: var(--student-radius-sm);">
+                  <span style="font-size: 0.75rem; font-weight: 700; color: var(--student-text-muted); text-transform: uppercase;">Primary Campus Base</span>
+                  <div style="font-size: 0.95rem; font-weight: 600; color: var(--student-text-main); margin-top: 0.25rem;" id="prof-centre">—</div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. ACADEMIC REGISTRY SUPPORT -->
+        <section class="student-section" id="section-support" aria-label="Support Desk">
+          <div class="student-content-card">
+            <div class="student-card-header">
+              <h3 class="student-card-title">Academic Administration &amp; Registry Desk</h3>
+              <span class="student-card-subtitle">Official faculty support channels</span>
+            </div>
+            <div class="student-card-body">
+              <p style="font-size: 0.875rem; color: var(--student-text-muted); margin-bottom: 1.25rem;">
+                Need assistance with course allocations, lecture room schedules, grade entry periods, or faculty credentials? Reach out to the Academic Office.
+              </p>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                <div style="background: var(--student-bg); padding: 1rem; border-radius: var(--student-radius-sm);">
+                  <strong style="color: var(--student-navy); display: block; margin-bottom: 0.25rem;">Registry Email</strong>
+                  <span style="font-size: 0.8125rem; color: var(--student-text-muted);">registry@dimabin.org</span>
+                </div>
+                <div style="background: var(--student-bg); padding: 1rem; border-radius: var(--student-radius-sm);">
+                  <strong style="color: var(--student-navy); display: block; margin-bottom: 0.25rem;">Dean of Academics</strong>
+                  <span style="font-size: 0.8125rem; color: var(--student-text-muted);">academics@dimabin.org</span>
+                </div>
+                <div style="background: var(--student-bg); padding: 1rem; border-radius: var(--student-radius-sm);">
+                  <strong style="color: var(--student-navy); display: block; margin-bottom: 0.25rem;">Goshen Central Campus</strong>
+                  <span style="font-size: 0.8125rem; color: var(--student-text-muted);">Abeokuta, Ogun State, Nigeria</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- Pure Vanilla JavaScript Modules -->
+  <script type="module" src="assets/js/lecturer-dashboard.js"></script>
+</body>
+</html>

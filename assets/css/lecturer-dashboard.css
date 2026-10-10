@@ -1,0 +1,100 @@
+@import "./student-dashboard.css";
+
+/**
+ * DIMABIN LECTURER PORTAL — FACULTY DASHBOARD STYLES
+ * Institutional Faculty Interface
+ */
+
+:root {
+  --lecturer-navy: #122452;
+  --lecturer-blue: #1F3C82;
+  --lecturer-gold: #F5B800;
+  --lecturer-bg: #F6F7FB;
+}
+
+.faculty-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.faculty-badge.badge-active {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #BBF7D0;
+}
+
+.faculty-badge.badge-gold {
+  background: #FEF9E7;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+}
+
+.faculty-badge.badge-blue {
+  background: #EEF2F9;
+  color: #1F3C82;
+  border: 1px solid #DBEAFE;
+}
+
+.course-offering-card {
+  background: #FFFFFF;
+  border: 1px solid var(--student-border);
+  border-radius: var(--student-radius-md);
+  padding: 1.25rem;
+  box-shadow: var(--student-shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.course-offering-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--student-shadow-md);
+  border-color: #CBD5E1;
+}
+
+.card-course-code {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--student-blue);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.card-course-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--student-navy);
+  margin-top: 0.25rem;
+  margin-bottom: 0.6rem;
+  line-height: 1.35;
+}
+
+.card-course-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--student-text-muted);
+  margin-bottom: 1rem;
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lecturer-stat-highlight {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--student-navy);
+  line-height: 1.1;
+}

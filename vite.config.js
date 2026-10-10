@@ -19,6 +19,7 @@ export default defineConfig({
         studentPasswordSetup: resolve(__dirname, 'student-password-setup.html'),
         lecturerLogin: resolve(__dirname, 'lecturer-login.html'),
         lecturerPasswordSetup: resolve(__dirname, 'lecturer-password-setup.html'),
+        lecturerDashboard: resolve(__dirname, 'lecturer-dashboard.html'),
         adminLogin: resolve(__dirname, 'admin-login.html'),
         adminDashboard: resolve(__dirname, 'admin-dashboard.html'),
       },
