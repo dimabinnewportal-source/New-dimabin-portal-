@@ -42,6 +42,7 @@ import {
   createLecturer,
   updateLecturer,
   setLecturerStatus,
+  deleteLecturer,
   refreshLecturerDashboardData,
   subscribeStudyCentres,
   createStudyCentre,
@@ -801,7 +802,7 @@ export function initAdmissionManagement() {
         const status = (app.status || "pending").toLowerCase();
         const statusClass = status === "approved" ? "badge-active" : status === "rejected" ? "badge-inactive" : "badge-gold";
         const dateStr = app.createdAt ? new Date(app.createdAt).toLocaleDateString() : "Recent";
-        const centreDisplay = app.studyCentre || "Goshen Central Campus, Abeokuta";
+        const centreDisplay = app.studyCentre || "Unassigned Study Centre";
 
         return `
         <tr data-app-id="${app.id || app.applicationId}">
@@ -1189,7 +1190,7 @@ export function initCourseManagement() {
         const level = c.level ? `${c.level} Lvl` : "100 Lvl";
         const sem = c.semester || "First Semester";
         const units = c.creditUnits || c.creditUnit || 3;
-        const centre = c.studyCentre || "Goshen Central Campus, Abeokuta";
+        const centre = c.studyCentre || "All Centres";
         const isActive = c.status === "active";
 
         const semClass = sem.includes("Second") ? "sem-2" : sem.includes("Third") ? "sem-3" : "sem-1";
@@ -1320,7 +1321,7 @@ export function initCourseManagement() {
     if (inputLevel) inputLevel.value = "100";
     if (inputDept) inputDept.value = "Biblical Studies & Theology";
     if (inputProg) inputProg.value = "Diploma in Theology (Dipl.Th.)";
-    if (inputCentre) inputCentre.value = "Goshen Central Campus, Abeokuta";
+    if (inputCentre) inputCentre.value = inputCentre.options[0]?.value || "";
 
     openModal(modalForm);
   };
@@ -1345,7 +1346,7 @@ export function initCourseManagement() {
     if (inputDept) inputDept.value = course.department || "Biblical Studies & Theology";
     if (inputProg) inputProg.value = course.programme || "Diploma in Theology (Dipl.Th.)";
     if (inputLevel) inputLevel.value = course.level || "100";
-    if (inputCentre) inputCentre.value = course.studyCentre || "Goshen Central Campus, Abeokuta";
+    if (inputCentre) inputCentre.value = course.studyCentre || inputCentre.options[0]?.value || "";
     if (inputStatus) inputStatus.value = course.status || "active";
     if (inputDesc) inputDesc.value = course.description || "";
 
@@ -1439,7 +1440,7 @@ export function initCourseManagement() {
       const dept = (inputDept?.value || "Biblical Studies & Theology").trim();
       const prog = (inputProg?.value || "Diploma in Theology (Dipl.Th.)").trim();
       const level = (inputLevel?.value || "100").trim();
-      const centre = (inputCentre?.value || "Goshen Central Campus, Abeokuta").trim();
+      const centre = (inputCentre?.value || "").trim();
       const status = inputStatus?.value === "inactive" ? "inactive" : "active";
       const desc = (inputDesc?.value || "").trim();
       const prereqs = (inputPrereqs?.value || "").trim();
@@ -1901,7 +1902,7 @@ export function initCourseAllocation() {
     catalogCourses.forEach((c) => {
       const code = normalizeCourseCode(c.courseCode);
       if (!code) return;
-      const centre = (c.studyCentre || "Goshen Central Campus, Abeokuta").trim();
+      const centre = (c.studyCentre || "").trim();
       const session = (c.academicSession || ADMIN_CONFIG.SESSION || "2026/2027").trim();
       const semester = (c.semester || "First Semester").trim();
       const key = `${code}__${centre}__${session}__${semester}`;
@@ -1924,7 +1925,7 @@ export function initCourseAllocation() {
     allocations.forEach((a) => {
       const code = normalizeCourseCode(a.courseCode);
       if (!code) return;
-      const centre = (a.studyCentre || "Goshen Central Campus, Abeokuta").trim();
+      const centre = (a.studyCentre || "").trim();
       const session = (a.academicSession || "2026/2027").trim();
       const semester = (a.semester || "First Semester").trim();
       const key = `${code}__${centre}__${session}__${semester}`;
@@ -2456,7 +2457,7 @@ export function initCourseAllocation() {
       const email = (quickEmail?.value || "").trim();
       const dept = (quickDept?.value || "Biblical Studies & Theology").trim();
       const qual = (quickQual?.value || "").trim();
-      const centre = (quickCentre?.value || "Goshen Central Campus, Abeokuta").trim();
+      const centre = (quickCentre?.value || "").trim();
 
       if (!staffId || !name) {
         if (quickLecAlert) {
@@ -3033,7 +3034,7 @@ export function initLecturerManagement() {
         // Centres badge HTML
         let centresHtml = "";
         if (assignedCentres.length === 0) {
-          centresHtml = `<span style="font-size: 0.72rem; color: var(--admin-text-muted);">Base: ${lec.studyCentre ? lec.studyCentre.split(",")[0] : "Goshen"}</span>`;
+          centresHtml = `<span style="font-size: 0.72rem; color: var(--admin-text-muted);">Base: ${lec.studyCentre ? lec.studyCentre.split(",")[0] : "Unassigned"}</span>`;
         } else if (assignedCentres.length === 1) {
           centresHtml = `<span class="badge-lec-count gold">📍 1 Campus</span>`;
         } else {
@@ -3076,6 +3077,9 @@ export function initLecturerManagement() {
                 </button>
                 <button type="button" class="btn-lec-action ${isActive ? "btn-lec-toggle-active" : "btn-lec-toggle-inactive"} action-toggle-lec-status" data-id="${id}" data-current="${accStatus}" title="${isActive ? "Deactivate Account" : "Activate Account"}">
                   ${isActive ? "Deactivate" : "Activate"}
+                </button>
+                <button type="button" class="btn-lec-action btn-lec-delete action-delete-lec" data-id="${id}" title="Permanently Delete Faculty Profile" style="color: #DC2626; border-color: #FECACA;">
+                  Delete
                 </button>
               </div>
             </td>
@@ -3151,7 +3155,7 @@ export function initLecturerManagement() {
     if (deptSelect) deptSelect.value = lecturer.department || "Biblical Studies & Theology";
     if (qualInput) qualInput.value = lecturer.qualification || "";
     if (specInput) specInput.value = lecturer.specialization || "";
-    if (centreSelect) centreSelect.value = lecturer.studyCentre || "Goshen Central Campus, Abeokuta";
+    if (centreSelect) centreSelect.value = lecturer.studyCentre || centreSelect.options[0]?.value || "";
     if (statusSelect) statusSelect.value = (lecturer.accountStatus || lecturer.status || "active").toLowerCase();
 
     editModal.style.display = "flex";
@@ -3202,7 +3206,7 @@ export function initLecturerManagement() {
     if (phoneEl) phoneEl.textContent = lecturer.phone || "No phone recorded";
     if (qualEl) qualEl.textContent = lecturer.qualification || "Unspecified Qualifications";
     if (specEl) specEl.textContent = lecturer.specialization || "General Theology & Ministry";
-    if (centreEl) centreEl.textContent = lecturer.studyCentre || "Goshen Central Campus, Abeokuta";
+    if (centreEl) centreEl.textContent = lecturer.studyCentre || "Unassigned";
 
     const activeAllocs = getActiveAllocations(lecturer);
     const assignedCentres = getAssignedCentres(lecturer);
@@ -3273,7 +3277,7 @@ export function initLecturerManagement() {
 
     if (staffIdEl) staffIdEl.textContent = lecturer.staffId || "N/A";
     if (nameEl) nameEl.textContent = lecturer.fullName || "Unnamed Faculty";
-    if (deptEl) deptEl.textContent = `${lecturer.department || "Faculty"} · Base: ${lecturer.studyCentre || "Goshen"}`;
+    if (deptEl) deptEl.textContent = `${lecturer.department || "Faculty"} · Base: ${lecturer.studyCentre || "Unassigned"}`;
 
     const activeAllocs = getActiveAllocations(lecturer);
 
@@ -3492,7 +3496,7 @@ export function initLecturerManagement() {
       const department = (document.getElementById("add-lec-department")?.value || "Biblical Studies & Theology").trim();
       const qualification = (document.getElementById("add-lec-qualification")?.value || "").trim();
       const specialization = (document.getElementById("add-lec-specialization")?.value || "").trim();
-      const studyCentre = (document.getElementById("add-lec-centre")?.value || "Goshen Central Campus, Abeokuta").trim();
+      const studyCentre = (document.getElementById("add-lec-centre")?.value || "").trim();
       const accountStatus = document.getElementById("add-lec-status")?.value === "inactive" ? "inactive" : "active";
 
       if (!fullName) {
@@ -3681,6 +3685,24 @@ export function initLecturerManagement() {
         const id = btnToggle.dataset.id;
         const target = lecturersList.find((l) => l.id === id);
         if (target) openToggleStatusModal(target);
+      } else if (e.target.closest(".action-delete-lec")) {
+        const btnDel = e.target.closest(".action-delete-lec");
+        const id = btnDel.dataset.id;
+        const target = lecturersList.find((l) => l.id === id || l.staffId === id);
+        const name = target ? target.fullName : "this faculty member";
+        if (confirm(`Are you sure you want to permanently delete ${name}? This action cannot be undone.`)) {
+          (async () => {
+            try {
+              btnDel.disabled = true;
+              await deleteLecturer(id);
+              showAdminToast("success", `Faculty record for ${name} permanently deleted.`);
+            } catch (err) {
+              console.error("[DIMABIN Lecturers] Delete error:", err);
+              showAdminToast("error", `Failed to delete faculty record: ${err.message}`);
+              btnDel.disabled = false;
+            }
+          })();
+        }
       }
     });
   }
@@ -4913,7 +4935,7 @@ export function initStudyCentreNavAndWorkspaces() {
     });
     document.getElementById("letter-candidate-name").textContent = app.fullName || "Candidate Name";
     document.getElementById("letter-programme-name").textContent = app.programme || "Diploma in Theology (Dipl.Th.)";
-    document.getElementById("letter-centre-name").textContent = app.studyCentre || (currentAdmissionsCentre ? currentAdmissionsCentre.centreName : "Goshen Central Campus, Abeokuta");
+    document.getElementById("letter-centre-name").textContent = app.studyCentre || (currentAdmissionsCentre ? currentAdmissionsCentre.centreName : "DIMABIN Study Centre");
     document.getElementById("letter-session-val").textContent = app.academicSession || "2026/2027";
 
     letterModal.style.display = "flex";
@@ -5195,7 +5217,7 @@ export function initStudentDirectoryManagement() {
             </td>
             <td>
               <span style="font-size: 0.8125rem; font-weight: 700; color: var(--primary-blue);">
-                📍 ${student.studyCentre || "Goshen Central Campus, Abeokuta"}
+                📍 ${student.studyCentre || "Study Centre"}
               </span>
             </td>
             <td>
@@ -5275,7 +5297,7 @@ export function initStudentDirectoryManagement() {
     document.getElementById("dossier-student-matric").textContent = student.matricNumber || student.admissionNumber || "-";
     document.getElementById("dossier-student-programme").textContent = student.programme || "Diploma in Theology";
     document.getElementById("dossier-student-level").textContent = student.level || "Diploma I";
-    document.getElementById("dossier-student-centre").textContent = student.studyCentre || "Goshen Central Campus, Abeokuta";
+    document.getElementById("dossier-student-centre").textContent = student.studyCentre || "Study Centre";
     document.getElementById("dossier-student-session").textContent = student.academicSession || "2026/2027";
     document.getElementById("dossier-student-email").textContent = student.email || "No email on record";
     document.getElementById("dossier-student-phone").textContent = student.phone || "No phone on record";
@@ -5331,7 +5353,7 @@ export function initStudentDirectoryManagement() {
     document.getElementById("idcard-matric-text").textContent = student.matricNumber || student.admissionNumber || "DIMABIN/STU/2026/001";
     document.getElementById("idcard-programme-text").textContent = student.programme || "Diploma in Theology";
     document.getElementById("idcard-level-text").textContent = student.level || "Diploma I";
-    document.getElementById("idcard-centre-text").textContent = student.studyCentre || "Goshen Central Campus";
+    document.getElementById("idcard-centre-text").textContent = student.studyCentre || "Study Centre";
     document.getElementById("idcard-session-text").textContent = student.academicSession || "2026/2027";
     document.getElementById("idcard-barcode-text").textContent = `*${student.matricNumber || "DIMABIN-STU"}*`;
 

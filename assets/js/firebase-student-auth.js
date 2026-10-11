@@ -95,7 +95,7 @@ export async function getStudentProfile(uid, authEmail = "") {
         department: userProfile.department || "Biblical Studies & Theology",
         level: userProfile.level || "Diploma I",
         academicSession: userProfile.academicSession || "2026/2027",
-        studyCentre: userProfile.studyCentre || "Goshen Central Campus, Abeokuta",
+        studyCentre: userProfile.studyCentre || "Official Study Centre",
         status: userProfile.status || "active",
         cgpa: userProfile.cgpa || null,
         entrySession: userProfile.entrySession || "2026/2027",
@@ -130,7 +130,7 @@ export async function getStudentProfile(uid, authEmail = "") {
         department: "Theological Studies",
         level: "Diploma I",
         academicSession: "2026/2027",
-        studyCentre: "Goshen Central Campus, Abeokuta",
+        studyCentre: "Official Study Centre",
         status: "active",
         cgpa: null,
         createdAt: new Date().toISOString()
@@ -152,7 +152,7 @@ export async function getStudentProfile(uid, authEmail = "") {
       department: "Theological Studies",
       level: "Diploma I",
       academicSession: "2026/2027",
-      studyCentre: "Goshen Central Campus, Abeokuta",
+      studyCentre: "Official Study Centre",
       status: "active",
       cgpa: null
     };

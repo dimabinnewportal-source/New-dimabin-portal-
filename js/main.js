@@ -266,6 +266,26 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    const applicantCentreSelect = document.getElementById('applicant-centre');
+    if (applicantCentreSelect) {
+      subscribeStudyCentres((centres) => {
+        const activeCentres = (centres || []).filter((c) => c.status === 'active');
+        const prevVal = applicantCentreSelect.value;
+        applicantCentreSelect.innerHTML = '<option value="">Select Preferred Study Centre *</option>';
+        activeCentres.forEach((c) => {
+          const opt = document.createElement('option');
+          opt.value = c.centreName;
+          opt.textContent = `${c.centreName} (${c.centreCode || 'CTR'})`;
+          applicantCentreSelect.appendChild(opt);
+        });
+        if (prevVal && Array.from(applicantCentreSelect.options).some((o) => o.value === prevVal)) {
+          applicantCentreSelect.value = prevVal;
+        } else if (activeCentres.length > 0 && !applicantCentreSelect.value) {
+          applicantCentreSelect.value = activeCentres[0].centreName;
+        }
+      });
+    }
+
     const updateStepUI = (step) => {
       // Hide all step panes
       document.querySelectorAll('.form-step-pane').forEach((pane) => {
@@ -447,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const candidateQual = document.getElementById('academic-qualification')?.value || '';
       const candidateYear = document.getElementById('academic-year')?.value || '';
       const candidateInst = document.getElementById('academic-institution')?.value || '';
-      const candidateCentre = document.getElementById('app-study-centre')?.value || 'Goshen Central Campus, Abeokuta';
+      const candidateCentre = document.getElementById('app-study-centre')?.value || '';
 
       const sumName = document.getElementById('summary-candidate-name');
       const sumEmail = document.getElementById('summary-candidate-email');

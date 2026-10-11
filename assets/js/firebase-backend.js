@@ -168,6 +168,101 @@ function dispatchCollectionEvent(collName, items) {
 
 /**
  * =========================================================================
+ * SAMPLE ARTIFACT ELIMINATION & PURGE ROUTINE
+ * Guarantees that only genuine, admin-created records ever exist.
+ * Permanently removes all known AI Studio placeholder/seed records.
+ * =========================================================================
+ */
+export const KNOWN_SAMPLE_CENTRE_IDS = Object.freeze([
+  "centre_goshen_central",
+  "centre_lagos_outreach",
+  "centre_ibadan_regional",
+  "centre_online_hub"
+]);
+
+export const KNOWN_SAMPLE_LECTURER_IDS = Object.freeze([
+  "lec_olubunmi_01",
+  "lec_adebayo_02",
+  "lec_adeleke_03",
+  "lec_ogundipe_04",
+  "lec_babalola_05"
+]);
+
+export const KNOWN_SAMPLE_ALLOCATION_IDS = Object.freeze([
+  "alloc_crs_THY_101_goshen_sem1",
+  "alloc_crs_BIB_101_goshen_sem1"
+]);
+
+// 1. Immediately purge local cache from sample records
+(function purgeLegacySampleCache() {
+  try {
+    const centreSet = new Set(KNOWN_SAMPLE_CENTRE_IDS);
+    const cKey = `${CACHE_PREFIX}${COLLECTIONS.STUDY_CENTRES}`;
+    const rawC = localStorage.getItem(cKey);
+    if (rawC) {
+      const list = JSON.parse(rawC);
+      if (Array.isArray(list)) {
+        const cleaned = list.filter((c) => !centreSet.has(c.id) && !centreSet.has(c.centreId));
+        localStorage.setItem(cKey, JSON.stringify(cleaned));
+      }
+    }
+
+    const lecSet = new Set(KNOWN_SAMPLE_LECTURER_IDS);
+    const lKey = `${CACHE_PREFIX}${COLLECTIONS.LECTURERS}`;
+    const rawL = localStorage.getItem(lKey);
+    if (rawL) {
+      const list = JSON.parse(rawL);
+      if (Array.isArray(list)) {
+        const cleaned = list.filter((l) => !lecSet.has(l.id) && !lecSet.has(l.staffId));
+        localStorage.setItem(lKey, JSON.stringify(cleaned));
+      }
+    }
+
+    const allocSet = new Set(KNOWN_SAMPLE_ALLOCATION_IDS);
+    const aKey = `${CACHE_PREFIX}${COLLECTIONS.COURSE_ALLOCATIONS}`;
+    const rawA = localStorage.getItem(aKey);
+    if (rawA) {
+      const list = JSON.parse(rawA);
+      if (Array.isArray(list)) {
+        const cleaned = list.filter((a) => !allocSet.has(a.id));
+        localStorage.setItem(aKey, JSON.stringify(cleaned));
+      }
+    }
+  } catch (_) {}
+})();
+
+// 2. Quietly clean up confirmed AI Studio sample documents from Firestore if present
+(async function cleanupSampleRecordsFromFirestore() {
+  try {
+    for (const cId of KNOWN_SAMPLE_CENTRE_IDS) {
+      try {
+        const snap = await getDoc(doc(db, COLLECTIONS.STUDY_CENTRES, cId));
+        if (snap.exists()) {
+          await deleteDoc(doc(db, COLLECTIONS.STUDY_CENTRES, cId));
+        }
+      } catch (_) {}
+    }
+    for (const lId of KNOWN_SAMPLE_LECTURER_IDS) {
+      try {
+        const snap = await getDoc(doc(db, COLLECTIONS.LECTURERS, lId));
+        if (snap.exists()) {
+          await deleteDoc(doc(db, COLLECTIONS.LECTURERS, lId));
+        }
+      } catch (_) {}
+    }
+    for (const aId of KNOWN_SAMPLE_ALLOCATION_IDS) {
+      try {
+        const snap = await getDoc(doc(db, COLLECTIONS.COURSE_ALLOCATIONS, aId));
+        if (snap.exists()) {
+          await deleteDoc(doc(db, COLLECTIONS.COURSE_ALLOCATIONS, aId));
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+})();
+
+/**
+ * =========================================================================
  * 1. ACTIVITY LOGGING (hgs_activity_logs)
  * =========================================================================
  */
@@ -353,7 +448,7 @@ export async function savePublicApplication(formData) {
     qualification: formData.qualification || "SSCE / WASSCE",
     graduationYear: formData.graduationYear || "2021",
     institution: formData.institution || "High School / College",
-    studyCentre: formData.studyCentre || "Goshen Central Campus, Abeokuta",
+    studyCentre: (formData.studyCentre || "").trim(),
     academicSession: formData.academicSession || "2026/2027",
     status: "pending", // pending | approved | rejected
     createdAt: new Date().toISOString(),
@@ -463,58 +558,9 @@ export async function updateAdmissionStatus(docId, newStatus, reason = "") {
 }
 
 /**
- * Canonical Sample Admissions (Provided for resilient offline/testing verification)
+ * Canonical Sample Admissions (Empty: Strictly authentic applications are displayed)
  */
-export const SAMPLE_ADMISSIONS = Object.freeze([
-  {
-    id: "sample_adm_1001",
-    applicationId: "DIMABIN/APP/2026/1001",
-    fullName: "Oluwaseun Emmanuel Adebayo",
-    email: "student@dimabin.org",
-    phone: "+2348031234567",
-    programme: "Diploma in Theology (Dipl.Th.)",
-    dob: "1998-05-14",
-    gender: "Male",
-    academicSession: "2026/2027",
-    studyCentre: "Goshen Central Campus, Abeokuta",
-    status: "approved",
-    statusReason: "Cleared by Academic Board and Admissions Committee.",
-    createdAt: "2026-02-10T10:00:00.000Z",
-    updatedAt: "2026-02-15T14:30:00.000Z"
-  },
-  {
-    id: "sample_adm_1002",
-    applicationId: "DIMABIN/APP/2026/1002",
-    fullName: "Grace Oluwatoyin Bakare",
-    email: "grace.bakare@dimabin.org",
-    phone: "+2348059876543",
-    programme: "Certificate in Christian Ministry",
-    dob: "2001-09-22",
-    gender: "Female",
-    academicSession: "2026/2027",
-    studyCentre: "Goshen Central Campus, Abeokuta",
-    status: "pending",
-    statusReason: "Under registry committee vetting.",
-    createdAt: "2026-03-01T09:15:00.000Z",
-    updatedAt: "2026-03-01T09:15:00.000Z"
-  },
-  {
-    id: "sample_adm_1003",
-    applicationId: "DIMABIN/APP/2026/1003",
-    fullName: "Timothy Chukwudi Okon",
-    email: "timothy.okon@dimabin.org",
-    phone: "+2348021122334",
-    programme: "Christian Leadership Practicum",
-    dob: "1995-11-03",
-    gender: "Male",
-    academicSession: "2026/2027",
-    studyCentre: "Goshen Central Campus, Abeokuta",
-    status: "rejected",
-    statusReason: "Incomplete academic credentials and missing pastoral sponsorship documentation.",
-    createdAt: "2026-01-20T11:45:00.000Z",
-    updatedAt: "2026-01-25T16:00:00.000Z"
-  }
-]);
+export const SAMPLE_ADMISSIONS = Object.freeze([]);
 
 /**
  * Format/Normalize Date of Birth representation into YYYY-MM-DD
@@ -787,7 +833,7 @@ export async function completeStudentPortalSetup(rawEmail, rawPassword, admissio
     department: "Biblical Studies & Theology",
     level: "Diploma I",
     academicSession: admissionRecord.academicSession || "2026/2027",
-    studyCentre: admissionRecord.studyCentre || "Goshen Central Campus, Abeokuta",
+    studyCentre: (admissionRecord.studyCentre || "").trim(),
     status: "active",
     role: "student",
     cgpa: null,
@@ -915,7 +961,7 @@ export async function createStudent(studentData) {
     phone: (studentData.phone || "").trim(),
     programme: studentData.programme || "Diploma in Theology (Dipl.Th.)",
     level: studentData.level || "Diploma I",
-    studyCentre: studentData.studyCentre || "Goshen Central Campus, Abeokuta",
+    studyCentre: (studentData.studyCentre || "").trim(),
     academicSession: studentData.academicSession || "2026/2027",
     status: studentData.status || "active", // active | inactive | graduated
     createdAt: new Date().toISOString(),
@@ -973,103 +1019,11 @@ export async function toggleStudentStatus(studentId, currentStatus) {
  * Institutional Faculty Directory with Single Account Principle
  * =========================================================================
  */
-export const DEFAULT_DIMABIN_LECTURERS = Object.freeze([
-  {
-    id: "lec_olubunmi_01",
-    uid: "lec_auth_dimabin_fac_2026_01",
-    staffId: "DIMABIN/FAC/2026/01",
-    fullName: "Rev. Dr. E. A. Olubunmi",
-    email: "e.olubunmi@dimabin.edu.ng",
-    phone: "+234 803 111 2233",
-    department: "Biblical Studies & Theology",
-    qualification: "Ph.D. Biblical Theology, M.Th., B.Th.",
-    specialization: "Pauline Epistles & Systematic Christology",
-    studyCentre: "Goshen Central Campus, Abeokuta",
-    status: "active",
-    accountStatus: "active",
-    employmentStatus: "active",
-    createdAt: "2026-01-10T08:00:00.000Z",
-    updatedAt: "2026-01-10T08:00:00.000Z"
-  },
-  {
-    id: "lec_adebayo_02",
-    uid: "lec_auth_dimabin_fac_2026_02",
-    staffId: "DIMABIN/FAC/2026/02",
-    fullName: "Pastor M. O. Adebayo",
-    email: "m.adebayo@dimabin.edu.ng",
-    phone: "+234 802 334 4556",
-    department: "Practical Theology & Pastoral Ministry",
-    qualification: "M.Div., B.Th.",
-    specialization: "Pastoral Counseling & Expository Preaching",
-    studyCentre: "Goshen Central Campus, Abeokuta",
-    status: "active",
-    accountStatus: "active",
-    employmentStatus: "active",
-    createdAt: "2026-01-10T08:00:00.000Z",
-    updatedAt: "2026-01-10T08:00:00.000Z"
-  },
-  {
-    id: "lec_adeleke_03",
-    uid: "lec_auth_dimabin_fac_2026_03",
-    staffId: "DIMABIN/FAC/2026/03",
-    fullName: "Rev. Deborah F. Adeleke",
-    email: "d.adeleke@dimabin.edu.ng",
-    phone: "+234 805 445 5667",
-    department: "Church Administration & Leadership",
-    qualification: "M.Th., PGD Th., B.A. Rel.",
-    specialization: "Ecclesiastical Governance & Christian Education",
-    studyCentre: "Lagos Outreach Coordination Centre",
-    status: "active",
-    accountStatus: "active",
-    employmentStatus: "active",
-    createdAt: "2026-01-10T08:00:00.000Z",
-    updatedAt: "2026-01-10T08:00:00.000Z"
-  },
-  {
-    id: "lec_ogundipe_04",
-    uid: "lec_auth_dimabin_fac_2026_04",
-    staffId: "DIMABIN/FAC/2026/04",
-    fullName: "Pastor Samuel K. Ogundipe",
-    email: "s.ogundipe@dimabin.edu.ng",
-    phone: "+234 807 556 6778",
-    department: "Missions & Evangelism",
-    qualification: "M.A. Missiology, Dipl.Th.",
-    specialization: "Cross-Cultural Missions & Church Planting",
-    studyCentre: "Ibadan Regional Study Centre",
-    status: "active",
-    accountStatus: "active",
-    employmentStatus: "active",
-    createdAt: "2026-01-10T08:00:00.000Z",
-    updatedAt: "2026-01-10T08:00:00.000Z"
-  },
-  {
-    id: "lec_babalola_05",
-    uid: "lec_auth_dimabin_fac_2026_05",
-    staffId: "DIMABIN/FAC/2026/05",
-    fullName: "Rev. Dr. J. A. Babalola",
-    email: "j.babalola@dimabin.edu.ng",
-    phone: "+234 809 667 7889",
-    department: "Systematic Theology & Apologetics",
-    qualification: "Ph.D. Systematic Theology, M.Th.",
-    specialization: "Christian Apologetics & Contemporary Ethics",
-    studyCentre: "Online & Distance Learning Hub",
-    status: "active",
-    accountStatus: "active",
-    employmentStatus: "active",
-    createdAt: "2026-01-10T08:00:00.000Z",
-    updatedAt: "2026-01-10T08:00:00.000Z"
-  }
-]);
-
 export function subscribeLecturers(callback) {
   if (typeof callback !== "function") return () => {};
 
-  // Hydrate with default faculty roster if completely empty
-  let currentList = getCachedCollection(COLLECTIONS.LECTURERS);
-  if (!Array.isArray(currentList) || currentList.length === 0) {
-    currentList = [...DEFAULT_DIMABIN_LECTURERS];
-    setCachedCollection(COLLECTIONS.LECTURERS, currentList);
-  }
+  // Pure authoritative subscription: never seed sample faculty
+  let currentList = getCachedCollection(COLLECTIONS.LECTURERS) || [];
   callback(currentList);
 
   const localListener = (e) => {
@@ -1094,13 +1048,14 @@ export function subscribeLecturers(callback) {
           setCachedCollection(COLLECTIONS.LECTURERS, list);
           callback(list);
         } else {
-          const cache = getCachedCollection(COLLECTIONS.LECTURERS);
-          callback(cache.length > 0 ? cache : [...DEFAULT_DIMABIN_LECTURERS]);
+          // If collection is empty, state is strictly empty. Never synthesize placeholder records.
+          setCachedCollection(COLLECTIONS.LECTURERS, []);
+          callback([]);
         }
       },
       (err) => {
         console.warn("[DIMABIN Lecturers] onSnapshot note:", err.message);
-        callback(getCachedCollection(COLLECTIONS.LECTURERS));
+        callback(getCachedCollection(COLLECTIONS.LECTURERS) || []);
       }
     );
   } catch (err) {
@@ -1127,7 +1082,7 @@ export async function createLecturer(lecturerData) {
   const department = (lecturerData.department || "Biblical Studies & Theology").trim();
   const qualification = (lecturerData.qualification || "M.Th., B.Th.").trim();
   const specialization = (lecturerData.specialization || "").trim();
-  const studyCentre = (lecturerData.studyCentre || "Goshen Central Campus, Abeokuta").trim();
+  const studyCentre = (lecturerData.studyCentre || "").trim();
   const accountStatus = lecturerData.accountStatus === "inactive" || lecturerData.status === "inactive" ? "inactive" : "active";
   const employmentStatus = lecturerData.employmentStatus || "active";
 
@@ -1313,6 +1268,34 @@ export async function setLecturerStatus(lecturerId, newStatus, reason = "") {
 export async function toggleLecturerStatus(lecturerId, currentStatus) {
   const newStatus = currentStatus === "active" ? "inactive" : "active";
   return setLecturerStatus(lecturerId, newStatus);
+}
+
+export async function deleteLecturer(lecturerId) {
+  if (!lecturerId) throw new Error("Lecturer ID is required.");
+  const existingLecturers = getCachedCollection(COLLECTIONS.LECTURERS) || [];
+  const target = existingLecturers.find((l) => l.id === lecturerId || l.staffId === lecturerId);
+  const targetId = target ? target.id : lecturerId;
+  const staffId = target ? target.staffId : lecturerId;
+  const fullName = target ? target.fullName : "Faculty Instructor";
+
+  removeCachedItem(COLLECTIONS.LECTURERS, targetId);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.LECTURERS, targetId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn(`[DIMABIN Lecturers] Delete note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "lecturer_deleted",
+    description: `Deleted faculty record: ${fullName} (${staffId}).`,
+    targetCollection: COLLECTIONS.LECTURERS,
+    targetDocumentId: targetId
+  });
+
+  refreshLecturerDashboardData();
+  return { success: true, id: targetId };
 }
 
 export function getLecturerAssignments(lecturerStaffId) {
@@ -1659,7 +1642,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "First Semester",
     creditUnits: 3,
     creditUnit: 3,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: [],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1678,7 +1661,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "First Semester",
     creditUnits: 3,
     creditUnit: 3,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: [],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1697,7 +1680,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "First Semester",
     creditUnits: 2,
     creditUnit: 2,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: [],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1716,7 +1699,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "First Semester",
     creditUnits: 2,
     creditUnit: 2,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: [],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1737,7 +1720,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "Second Semester",
     creditUnits: 3,
     creditUnit: 3,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: ["THY-101"],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1756,7 +1739,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "Second Semester",
     creditUnits: 3,
     creditUnit: 3,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: ["BIB-101"],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1775,7 +1758,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "Second Semester",
     creditUnits: 3,
     creditUnit: 3,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: [],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1794,7 +1777,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "Second Semester",
     creditUnits: 2,
     creditUnit: 2,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: [],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1815,7 +1798,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "Third Semester",
     creditUnits: 3,
     creditUnit: 3,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: ["THY-101"],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1834,7 +1817,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "Third Semester",
     creditUnits: 3,
     creditUnit: 3,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: ["BIB-101", "BIB-102"],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1853,7 +1836,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "Third Semester",
     creditUnits: 4,
     creditUnit: 4,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: ["PAS-102"],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1872,7 +1855,7 @@ export const DEFAULT_DIMABIN_COURSES = Object.freeze([
     semester: "Third Semester",
     creditUnits: 2,
     creditUnit: 2,
-    studyCentre: "Goshen Central Campus, Abeokuta",
+    studyCentre: "",
     status: "active",
     prerequisiteCourseIds: [],
     createdAt: "2026-01-15T08:00:00.000Z",
@@ -1998,7 +1981,7 @@ export async function createCourse(courseData) {
     semester: semester,
     creditUnits: credits,
     creditUnit: credits,
-    studyCentre: (courseData.studyCentre || "Goshen Central Campus, Abeokuta").trim(),
+    studyCentre: (courseData.studyCentre || "").trim(),
     status: courseData.status === "inactive" ? "inactive" : "active",
     prerequisiteCourseIds: prereqs,
     createdAt: nowIso,
@@ -2099,7 +2082,7 @@ export async function updateCourse(courseId, courseData) {
     semester: semester,
     creditUnits: credits,
     creditUnit: credits,
-    studyCentre: (courseData.studyCentre || "Goshen Central Campus, Abeokuta").trim(),
+    studyCentre: (courseData.studyCentre !== undefined ? courseData.studyCentre : (existingRecord.studyCentre || "")).trim(),
     status: courseData.status === "inactive" ? "inactive" : "active",
     prerequisiteCourseIds: prereqs,
     createdAt: createdAt,
@@ -2239,60 +2222,10 @@ export async function deleteCoursePermanently(courseId) {
  * Real-Time Offering Assignment with Multi-Centre Independence & Audit History
  * =========================================================================
  */
-export const DEFAULT_DIMABIN_ALLOCATIONS = Object.freeze([
-  {
-    id: "alloc_crs_THY_101_goshen_sem1",
-    courseCode: "THY-101",
-    courseTitle: "Christology & The Person of Christ",
-    programme: "Diploma in Theology (Dipl.Th.)",
-    level: "100",
-    academicSession: "2026/2027",
-    semester: "First Semester",
-    studyCentre: "Goshen Central Campus, Abeokuta",
-    lecturerId: "DIMABIN/FAC/2026/01",
-    lecturerName: "Rev. Dr. E. A. Olubunmi",
-    status: "active", // active (Assigned)
-    assignmentHistory: [],
-    allocatedAt: "2026-01-15T09:00:00.000Z",
-    allocatedBy: "DIMABIN/ADM/2026/01",
-    notes: "Lead instructor for core foundational christology curriculum."
-  },
-  {
-    id: "alloc_crs_BIB_101_goshen_sem1",
-    courseCode: "BIB-101",
-    courseTitle: "Old Testament Survey & Covenant History",
-    programme: "Diploma in Theology (Dipl.Th.)",
-    level: "100",
-    academicSession: "2026/2027",
-    semester: "First Semester",
-    studyCentre: "Goshen Central Campus, Abeokuta",
-    lecturerId: "DIMABIN/FAC/2026/04",
-    lecturerName: "Pastor Samuel K. Ogundipe",
-    status: "reassigned", // reassigned (Reassigned)
-    assignmentHistory: [
-      {
-        lecturerId: "DIMABIN/FAC/2026/01",
-        lecturerName: "Rev. Dr. E. A. Olubunmi",
-        assignedAt: "2026-01-10T08:00:00.000Z",
-        endedAt: "2026-01-20T10:00:00.000Z",
-        reason: "Trimester curriculum rotation and missiology alignment"
-      }
-    ],
-    allocatedAt: "2026-01-20T10:00:00.000Z",
-    allocatedBy: "DIMABIN/ADM/2026/01",
-    notes: "Transferred to Pastor Ogundipe for specialized Hebrew covenant history track."
-  }
-]);
-
 export function subscribeCourseAllocations(callback) {
   if (typeof callback !== "function") return () => {};
 
-  // Hydrate with default allocations if completely empty
-  let currentList = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS);
-  if (!Array.isArray(currentList) || currentList.length === 0) {
-    currentList = [...DEFAULT_DIMABIN_ALLOCATIONS];
-    setCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS, currentList);
-  }
+  let currentList = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
   callback(currentList);
 
   const localListener = (e) => {
@@ -2312,13 +2245,14 @@ export function subscribeCourseAllocations(callback) {
           callback(list);
           refreshLecturerDashboardData();
         } else {
-          const cache = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS);
-          callback(cache.length > 0 ? cache : [...DEFAULT_DIMABIN_ALLOCATIONS]);
+          setCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS, []);
+          callback([]);
+          refreshLecturerDashboardData();
         }
       },
       (err) => {
         console.warn("[DIMABIN Allocations] onSnapshot note:", err.message);
-        callback(getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS));
+        callback(getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || []);
       }
     );
   } catch (err) {
@@ -2339,7 +2273,7 @@ export async function assignCourseOffering(allocData) {
   const courseCode = normalizeCourseCode(allocData.courseCode);
   if (!courseCode) throw new Error("Course Code is required.");
 
-  const studyCentre = (allocData.studyCentre || "Goshen Central Campus, Abeokuta").trim();
+  const studyCentre = (allocData.studyCentre || "").trim();
   const session = (allocData.academicSession || "2026/2027").trim();
   const semester = (allocData.semester || "First Semester").trim();
   const lecturerId = (allocData.lecturerId || "").trim();
@@ -2606,77 +2540,6 @@ export function refreshLecturerDashboardData() {
  * =========================================================================
  */
 
-export const CANONICAL_STUDY_CENTRES = Object.freeze([
-  {
-    id: "centre_goshen_central",
-    centreId: "centre_goshen_central",
-    centreCode: "DIMABIN-CTR-HQ",
-    centreName: "Goshen Central Campus, Abeokuta",
-    address: "Goshen 13, Kusimo Street, Abeokuta, Ogun State",
-    location: "Goshen 13, Kusimo Street, Abeokuta, Ogun State",
-    coordinator: "Rev. Dr. E. A. Olubunmi",
-    contactPhone: "+234 803 123 4567",
-    phone: "+234 803 123 4567",
-    contactEmail: "goshen@dimabin.org",
-    email: "goshen@dimabin.org",
-    status: "active",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    createdBy: "DIMABIN/ADM/2026/01"
-  },
-  {
-    id: "centre_lagos_outreach",
-    centreId: "centre_lagos_outreach",
-    centreCode: "DIMABIN-CTR-LAG",
-    centreName: "Lagos Outreach Coordination Centre",
-    address: "12, Apostolic Avenue, Ikeja, Lagos State",
-    location: "12, Apostolic Avenue, Ikeja, Lagos State",
-    coordinator: "Pastor Matthew K. Adeyemi",
-    contactPhone: "+234 802 987 6543",
-    phone: "+234 802 987 6543",
-    contactEmail: "lagos@dimabin.org",
-    email: "lagos@dimabin.org",
-    status: "active",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    createdBy: "DIMABIN/ADM/2026/01"
-  },
-  {
-    id: "centre_ibadan_regional",
-    centreId: "centre_ibadan_regional",
-    centreCode: "DIMABIN-CTR-IBD",
-    centreName: "Ibadan Regional Study Centre",
-    address: "8, Gloryland Drive, Bodija, Ibadan, Oyo State",
-    location: "8, Gloryland Drive, Bodija, Ibadan, Oyo State",
-    coordinator: "Dr. Mrs. Deborah A. Adeleke",
-    contactPhone: "+234 805 456 7890",
-    phone: "+234 805 456 7890",
-    contactEmail: "ibadan@dimabin.org",
-    email: "ibadan@dimabin.org",
-    status: "active",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    createdBy: "DIMABIN/ADM/2026/01"
-  },
-  {
-    id: "centre_online_hub",
-    centreId: "centre_online_hub",
-    centreCode: "DIMABIN-CTR-ODL",
-    centreName: "Online & Distance Learning Hub",
-    address: "DIMABIN Digital Learning Citadel, Cloud & Virtual Delivery",
-    location: "DIMABIN Digital Learning Citadel, Cloud & Virtual Delivery",
-    coordinator: "Director of Distance Education",
-    contactPhone: "+234 800 346 2246",
-    phone: "+234 800 346 2246",
-    contactEmail: "online@dimabin.org",
-    email: "online@dimabin.org",
-    status: "active",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    createdBy: "DIMABIN/ADM/2026/01"
-  }
-]);
-
 export function normalizeCentreCode(code) {
   return (code || "").trim().toUpperCase();
 }
@@ -2686,30 +2549,22 @@ export function normalizeCentreName(name) {
 }
 
 /**
- * Get current cached official study centres
+ * Get current cached official study centres (strictly genuine records)
  */
 export function getStudyCentres() {
-  let list = getCachedCollection(COLLECTIONS.STUDY_CENTRES);
-  if (!list || list.length === 0) {
-    list = [...CANONICAL_STUDY_CENTRES];
-    setCachedCollection(COLLECTIONS.STUDY_CENTRES, list);
-  }
-  return list;
+  const list = getCachedCollection(COLLECTIONS.STUDY_CENTRES);
+  return Array.isArray(list) ? list : [];
 }
 
 /**
  * Subscribe to real-time official study centres from Firestore
+ * Single source of truth: strictly reads genuine documents from Firestore.
+ * If empty, stays empty. Never seeds or synthesizes sample centres.
  */
 export function subscribeStudyCentres(callback) {
   if (typeof callback !== "function") return () => {};
 
-  // Initialize from cache or canonical seeds
-  let list = getCachedCollection(COLLECTIONS.STUDY_CENTRES);
-  if (!list || list.length === 0) {
-    list = [...CANONICAL_STUDY_CENTRES];
-    setCachedCollection(COLLECTIONS.STUDY_CENTRES, list);
-  }
-
+  let list = getStudyCentres();
   callback(list);
 
   // Local storage broadcast listener
@@ -2748,35 +2603,15 @@ export function subscribeStudyCentres(callback) {
             };
           });
 
-          // Ensure canonical centres are present if remote list doesn't have them
-          CANONICAL_STUDY_CENTRES.forEach((canonical) => {
-            if (!remoteList.some((r) => normalizeCentreName(r.centreName) === normalizeCentreName(canonical.centreName))) {
-              remoteList.push(canonical);
-            }
-          });
-
           // Sort by centreCode or centreName
           remoteList.sort((a, b) => (a.centreCode || "").localeCompare(b.centreCode || ""));
 
           setCachedCollection(COLLECTIONS.STUDY_CENTRES, remoteList);
           callback(remoteList);
         } else {
-          // If remote empty, write canonical centres
-          const cached = getCachedCollection(COLLECTIONS.STUDY_CENTRES);
-          const toUse = cached.length > 0 ? cached : [...CANONICAL_STUDY_CENTRES];
-          setCachedCollection(COLLECTIONS.STUDY_CENTRES, toUse);
-          callback(toUse);
-
-          // Seed canonical centres to Firestore asynchronously
-          Promise.all(
-            CANONICAL_STUDY_CENTRES.map((c) =>
-              setDoc(doc(db, COLLECTIONS.STUDY_CENTRES, c.id), {
-                ...c,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-              }, { merge: true }).catch(() => {})
-            )
-          ).catch(() => {});
+          // Authoritative state is empty when Firestore has no documents. Never write sample centres.
+          setCachedCollection(COLLECTIONS.STUDY_CENTRES, []);
+          callback([]);
         }
       },
       (err) => {

@@ -96,7 +96,7 @@ function renderStudentProfile(profile) {
   const department = profile.department || "Theological Studies";
   const level = profile.level || "Diploma I";
   const session = profile.academicSession || "2026/2027";
-  const studyCentre = profile.studyCentre || "Goshen Central Campus, Abeokuta";
+  const studyCentre = profile.studyCentre || "Official Study Centre";
   const email = profile.email || "";
   const phone = profile.phone || "N/A";
   const cgpa = profile.cgpa !== null && profile.cgpa !== undefined ? String(profile.cgpa) : "N/A";
