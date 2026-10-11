@@ -52,6 +52,7 @@ import {
   getStudyCentres,
   getStudyCentreMetrics
 } from "./firebase-backend.js";
+import { printApplicationForm, downloadApplicationPdf } from "./admission-print-pdf.js";
 
 // Canonical Administrator Credentials
 export const ADMIN_CONFIG = Object.freeze({
@@ -4912,6 +4913,30 @@ export function initStudyCentreNavAndWorkspaces() {
     if (currentDossierApp) {
       await handleRejectApplication(currentDossierApp);
       closeDossierModal();
+    }
+  });
+
+  document.getElementById("btn-print-app-from-dossier")?.addEventListener("click", () => {
+    if (!currentDossierApp) return;
+    try {
+      printApplicationForm(currentDossierApp);
+    } catch (err) {
+      showAdminToast(`Print error: ${err.message}`, "error");
+    }
+  });
+
+  document.getElementById("btn-download-pdf-from-dossier")?.addEventListener("click", async () => {
+    if (!currentDossierApp) return;
+    const btn = document.getElementById("btn-download-pdf-from-dossier");
+    if (btn) btn.disabled = true;
+    try {
+      showAdminToast("Generating application PDF...", "info");
+      await downloadApplicationPdf(currentDossierApp);
+      showAdminToast("Application PDF downloaded successfully.", "success");
+    } catch (err) {
+      showAdminToast(`PDF generation error: ${err.message}`, "error");
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
 

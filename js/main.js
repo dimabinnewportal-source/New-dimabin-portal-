@@ -7,6 +7,7 @@ import './firebase-test.js';
 import { subscribeAdmissionSettings, formatAdmissionDate, DEFAULT_ADMISSION_SETTINGS } from './firebase-admissions.js';
 import { savePublicApplication, checkAdmissionStatus, subscribeStudyCentres } from './firebase-backend.js';
 import { mountPublicNoticeBoard } from './public-announcements.js';
+import { printApplicationForm, downloadApplicationPdf } from './admission-print-pdf.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Header Sticky / Scrolled State Handler
@@ -489,6 +490,52 @@ document.addEventListener('DOMContentLoaded', () => {
       if (intro) intro.style.display = 'none';
       if (successPane) successPane.classList.add('active');
 
+      // Hold submitted record once saved in Firestore
+      let lastSubmittedAppRecord = null;
+
+      const printSuccessBtn = document.getElementById('btn-success-print-app');
+      const downloadSuccessPdfBtn = document.getElementById('btn-success-download-pdf');
+      const pdfSuccessText = document.getElementById('btn-success-pdf-text');
+
+      if (printSuccessBtn) {
+        printSuccessBtn.disabled = true; // Enabled once save succeeds
+        printSuccessBtn.addEventListener('click', () => {
+          if (!lastSubmittedAppRecord) {
+            alert('Your application is still being processed. Please wait a moment.');
+            return;
+          }
+          try {
+            printApplicationForm(lastSubmittedAppRecord);
+          } catch (err) {
+            console.error('[DIMABIN Print Error]:', err);
+            alert('Failed to prepare printable document: ' + err.message);
+          }
+        });
+      }
+
+      if (downloadSuccessPdfBtn) {
+        downloadSuccessPdfBtn.disabled = true; // Enabled once save succeeds
+        downloadSuccessPdfBtn.addEventListener('click', async () => {
+          if (!lastSubmittedAppRecord) {
+            alert('Your application is still being processed. Please wait a moment.');
+            return;
+          }
+          downloadSuccessPdfBtn.disabled = true;
+          const origText = pdfSuccessText ? pdfSuccessText.textContent : 'Download PDF';
+          try {
+            await downloadApplicationPdf(lastSubmittedAppRecord, (statusMsg) => {
+              if (pdfSuccessText) pdfSuccessText.textContent = statusMsg;
+            });
+          } catch (err) {
+            console.error('[DIMABIN PDF Error]:', err);
+            alert('Failed to generate PDF: ' + err.message);
+          } finally {
+            downloadSuccessPdfBtn.disabled = false;
+            if (pdfSuccessText) pdfSuccessText.textContent = origText;
+          }
+        });
+      }
+
       // Real Firebase / Firestore submission to 'admissions' collection
       savePublicApplication({
         fullName: candidateName,
@@ -506,10 +553,31 @@ document.addEventListener('DOMContentLoaded', () => {
         qualification: candidateQual,
         graduationYear: candidateYear,
         institution: candidateInst,
+        courseOfStudy: document.getElementById('academic-course')?.value || '',
+        relevantCredentials: document.getElementById('academic-credentials')?.value || '',
+        previousTheology: document.getElementById('academic-previous-theology')?.value || '',
+        churchName: document.getElementById('church-name')?.value || '',
+        denomination: document.getElementById('church-denomination')?.value || '',
+        ministryRole: document.getElementById('church-role')?.value || '',
+        yearsInMinistry: document.getElementById('church-years')?.value || '',
+        pastorName: document.getElementById('church-pastor-name')?.value || '',
+        pastorPhone: document.getElementById('church-pastor-phone')?.value || '',
+        pastorEmail: document.getElementById('church-pastor-email')?.value || '',
+        briefTestimony: document.getElementById('church-testimony')?.value || '',
+        kinName: document.getElementById('kin-name')?.value || '',
+        kinRelationship: document.getElementById('kin-relationship')?.value || '',
+        kinPhone: document.getElementById('kin-phone')?.value || '',
+        kinWhatsapp: document.getElementById('kin-whatsapp')?.value || '',
+        kinEmail: document.getElementById('kin-email')?.value || '',
+        kinAddress: document.getElementById('kin-address')?.value || '',
         academicSession: currentAdmissionAvailability?.academicSession || '2026/2027',
         studyCentre: candidateCentre
       }).then((result) => {
         console.log('[DIMABIN Registry Service]: Application recorded in Firestore.', result);
+        lastSubmittedAppRecord = result;
+        if (printSuccessBtn) printSuccessBtn.disabled = false;
+        if (downloadSuccessPdfBtn) downloadSuccessPdfBtn.disabled = false;
+
         const statusEl = document.querySelector('#admission-success-pane .success-summary-row:last-child span:last-child');
         if (statusEl) {
           statusEl.textContent = `Submitted (${result.applicationId})`;
@@ -1058,6 +1126,46 @@ document.addEventListener('DOMContentLoaded', () => {
           resultContainer.style.display = 'block';
           checkerForm.style.display = 'none';
           resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Wire verified application Print & PDF actions
+        const checkerPrintBtn = document.getElementById('btn-checker-print-app');
+        const checkerPdfBtn = document.getElementById('btn-checker-download-pdf');
+        const checkerPdfText = document.getElementById('btn-checker-pdf-text');
+
+        if (checkerPrintBtn) {
+          // Replace with clean listener
+          const newPrintBtn = checkerPrintBtn.cloneNode(true);
+          checkerPrintBtn.parentNode.replaceChild(newPrintBtn, checkerPrintBtn);
+          newPrintBtn.addEventListener('click', () => {
+            try {
+              printApplicationForm(app);
+            } catch (err) {
+              console.error('[DIMABIN Checker Print Error]:', err);
+              alert('Failed to prepare application document: ' + err.message);
+            }
+          });
+        }
+
+        if (checkerPdfBtn) {
+          const newPdfBtn = checkerPdfBtn.cloneNode(true);
+          checkerPdfBtn.parentNode.replaceChild(newPdfBtn, checkerPdfBtn);
+          newPdfBtn.addEventListener('click', async () => {
+            newPdfBtn.disabled = true;
+            const pdfSpan = newPdfBtn.querySelector('#btn-checker-pdf-text') || newPdfBtn;
+            const origText = pdfSpan.textContent;
+            try {
+              await downloadApplicationPdf(app, (statusMsg) => {
+                pdfSpan.textContent = statusMsg;
+              });
+            } catch (err) {
+              console.error('[DIMABIN Checker PDF Error]:', err);
+              alert('Failed to generate application PDF: ' + err.message);
+            } finally {
+              newPdfBtn.disabled = false;
+              pdfSpan.textContent = origText;
+            }
+          });
         }
       } catch (err) {
         console.warn('[DIMABIN Admission Checker] Error:', err.message);

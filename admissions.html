@@ -406,14 +406,26 @@
                 </div>
               </div>
 
-              <!-- Slip Auxiliary Actions -->
-              <div class="result-slip-actions">
-                <button type="button" class="btn btn-outline-blue btn-sm" id="result-check-another-btn">
-                  Check Another Application
-                </button>
-                <button type="button" class="btn btn-outline-navy btn-sm" onclick="window.print()">
-                  🖨️ Print Slip
-                </button>
+              <!-- Slip Auxiliary Actions with Dedicated Print Form & PDF Download -->
+              <div class="result-slip-actions" style="display: flex; flex-direction: column; gap: 0.75rem; align-items: stretch;">
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center;">
+                  <button type="button" class="btn btn-primary btn-sm" id="btn-checker-print-app" style="display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 700;">
+                    <span>🖨️</span>
+                    <span>Print Application Form</span>
+                  </button>
+                  <button type="button" class="btn btn-gold btn-sm" id="btn-checker-download-pdf" style="display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 700;">
+                    <span>📥</span>
+                    <span id="btn-checker-pdf-text">Download PDF</span>
+                  </button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-subtle);">
+                  <button type="button" class="btn btn-outline-blue btn-sm" id="result-check-another-btn">
+                    Check Another Application
+                  </button>
+                  <button type="button" class="btn btn-outline-navy btn-sm" onclick="window.print()">
+                    🖨️ Print Slip Summary
+                  </button>
+                </div>
               </div>
 
             </div>
@@ -878,6 +890,26 @@
               <div class="success-summary-row">
                 <span style="font-weight: 700; color: var(--dark-navy);">Application Status:</span>
                 <span style="color: #15803D; font-weight: 700;">Submitted to Registry</span>
+              </div>
+            </div>
+
+            <!-- Primary Application Document Printing & Download Actions -->
+            <div class="success-actions-card" style="background: #EEF3FF; border: 1.5px solid #BFDBFE; border-radius: 8px; padding: 1.25rem; margin: 1.5rem auto 1rem auto; max-width: 580px; text-align: center;">
+              <div style="font-size: 0.8125rem; font-weight: 800; color: var(--primary-blue); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">
+                OFFICIAL ADMISSION DOCUMENTATION
+              </div>
+              <p style="font-size: 0.875rem; color: #334155; margin-bottom: 1rem; line-height: 1.45;">
+                Your official 1-page application document has been generated with your verified registration details. You can print or download your copy immediately for your physical records.
+              </p>
+              <div style="display: flex; justify-content: center; gap: 0.85rem; flex-wrap: wrap;">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-success-print-app" style="display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 800; padding: 0.65rem 1.4rem;">
+                  <span>🖨️</span>
+                  <span>Print Application Form</span>
+                </button>
+                <button type="button" class="btn btn-gold btn-sm" id="btn-success-download-pdf" style="display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 800; padding: 0.65rem 1.4rem;">
+                  <span>📥</span>
+                  <span id="btn-success-pdf-text">Download PDF</span>
+                </button>
               </div>
             </div>
 
