@@ -1012,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (resultAppId) resultAppId.textContent = app.applicationId || appId;
         if (resultProg) resultProg.textContent = app.programme || 'Diploma in Theology (Dipl.Th.)';
         if (resultSession) resultSession.textContent = app.academicSession || '2026/2027';
-        if (resultCentre) resultCentre.textContent = app.studyCentre || 'Goshen Central Campus, Abeokuta';
+        if (resultCentre) resultCentre.textContent = app.studyCentre || 'Abeokuta Main Campus';
         if (resultEmail) resultEmail.textContent = app.email || 'N/A';
 
         // Reset state blocks
