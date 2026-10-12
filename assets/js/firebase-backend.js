@@ -430,6 +430,14 @@ export async function savePublicApplication(formData) {
     console.warn(`[DIMABIN Admissions] Firestore uniqueness check warning: ${err.message}`);
   }
 
+  // Enforce institutional award qualification policy: Diploma in Theology is the ONLY qualification awarded by DIMABIN
+  const officialProgramme = "Diploma in Theology (Dipl.Th.)";
+  const requestedProg = (formData.program || formData.programme || "").trim();
+  // Allow variants of Diploma in Theology, but reject any unsupported award qualifications
+  if (requestedProg && !requestedProg.toLowerCase().includes("diploma in theology") && !requestedProg.toLowerCase().includes("dipl.th")) {
+    throw new Error("Diploma in Theology is the only qualification awarded by DIMABIN Bible Institute upon successful completion of the programme.");
+  }
+
   const appId = `DIMABIN/APP/2026/${Math.floor(1000 + Math.random() * 9000)}`;
   const record = {
     applicationId: appId,
@@ -437,7 +445,7 @@ export async function savePublicApplication(formData) {
     email: normalizedEmail,
     phone: (formData.phone || "").trim(),
     whatsapp: (formData.whatsapp || formData.phone || "").trim(),
-    programme: formData.program || formData.programme || "Diploma in Theology (Dipl.Th.)",
+    programme: officialProgramme,
     gender: formData.gender || "Male",
     dob: formData.dob || "",
     maritalStatus: formData.maritalStatus || "Single",

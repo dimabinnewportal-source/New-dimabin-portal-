@@ -906,9 +906,22 @@ export function initAdmissionManagement() {
  * 15. GLOBAL ADMIN TOAST NOTIFICATION HELPER
  * =========================================================================
  */
-export function showAdminToast(type, message) {
+export function showAdminToast(arg1, arg2) {
   const container = document.getElementById("admin-toast-container");
   if (!container) return;
+
+  // Normalize (type, message) vs (message, type)
+  let type = "success";
+  let message = "";
+  if (["success", "error", "warning", "info"].includes(arg1)) {
+    type = arg1;
+    message = arg2 || "";
+  } else if (["success", "error", "warning", "info"].includes(arg2)) {
+    type = arg2;
+    message = arg1 || "";
+  } else {
+    message = arg1 || arg2 || "";
+  }
 
   const toast = document.createElement("div");
   toast.className = `admin-toast toast-${type === "error" ? "error" : type === "warning" ? "warning" : "success"}`;

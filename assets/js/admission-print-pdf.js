@@ -6,9 +6,6 @@
  * containing only the candidate's verified admission application record.
  */
 
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
-
 // Pre-cached base64 or verified logo path
 const LOGO_SRC = 'assets/images/dimabin-logo.png';
 
@@ -312,6 +309,15 @@ export async function downloadApplicationPdf(app, onProgress) {
   document.body.appendChild(renderWrap);
 
   try {
+    if (typeof onProgress === 'function') {
+      onProgress('Loading PDF generator engine...');
+    }
+
+    // Dynamic import to avoid holding or stalling module graph during dashboard / portal boot
+    const html2canvasModule = await import('html2canvas');
+    const html2canvas = html2canvasModule.default || html2canvasModule;
+    const { jsPDF } = await import('jspdf');
+
     if (typeof onProgress === 'function') {
       onProgress('Generating high-resolution document...');
     }
