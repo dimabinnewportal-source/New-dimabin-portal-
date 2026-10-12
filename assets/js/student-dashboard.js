@@ -21,7 +21,13 @@ import {
 import {
   subscribeResults,
   subscribePortalNotifications,
-  formatDateOnly
+  formatDateOnly,
+  subscribeRegistrationSettings,
+  getRegistrationSettings,
+  subscribeCourses,
+  subscribeCourseAllocations,
+  subscribeCourseRegistrations,
+  submitStudentCourseRegistration
 } from "./firebase-backend.js";
 
 let activeStudentProfile = null;
@@ -293,6 +299,473 @@ function initStudentNotifications() {
 }
 
 /**
+ * Real-Time Student Course Registration Controller
+ * Full 3-Semester Workflow with Central Registration Window & Multi-Centre Independence
+ */
+function initStudentCourseRegistration(studentProfile, userUid) {
+  if (!studentProfile) return;
+
+  const uid = userUid || studentProfile.uid || studentProfile.id;
+  const session = (studentProfile.academicSession || "2026/2027").trim();
+  const studentCentre = (studentProfile.studyCentre || "Abeokuta Main Campus").trim();
+  let activeSemester = "First Semester";
+  let isEditingExisting = false;
+
+  // Data cache
+  let regSettingsList = [];
+  let coursesList = [];
+  let allocationsList = [];
+  let registrationsList = [];
+
+  // DOM Elements
+  const cardTitle = document.getElementById("student-reg-card-title");
+  const centreBadge = document.getElementById("student-reg-centre-badge");
+  const sessionBadge = document.getElementById("student-reg-session-badge");
+  const liveStatusBadge = document.getElementById("student-reg-live-status-badge");
+
+  const closedPane = document.getElementById("student-reg-closed-pane");
+  const closedHeading = document.getElementById("student-reg-closed-heading");
+  const closedMessage = document.getElementById("student-reg-closed-message");
+
+  const formPane = document.getElementById("student-reg-form-pane");
+  const openSemText = document.getElementById("student-reg-open-sem-text");
+  const selectedCountEl = document.getElementById("student-selected-courses-count");
+  const selectedCreditsEl = document.getElementById("student-selected-credits-count");
+  const maxCreditsLimitEl = document.getElementById("student-max-credits-limit");
+  const selectAllBtn = document.getElementById("btn-student-select-all");
+  const clearAllBtn = document.getElementById("btn-student-clear-all");
+  const coursesTbody = document.getElementById("student-courses-tbody");
+  const coursesTable = document.getElementById("student-courses-select-table");
+  const noCoursesEmpty = document.getElementById("student-no-courses-available");
+  const submitErrorEl = document.getElementById("student-submit-error");
+  const submitBtn = document.getElementById("btn-submit-course-reg");
+  const submitBtnText = document.getElementById("btn-submit-course-reg-text");
+
+  const slipPane = document.getElementById("student-reg-slip-pane");
+  const slipName = document.getElementById("slip-student-name");
+  const slipId = document.getElementById("slip-student-id");
+  const slipCentre = document.getElementById("slip-study-centre");
+  const slipProg = document.getElementById("slip-programme");
+  const slipTerm = document.getElementById("slip-term");
+  const slipStatus = document.getElementById("slip-status-badge");
+  const slipCoursesTbody = document.getElementById("slip-courses-tbody");
+  const slipTotalUnits = document.getElementById("slip-total-units");
+  const slipDate = document.getElementById("slip-submitted-date");
+  const slipRemarks = document.getElementById("slip-remarks-note");
+  const modifyBtn = document.getElementById("btn-modify-reg-selection");
+
+  // Ledger Elements
+  const ledgerTbody = document.getElementById("student-ledger-tbody");
+  const ledgerPill = document.getElementById("ledger-total-credits-pill");
+
+  if (centreBadge) centreBadge.textContent = studentCentre;
+  if (sessionBadge) sessionBadge.textContent = session;
+
+  function updateSelectedCount() {
+    if (!coursesTbody) return;
+    const checkedBoxes = coursesTbody.querySelectorAll(".course-reg-checkbox:checked");
+    let count = 0;
+    let units = 0;
+    checkedBoxes.forEach((cb) => {
+      count++;
+      units += parseInt(cb.getAttribute("data-credits") || 3, 10);
+    });
+    if (selectedCountEl) selectedCountEl.textContent = count;
+    if (selectedCreditsEl) selectedCreditsEl.textContent = units;
+
+    if (submitErrorEl) {
+      const setting = getRegistrationSettings(session, activeSemester);
+      if (setting.maxCredits && units > setting.maxCredits) {
+        submitErrorEl.textContent = `Warning: Selected units (${units}) exceeds the recommended maximum of ${setting.maxCredits} units.`;
+        submitErrorEl.style.display = "block";
+      } else {
+        submitErrorEl.style.display = "none";
+      }
+    }
+  }
+
+  function renderView() {
+    if (cardTitle) {
+      cardTitle.textContent = `Institutional Course Registration — ${activeSemester} ${session}`;
+    }
+
+    // 1. Check if student already has a registration for (activeSemester, session)
+    const currentReg = registrationsList.find((r) => {
+      const isUser = r.studentUid === uid || r.userId === uid || (studentProfile.studentId && (r.studentId === studentProfile.studentId || r.admissionNumber === studentProfile.studentId));
+      const matchSess = (r.academicSession || "2026/2027").trim() === session;
+      const matchSem = (r.semester || "First Semester").trim() === activeSemester;
+      return isUser && matchSess && matchSem;
+    });
+
+    // Authoritative registration setting for this session and semester
+    const setting = getRegistrationSettings(session, activeSemester);
+    const isOpen = Boolean(setting.isOpen);
+
+    if (currentReg && !isEditingExisting) {
+      // Show Slip Pane
+      if (closedPane) closedPane.style.display = "none";
+      if (formPane) formPane.style.display = "none";
+      if (slipPane) slipPane.style.display = "block";
+
+      const regStatus = currentReg.status || "submitted";
+      let statusBadgeClass = "badge-blue";
+      let statusLabel = "SUBMITTED TO REGISTRY";
+      if (regStatus === "approved") {
+        statusBadgeClass = "badge-green";
+        statusLabel = "REGISTRATION APPROVED";
+      } else if (regStatus === "returned") {
+        statusBadgeClass = "badge-gold";
+        statusLabel = "RETURNED FOR CORRECTION";
+      } else if (regStatus === "rejected") {
+        statusBadgeClass = "badge-red";
+        statusLabel = "REGISTRATION REJECTED";
+      } else if (regStatus === "resubmitted") {
+        statusBadgeClass = "badge-blue";
+        statusLabel = "RESUBMITTED TO REGISTRY";
+      }
+
+      if (liveStatusBadge) {
+        liveStatusBadge.textContent = `● ${statusLabel}`;
+        liveStatusBadge.className = `status-pill-badge ${statusBadgeClass}`;
+      }
+
+      if (slipName) slipName.textContent = currentReg.studentName || studentProfile.fullName || "DIMABIN Student";
+      if (slipId) slipId.textContent = currentReg.studentId || currentReg.admissionNumber || studentProfile.studentId || "N/A";
+      if (slipCentre) slipCentre.textContent = currentReg.studyCentre || studentCentre;
+      if (slipProg) slipProg.textContent = currentReg.programme || studentProfile.programme || "Diploma in Theology (Dipl.Th.)";
+      if (slipTerm) slipTerm.textContent = `${currentReg.semester} (${currentReg.academicSession})`;
+      if (slipStatus) {
+        slipStatus.innerHTML = `<span class="status-pill-badge ${statusBadgeClass}">${statusLabel}</span>`;
+      }
+      if (slipTotalUnits) slipTotalUnits.textContent = `${currentReg.totalCredits || 0} Units`;
+      if (slipDate) slipDate.textContent = formatDateOnly(currentReg.submittedAt || currentReg.updatedAt || new Date().toISOString());
+      if (slipRemarks) {
+        slipRemarks.textContent = currentReg.reviewNotes ? `Registry Note: ${currentReg.reviewNotes}` : "";
+      }
+
+      if (slipCoursesTbody) {
+        const courses = Array.isArray(currentReg.courses) ? currentReg.courses : [];
+        if (courses.length === 0) {
+          slipCoursesTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--student-text-muted);">No enrolled courses recorded.</td></tr>`;
+        } else {
+          slipCoursesTbody.innerHTML = courses
+            .map((c) => `
+              <tr>
+                <td><strong style="color: var(--student-blue);">${c.courseCode}</strong></td>
+                <td><strong>${c.courseTitle}</strong></td>
+                <td style="text-align: center;"><span class="status-pill-badge badge-blue">${c.creditUnits} Units</span></td>
+                <td>${c.lecturerName || "To be announced (TBA)"}</td>
+              </tr>
+            `)
+            .join("");
+        }
+      }
+
+      // Configure modify button
+      if (modifyBtn) {
+        if (regStatus === "approved") {
+          modifyBtn.style.display = "none";
+        } else {
+          modifyBtn.style.display = "inline-flex";
+          modifyBtn.onclick = () => {
+            isEditingExisting = true;
+            renderView();
+          };
+        }
+      }
+
+    } else {
+      // Student has NOT registered (or is actively editing)
+      if (slipPane) slipPane.style.display = "none";
+
+      if (!isOpen) {
+        // Closed state
+        if (formPane) formPane.style.display = "none";
+        if (closedPane) closedPane.style.display = "block";
+
+        if (liveStatusBadge) {
+          liveStatusBadge.textContent = "● REGISTRATION CLOSED";
+          liveStatusBadge.className = "status-pill-badge badge-gold";
+        }
+
+        if (closedHeading) {
+          closedHeading.textContent = `Course Registration Closed for ${activeSemester}`;
+        }
+        if (closedMessage) {
+          closedMessage.textContent =
+            setting.notes ||
+            `Course registration is currently closed for your academic session and semester. Please check the academic calendar or contact the administration.`;
+        }
+
+      } else {
+        // Open state
+        if (closedPane) closedPane.style.display = "none";
+        if (formPane) formPane.style.display = "block";
+
+        if (liveStatusBadge) {
+          liveStatusBadge.textContent = "● REGISTRATION OPEN";
+          liveStatusBadge.className = "status-pill-badge badge-green";
+        }
+
+        if (openSemText) openSemText.textContent = `${activeSemester} (${session})`;
+        if (maxCreditsLimitEl) maxCreditsLimitEl.textContent = setting.maxCredits || 24;
+
+        // Central courses for this session & semester
+        const eligibleCourses = coursesList.filter((c) => {
+          const matchSess = (c.academicSession || "2026/2027").trim() === session;
+          const matchSem = (c.semester || "First Semester").trim() === activeSemester;
+          const isActive = c.status !== "inactive";
+          return matchSess && matchSem && isActive;
+        });
+
+        if (eligibleCourses.length === 0) {
+          if (coursesTable) coursesTable.style.display = "none";
+          if (noCoursesEmpty) noCoursesEmpty.style.display = "block";
+          if (submitBtn) submitBtn.style.display = "none";
+        } else {
+          if (coursesTable) coursesTable.style.display = "table";
+          if (noCoursesEmpty) noCoursesEmpty.style.display = "none";
+          if (submitBtn) submitBtn.style.display = "inline-flex";
+
+          const previouslyRegisteredIds = currentReg && Array.isArray(currentReg.courseIds)
+            ? currentReg.courseIds
+            : [];
+
+          if (coursesTbody) {
+            coursesTbody.innerHTML = eligibleCourses
+              .map((c) => {
+                const normCode = (c.courseCode || "").trim().toUpperCase();
+                // Check allocation for student's study centre, then central
+                const centreAlloc = allocationsList.find((a) => {
+                  const matchCode = (a.courseCode || "").trim().toUpperCase() === normCode || a.courseId === c.id;
+                  const matchSem = a.semester === activeSemester;
+                  const matchSess = (a.academicSession || "2026/2027").trim() === session;
+                  const matchCentre = (a.studyCentre || "").trim().toLowerCase() === studentCentre.toLowerCase();
+                  return matchCode && matchSem && matchSess && matchCentre && a.status !== "ended";
+                });
+
+                const generalAlloc = allocationsList.find((a) => {
+                  const matchCode = (a.courseCode || "").trim().toUpperCase() === normCode || a.courseId === c.id;
+                  const matchSem = a.semester === activeSemester;
+                  const matchSess = (a.academicSession || "2026/2027").trim() === session;
+                  return matchCode && matchSem && matchSess && a.status !== "ended";
+                });
+
+                const alloc = centreAlloc || generalAlloc;
+                const lecturerName = alloc
+                  ? alloc.lecturerName
+                  : (c.lecturerName || "To be announced (TBA)");
+
+                const isChecked = previouslyRegisteredIds.includes(c.id) || previouslyRegisteredIds.length === 0;
+
+                return `
+                  <tr>
+                    <td style="text-align: center;">
+                      <input type="checkbox" class="course-reg-checkbox" value="${c.id}" data-credits="${c.creditUnits || c.creditUnit || 3}" ${isChecked ? "checked" : ""} style="width: 18px; height: 18px; cursor: pointer;">
+                    </td>
+                    <td><strong style="color: var(--student-navy);">${c.courseCode}</strong></td>
+                    <td>
+                      <div style="font-weight: 700; color: var(--student-navy);">${c.title || c.courseTitle}</div>
+                      ${c.description ? `<div style="font-size: 0.75rem; color: var(--student-text-muted);">${c.description}</div>` : ""}
+                    </td>
+                    <td><span class="status-pill-badge badge-blue">${c.creditUnits || c.creditUnit || 3} Units</span></td>
+                    <td><span style="font-size: 0.8125rem; font-weight: 600;">${lecturerName}</span></td>
+                    <td><span style="font-size: 0.78rem; color: var(--student-text-muted);">${c.department || "Biblical Studies"}</span></td>
+                  </tr>
+                `;
+              })
+              .join("");
+
+            // Add checkbox event listeners
+            coursesTbody.querySelectorAll(".course-reg-checkbox").forEach((cb) => {
+              cb.addEventListener("change", updateSelectedCount);
+            });
+
+            updateSelectedCount();
+          }
+        }
+      }
+    }
+
+    renderLedger();
+  }
+
+  function renderLedger() {
+    if (!ledgerTbody) return;
+
+    // Find all student's registrations across all semesters
+    const myRegs = registrationsList.filter((r) => {
+      return r.studentUid === uid || r.userId === uid || (studentProfile.studentId && (r.studentId === studentProfile.studentId || r.admissionNumber === studentProfile.studentId));
+    });
+
+    let allRegisteredCourses = [];
+    myRegs.forEach((r) => {
+      if (Array.isArray(r.courses)) {
+        r.courses.forEach((c) => {
+          allRegisteredCourses.push({
+            ...c,
+            semester: r.semester,
+            academicSession: r.academicSession,
+            status: r.status
+          });
+        });
+      }
+    });
+
+    if (allRegisteredCourses.length === 0) {
+      ledgerTbody.innerHTML = `
+        <tr>
+          <td colspan="7">
+            <div class="student-empty-box">
+              <div class="student-empty-icon">📑</div>
+              <div class="student-empty-text">Zero records in current ledger.</div>
+              <div class="student-empty-sub">Registered courses will appear here once submitted.</div>
+            </div>
+          </td>
+        </tr>
+      `;
+      if (ledgerPill) ledgerPill.textContent = "0 Total Units";
+      return;
+    }
+
+    const totalLedgerUnits = allRegisteredCourses.reduce((acc, c) => acc + (parseInt(c.creditUnits, 10) || 0), 0);
+    if (ledgerPill) ledgerPill.textContent = `${totalLedgerUnits} Total Units`;
+
+    ledgerTbody.innerHTML = allRegisteredCourses
+      .map((c) => `
+        <tr>
+          <td><strong style="color: var(--student-blue);">${c.courseCode}</strong></td>
+          <td><strong>${c.courseTitle}</strong></td>
+          <td><span class="status-pill-badge badge-blue">${c.creditUnits} Units</span></td>
+          <td>${c.semester}</td>
+          <td>${c.academicSession}</td>
+          <td>${c.lecturerName || "To be announced (TBA)"}</td>
+          <td>
+            <span class="status-pill-badge ${c.status === "approved" ? "badge-green" : "badge-blue"}">
+              ${(c.status || "SUBMITTED").toUpperCase()}
+            </span>
+          </td>
+        </tr>
+      `)
+      .join("");
+  }
+
+  // Semester Switcher Tabs
+  document.querySelectorAll(".student-sem-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const sem = tab.getAttribute("data-sem");
+      if (!sem) return;
+      activeSemester = sem;
+      isEditingExisting = false;
+
+      document.querySelectorAll(".student-sem-tab").forEach((t) => {
+        if (t === tab) {
+          t.classList.add("active");
+          t.style.background = "var(--student-blue)";
+          t.style.color = "#fff";
+          t.style.borderColor = "var(--student-blue)";
+        } else {
+          t.classList.remove("active");
+          t.style.background = "#fff";
+          t.style.color = "#475569";
+          t.style.borderColor = "#CBD5E1";
+        }
+      });
+
+      renderView();
+    });
+  });
+
+  // Select All & Clear All Buttons
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener("click", () => {
+      if (!coursesTbody) return;
+      coursesTbody.querySelectorAll(".course-reg-checkbox").forEach((cb) => {
+        cb.checked = true;
+      });
+      updateSelectedCount();
+    });
+  }
+
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener("click", () => {
+      if (!coursesTbody) return;
+      coursesTbody.querySelectorAll(".course-reg-checkbox").forEach((cb) => {
+        cb.checked = false;
+      });
+      updateSelectedCount();
+    });
+  }
+
+  // Submit Course Registration Button
+  if (submitBtn) {
+    submitBtn.addEventListener("click", async () => {
+      if (!coursesTbody) return;
+      const checkedBoxes = Array.from(coursesTbody.querySelectorAll(".course-reg-checkbox:checked"));
+      const selectedIds = checkedBoxes.map((cb) => cb.value);
+
+      if (selectedIds.length === 0) {
+        if (submitErrorEl) {
+          submitErrorEl.textContent = "Please select at least one course to complete your registration.";
+          submitErrorEl.style.display = "block";
+        }
+        alert("Please select at least one course before submitting.");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      if (submitBtnText) submitBtnText.textContent = "Submitting Registration to Registry...";
+      if (submitErrorEl) submitErrorEl.style.display = "none";
+
+      try {
+        await submitStudentCourseRegistration({
+          studentUid: uid,
+          studentProfile,
+          academicSession: session,
+          semester: activeSemester,
+          selectedCourseIds: selectedIds
+        });
+
+        isEditingExisting = false;
+        alert("Your course registration has been submitted successfully to the Academic Registry!");
+        renderView();
+      } catch (err) {
+        console.error("[DIMABIN Registration Error]:", err);
+        if (submitErrorEl) {
+          submitErrorEl.textContent = `Submission Error: ${err.message}`;
+          submitErrorEl.style.display = "block";
+        }
+        alert(`Failed to submit course registration: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        if (submitBtnText) submitBtnText.textContent = "CONFIRM & SUBMIT COURSE REGISTRATION";
+      }
+    });
+  }
+
+  // Real-time Subscriptions
+  subscribeRegistrationSettings((settings) => {
+    regSettingsList = settings || [];
+    renderView();
+  });
+
+  subscribeCourses((courses) => {
+    coursesList = courses || [];
+    renderView();
+  });
+
+  subscribeCourseAllocations((allocs) => {
+    allocationsList = allocs || [];
+    renderView();
+  });
+
+  subscribeCourseRegistrations((regs) => {
+    registrationsList = regs || [];
+    renderView();
+  });
+}
+
+/**
  * Access Control Initialization
  */
 export async function initStudentDashboard() {
@@ -307,6 +780,7 @@ export async function initStudentDashboard() {
 
   if (localSession) {
     renderStudentProfile(localSession);
+    initStudentCourseRegistration(localSession, localSession.uid || localSession.id);
   }
 
   // 2. Listen to real Firebase Authentication
@@ -333,6 +807,7 @@ export async function initStudentDashboard() {
       renderStudentProfile(profile);
       initStudentResults(profile);
       initStudentNotifications();
+      initStudentCourseRegistration(profile, user.uid);
     } catch (err) {
       console.error("[DIMABIN Student Dashboard] Profile initialization error:", err);
     }

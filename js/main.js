@@ -482,58 +482,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (sumProgram) sumProgram.textContent = candidateProgram;
       if (sumCentre) sumCentre.textContent = candidateCentre;
 
-      // Hide form steps and show success pane
-      document.querySelectorAll('.form-step-pane').forEach((pane) => pane.classList.remove('active'));
-      const tracker = document.querySelector('.step-progress-tracker');
-      const intro = document.querySelector('.form-intro-header');
-      if (tracker) tracker.style.display = 'none';
-      if (intro) intro.style.display = 'none';
-      if (successPane) successPane.classList.add('active');
-
-      // Hold submitted record once saved in Firestore
-      let lastSubmittedAppRecord = null;
-
-      const printSuccessBtn = document.getElementById('btn-success-print-app');
-      const downloadSuccessPdfBtn = document.getElementById('btn-success-download-pdf');
-      const pdfSuccessText = document.getElementById('btn-success-pdf-text');
-
-      if (printSuccessBtn) {
-        printSuccessBtn.disabled = true; // Enabled once save succeeds
-        printSuccessBtn.addEventListener('click', () => {
-          if (!lastSubmittedAppRecord) {
-            alert('Your application is still being processed. Please wait a moment.');
-            return;
-          }
-          try {
-            printApplicationForm(lastSubmittedAppRecord);
-          } catch (err) {
-            console.error('[DIMABIN Print Error]:', err);
-            alert('Failed to prepare printable document: ' + err.message);
-          }
-        });
-      }
-
-      if (downloadSuccessPdfBtn) {
-        downloadSuccessPdfBtn.disabled = true; // Enabled once save succeeds
-        downloadSuccessPdfBtn.addEventListener('click', async () => {
-          if (!lastSubmittedAppRecord) {
-            alert('Your application is still being processed. Please wait a moment.');
-            return;
-          }
-          downloadSuccessPdfBtn.disabled = true;
-          const origText = pdfSuccessText ? pdfSuccessText.textContent : 'Download PDF';
-          try {
-            await downloadApplicationPdf(lastSubmittedAppRecord, (statusMsg) => {
-              if (pdfSuccessText) pdfSuccessText.textContent = statusMsg;
-            });
-          } catch (err) {
-            console.error('[DIMABIN PDF Error]:', err);
-            alert('Failed to generate PDF: ' + err.message);
-          } finally {
-            downloadSuccessPdfBtn.disabled = false;
-            if (pdfSuccessText) pdfSuccessText.textContent = origText;
-          }
-        });
+      // Submit button state
+      const submitBtn = document.getElementById('submit-application-btn');
+      const origSubmitText = submitBtn ? submitBtn.innerHTML : 'SUBMIT APPLICATION NOW';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>⏳ Submitting Application to Registry...</span>';
       }
 
       // Real Firebase / Firestore submission to 'admissions' collection
@@ -574,9 +528,17 @@ document.addEventListener('DOMContentLoaded', () => {
         studyCentre: candidateCentre
       }).then((result) => {
         console.log('[DIMABIN Registry Service]: Application recorded in Firestore.', result);
-        lastSubmittedAppRecord = result;
-        if (printSuccessBtn) printSuccessBtn.disabled = false;
-        if (downloadSuccessPdfBtn) downloadSuccessPdfBtn.disabled = false;
+        
+        // Hide form steps and show success pane ONLY after database save has completed
+        document.querySelectorAll('.form-step-pane').forEach((pane) => pane.classList.remove('active'));
+        const tracker = document.querySelector('.step-progress-tracker');
+        const intro = document.querySelector('.form-intro-header');
+        if (tracker) tracker.style.display = 'none';
+        if (intro) intro.style.display = 'none';
+        if (successPane) {
+          successPane.classList.add('active');
+          successPane.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
 
         const statusEl = document.querySelector('#admission-success-pane .success-summary-row:last-child span:last-child');
         if (statusEl) {
@@ -587,13 +549,56 @@ document.addEventListener('DOMContentLoaded', () => {
         if (appIdEl) {
           appIdEl.textContent = result.applicationId || 'DIMABIN/APP/2026';
         }
+
+        // Attach Print and Download PDF actions for verified saved record
+        const printSuccessBtn = document.getElementById('btn-success-print-app');
+        const downloadSuccessPdfBtn = document.getElementById('btn-success-download-pdf');
+        const pdfSuccessText = document.getElementById('btn-success-pdf-text');
+
+        if (printSuccessBtn) {
+          printSuccessBtn.disabled = false;
+          // Cleanly replace old listeners if re-submitted
+          printSuccessBtn.onclick = () => {
+            try {
+              printApplicationForm(result);
+            } catch (err) {
+              console.error('[DIMABIN Print Error]:', err);
+              alert('Failed to prepare printable document: ' + err.message);
+            }
+          };
+        }
+
+        if (downloadSuccessPdfBtn) {
+          downloadSuccessPdfBtn.disabled = false;
+          downloadSuccessPdfBtn.onclick = async () => {
+            downloadSuccessPdfBtn.disabled = true;
+            const origText = pdfSuccessText ? pdfSuccessText.textContent : 'Download PDF';
+            try {
+              await downloadApplicationPdf(result, (statusMsg) => {
+                if (pdfSuccessText) pdfSuccessText.textContent = statusMsg;
+              });
+            } catch (err) {
+              console.error('[DIMABIN PDF Error]:', err);
+              alert('Failed to generate PDF: ' + err.message);
+            } finally {
+              downloadSuccessPdfBtn.disabled = false;
+              if (pdfSuccessText) pdfSuccessText.textContent = origText;
+            }
+          };
+        }
       }).catch((err) => {
         console.warn('[DIMABIN Registry Service]: Application submission warning:', err);
-        // If email uniqueness error, revert success pane and show error on step 1
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origSubmitText;
+        }
+
+        // If email uniqueness error, revert to step 1
         if (err.message && err.message.includes('already been used')) {
-          if (successPane) successPane.classList.remove('active');
           currentStep = 1;
           updateStepUI(currentStep);
+          const tracker = document.querySelector('.step-progress-tracker');
+          const intro = document.querySelector('.form-intro-header');
           if (tracker) tracker.style.display = 'flex';
           if (intro) intro.style.display = 'block';
           if (formErrorList) {
@@ -607,6 +612,15 @@ document.addEventListener('DOMContentLoaded', () => {
           if (emailInput) {
             emailInput.classList.add('input-error');
             emailInput.focus();
+          }
+        } else {
+          // General submission error
+          if (formErrorList) {
+            formErrorList.innerHTML = `<li><strong>Submission Error:</strong> ${err.message || 'Unable to record application. Please try again.'}</li>`;
+          }
+          if (formErrorPanel) {
+            formErrorPanel.classList.add('show');
+            formErrorPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         }
       });

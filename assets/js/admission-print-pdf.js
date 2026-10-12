@@ -245,9 +245,371 @@ export function buildApplicationDocHtml(app) {
 }
 
 /**
+ * Injects self-contained styling if not already present in DOM
+ */
+export function ensureDocumentStyles() {
+  if (document.getElementById('dimabin-application-print-styles')) return;
+  const styleEl = document.createElement('style');
+  styleEl.id = 'dimabin-application-print-styles';
+  styleEl.textContent = `
+    #dimabin-print-root {
+      display: none;
+    }
+    .dimabin-a4-sheet {
+      width: 100%;
+      max-width: 794px;
+      min-height: 1115px;
+      max-height: 1123px;
+      box-sizing: border-box;
+      padding: 16px 20px 14px 20px;
+      background: #ffffff;
+      color: #1e293b;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.35;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid #cbd5e1;
+      position: relative;
+      overflow: hidden;
+    }
+    .a4-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 2px solid #1F3C82;
+      padding-bottom: 8px;
+      margin-bottom: 6px;
+    }
+    .a4-logo-wrap {
+      width: 60px;
+      height: 60px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .a4-logo {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .a4-header-text {
+      flex: 1;
+      text-align: center;
+    }
+    .a4-inst-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #1F3C82;
+      letter-spacing: 0.02em;
+      margin: 0 0 2px 0;
+      line-height: 1.15;
+    }
+    .a4-inst-subtitle {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: #0F172A;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .a4-motto {
+      font-size: 9px;
+      font-weight: 800;
+      color: #B45309;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+    }
+    .a4-contact-bar {
+      font-size: 8.5px;
+      color: #64748B;
+      line-height: 1.2;
+    }
+    .a4-title-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1F3C82;
+      color: #ffffff;
+      padding: 5px 10px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .a4-doc-badge {
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      background: #F5B800;
+      color: #0F172A;
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+    .a4-doc-title {
+      font-size: 12.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .a4-meta-pills {
+      display: flex;
+      gap: 8px;
+      font-size: 9px;
+    }
+    .a4-pill-item {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+    .a4-status-pill {
+      background: #16A34A;
+      color: #ffffff;
+      font-weight: 700;
+    }
+    .a4-banner-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr 1.4fr;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .a4-banner-cell {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 3px;
+      padding: 4px 8px;
+      display: flex;
+      flex-direction: column;
+    }
+    .a4-banner-cell.highlight-cell {
+      background: #EEF3FF;
+      border-color: #BFDBFE;
+    }
+    .a4-cell-lbl {
+      font-size: 7.5px;
+      font-weight: 700;
+      color: #64748B;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1px;
+    }
+    .a4-cell-val {
+      font-size: 9.5px;
+      color: #1F3C82;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .a4-section {
+      border: 1px solid #E2E8F0;
+      border-radius: 3px;
+      margin-bottom: 6px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+    .a4-sec-hdr {
+      background: #F1F5F9;
+      color: #1F3C82;
+      font-size: 8.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-bottom: 1px solid #E2E8F0;
+      text-transform: uppercase;
+    }
+    .a4-table-grid {
+      padding: 4px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .a4-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .a4-row.full-width {
+      width: 100%;
+    }
+    .a4-row-split {
+      display: flex;
+      width: 100%;
+      gap: 8px;
+    }
+    .a4-row-split .a4-cell {
+      flex: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      min-width: 0;
+    }
+    .a4-row-split-2 {
+      display: flex;
+      width: 100%;
+      gap: 8px;
+    }
+    .a4-cell-60 {
+      flex: 1.4;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      min-width: 0;
+    }
+    .a4-cell-40 {
+      flex: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      min-width: 0;
+    }
+    .a4-lbl {
+      font-size: 8px;
+      font-weight: 700;
+      color: #64748B;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .a4-val {
+      font-size: 9px;
+      color: #0F172A;
+      word-break: break-word;
+    }
+    .font-bold {
+      font-weight: 700;
+    }
+    .font-primary {
+      color: #1F3C82;
+      font-size: 9.5px;
+    }
+    .a4-decl-sec {
+      background: #FAFAFA;
+    }
+    .a4-decl-text {
+      font-size: 7.8px;
+      color: #475569;
+      line-height: 1.35;
+      padding: 4px 8px;
+      border-bottom: 1px dashed #E2E8F0;
+    }
+    .a4-sign-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 8px 12px 6px 12px;
+      gap: 12px;
+    }
+    .a4-sign-col {
+      flex: 1;
+      text-align: center;
+    }
+    .a4-sign-line {
+      border-bottom: 1px solid #334155;
+      width: 80%;
+      margin: 0 auto 3px auto;
+    }
+    .a4-sign-label {
+      font-size: 7.5px;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .a4-sign-sub {
+      font-size: 8px;
+      font-weight: 600;
+      color: #1F3C82;
+      margin-top: 1px;
+    }
+    .a4-sign-stamp-col {
+      flex: 0.9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .a4-official-stamp {
+      border: 1.5px dashed #D97706;
+      border-radius: 4px;
+      padding: 3px 6px;
+      text-align: center;
+      color: #92400E;
+      font-size: 7px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      background: #FFFBEB;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.25;
+    }
+    .stamp-line-2 {
+      font-size: 7.5px;
+      color: #B45309;
+    }
+    .stamp-line-3 {
+      font-size: 8px;
+      color: #1F3C82;
+    }
+    .a4-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #CBD5E1;
+      padding-top: 4px;
+      margin-top: 4px;
+      font-size: 7.5px;
+      color: #64748B;
+    }
+    @page {
+      size: A4 portrait;
+      margin: 6mm 8mm;
+    }
+    @media print {
+      html, body {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      body > *:not(#dimabin-print-root) {
+        display: none !important;
+      }
+      #dimabin-print-root {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+      }
+      #dimabin-print-root,
+      #dimabin-print-root * {
+        visibility: visible !important;
+      }
+      .dimabin-a4-sheet {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
+        break-after: avoid !important;
+        break-inside: avoid !important;
+      }
+    }
+  `;
+  document.head.appendChild(styleEl);
+}
+
+/**
  * Ensures the printable container exists and mounts the sheet
  */
 export function mountPrintableApplication(app) {
+  ensureDocumentStyles();
   let container = document.getElementById('dimabin-print-root');
   if (!container) {
     container = document.createElement('div');
@@ -268,7 +630,7 @@ export function printApplicationForm(app) {
     throw new Error('Application record is missing or incomplete.');
   }
 
-  // Mount document into print container
+  // Ensure styles & mount document into print container
   mountPrintableApplication(app);
 
   // Trigger print
@@ -283,6 +645,8 @@ export async function downloadApplicationPdf(app, onProgress) {
   if (!app || (!app.applicationId && !app.fullName)) {
     throw new Error('Application record is missing or incomplete.');
   }
+
+  ensureDocumentStyles();
 
   if (typeof onProgress === 'function') {
     onProgress('Preparing document...');

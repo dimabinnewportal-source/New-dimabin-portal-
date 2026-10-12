@@ -51,6 +51,8 @@ export const COLLECTIONS = Object.freeze({
   LECTURERS: "lecturers",
   COURSES: "courses",
   COURSE_ALLOCATIONS: "course_allocations",
+  REGISTRATION_SETTINGS: "registration_settings",
+  COURSE_REGISTRATIONS: "course_registrations",
   STUDY_CENTRES: "studyCentres",
   STUDY_CENTRES_LEGACY: "study_centres",
   RESULTS: "results",
@@ -2556,6 +2558,468 @@ export function refreshLecturerDashboardData() {
   } catch (err) {
     console.warn("[DIMABIN Dashboard] refreshLecturerDashboardData note:", err.message);
   }
+}
+
+/**
+ * =========================================================================
+ * 7B. CENTRAL COURSE REGISTRATION CONTROL & STUDENT REGISTRATIONS
+ * Full 3-Semester Institutional Management Across All Study Centres
+ * =========================================================================
+ */
+
+export const DEFAULT_REGISTRATION_SETTINGS = Object.freeze([
+  {
+    id: "reg_2026_2027_First_Semester",
+    academicSession: "2026/2027",
+    semester: "First Semester",
+    isOpen: true,
+    openDate: "2026-09-01",
+    closeDate: "2026-11-30",
+    minCredits: 1,
+    maxCredits: 24,
+    notes: "Central course registration for First Semester 2026/2027 is active across all study centres.",
+    updatedAt: "2026-09-01T08:00:00.000Z",
+    updatedBy: ADMIN_CREDENTIALS.ADMIN_ID
+  },
+  {
+    id: "reg_2026_2027_Second_Semester",
+    academicSession: "2026/2027",
+    semester: "Second Semester",
+    isOpen: false,
+    openDate: "2027-01-15",
+    closeDate: "2027-03-31",
+    minCredits: 1,
+    maxCredits: 24,
+    notes: "Second Semester registration opens per academic calendar.",
+    updatedAt: "2026-09-01T08:00:00.000Z",
+    updatedBy: ADMIN_CREDENTIALS.ADMIN_ID
+  },
+  {
+    id: "reg_2026_2027_Third_Semester",
+    academicSession: "2026/2027",
+    semester: "Third Semester",
+    isOpen: false,
+    openDate: "2027-04-15",
+    closeDate: "2027-06-30",
+    minCredits: 1,
+    maxCredits: 24,
+    notes: "Third Semester registration opens per academic calendar.",
+    updatedAt: "2026-09-01T08:00:00.000Z",
+    updatedBy: ADMIN_CREDENTIALS.ADMIN_ID
+  }
+]);
+
+export function getRegistrationSettingsDocId(session, semester) {
+  const cleanSession = (session || "2026/2027").trim().replace(/[^0-9]/g, "_");
+  const cleanSemester = (semester || "First Semester").trim().replace(/\s+/g, "_");
+  return `reg_${cleanSession}_${cleanSemester}`;
+}
+
+export function subscribeRegistrationSettings(callback) {
+  if (typeof callback !== "function") return () => {};
+
+  let initialList = getCachedCollection(COLLECTIONS.REGISTRATION_SETTINGS);
+  if (!Array.isArray(initialList) || initialList.length === 0) {
+    initialList = [...DEFAULT_REGISTRATION_SETTINGS];
+    setCachedCollection(COLLECTIONS.REGISTRATION_SETTINGS, initialList);
+  }
+  callback(initialList);
+
+  const localListener = (e) => {
+    if (e.detail) callback(e.detail);
+  };
+  window.addEventListener(`dimabin:db:${COLLECTIONS.REGISTRATION_SETTINGS}`, localListener);
+
+  let unsubscribe = () => {};
+  try {
+    const collRef = collection(db, COLLECTIONS.REGISTRATION_SETTINGS);
+    unsubscribe = onSnapshot(
+      collRef,
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setCachedCollection(COLLECTIONS.REGISTRATION_SETTINGS, list);
+          callback(list);
+        } else {
+          // If Firestore is empty, seed defaults
+          const currentCache = getCachedCollection(COLLECTIONS.REGISTRATION_SETTINGS);
+          if (!currentCache || currentCache.length === 0) {
+            setCachedCollection(COLLECTIONS.REGISTRATION_SETTINGS, [...DEFAULT_REGISTRATION_SETTINGS]);
+            callback([...DEFAULT_REGISTRATION_SETTINGS]);
+          } else {
+            callback(currentCache);
+          }
+        }
+      },
+      (err) => {
+        console.warn("[DIMABIN Registration Settings] onSnapshot note:", err.message);
+        callback(getCachedCollection(COLLECTIONS.REGISTRATION_SETTINGS));
+      }
+    );
+  } catch (err) {
+    console.warn("[DIMABIN Registration Settings] init note:", err.message);
+  }
+
+  return () => {
+    try { unsubscribe(); } catch (_) {}
+    window.removeEventListener(`dimabin:db:${COLLECTIONS.REGISTRATION_SETTINGS}`, localListener);
+  };
+}
+
+export async function saveRegistrationSettings(session, semester, updateData) {
+  const normSession = (session || "2026/2027").trim();
+  const normSemester = (semester || "First Semester").trim();
+  const docId = getRegistrationSettingsDocId(normSession, normSemester);
+
+  const existingList = getCachedCollection(COLLECTIONS.REGISTRATION_SETTINGS) || [];
+  const existingRecord = existingList.find((r) => r.id === docId || (r.academicSession === normSession && r.semester === normSemester)) || {};
+
+  const isOpen = updateData.isOpen !== undefined ? Boolean(updateData.isOpen) : (existingRecord.isOpen || false);
+  const openDate = updateData.openDate !== undefined ? updateData.openDate : (existingRecord.openDate || "");
+  const closeDate = updateData.closeDate !== undefined ? updateData.closeDate : (existingRecord.closeDate || "");
+  const minCredits = updateData.minCredits !== undefined ? parseInt(updateData.minCredits, 10) : (existingRecord.minCredits || 1);
+  const maxCredits = updateData.maxCredits !== undefined ? parseInt(updateData.maxCredits, 10) : (existingRecord.maxCredits || 24);
+  const notes = updateData.notes !== undefined ? updateData.notes : (existingRecord.notes || "");
+  const nowIso = new Date().toISOString();
+
+  const record = {
+    id: docId,
+    academicSession: normSession,
+    semester: normSemester,
+    isOpen,
+    openDate,
+    closeDate,
+    minCredits,
+    maxCredits,
+    notes,
+    updatedAt: nowIso,
+    updatedBy: updateData.updatedBy || ADMIN_CREDENTIALS.ADMIN_ID
+  };
+
+  upsertCachedItem(COLLECTIONS.REGISTRATION_SETTINGS, record);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.REGISTRATION_SETTINGS, docId);
+    await setDoc(docRef, {
+      ...record,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.warn("[DIMABIN Registration Settings] Firestore save note:", err.message);
+  }
+
+  await logActivity({
+    action: isOpen ? "course_registration_opened" : "course_registration_closed",
+    description: `Centrally ${isOpen ? "OPENED" : "CLOSED"} course registration for ${normSemester} (${normSession}) across all active study centres.`,
+    targetCollection: COLLECTIONS.REGISTRATION_SETTINGS,
+    targetDocumentId: docId
+  });
+
+  return { success: true, ...record };
+}
+
+export async function toggleRegistrationOpenStatus(session, semester, targetStatus) {
+  const normSession = (session || "2026/2027").trim();
+  const normSemester = (semester || "First Semester").trim();
+  const current = getRegistrationSettings(normSession, normSemester);
+  const nextStatus = targetStatus !== undefined ? Boolean(targetStatus) : !current.isOpen;
+  return saveRegistrationSettings(normSession, normSemester, { isOpen: nextStatus });
+}
+
+export function getRegistrationSettings(session, semester) {
+  const normSession = (session || "2026/2027").trim();
+  const normSemester = (semester || "First Semester").trim();
+  const docId = getRegistrationSettingsDocId(normSession, normSemester);
+
+  const list = getCachedCollection(COLLECTIONS.REGISTRATION_SETTINGS) || [];
+  const found = list.find((r) => r.id === docId || (r.academicSession === normSession && r.semester === normSemester));
+  if (found) return found;
+
+  const defFound = DEFAULT_REGISTRATION_SETTINGS.find((r) => r.id === docId || (r.academicSession === normSession && r.semester === normSemester));
+  if (defFound) return defFound;
+
+  return {
+    id: docId,
+    academicSession: normSession,
+    semester: normSemester,
+    isOpen: false,
+    openDate: "",
+    closeDate: "",
+    minCredits: 1,
+    maxCredits: 24,
+    notes: ""
+  };
+}
+
+export function subscribeCourseRegistrations(callback) {
+  if (typeof callback !== "function") return () => {};
+
+  let currentList = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  callback(currentList);
+
+  const localListener = (e) => {
+    if (e.detail) callback(e.detail);
+  };
+  window.addEventListener(`dimabin:db:${COLLECTIONS.COURSE_REGISTRATIONS}`, localListener);
+
+  let unsubscribe = () => {};
+  try {
+    const collRef = collection(db, COLLECTIONS.COURSE_REGISTRATIONS);
+    unsubscribe = onSnapshot(
+      collRef,
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS, list);
+          callback(list);
+        } else {
+          setCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS, []);
+          callback([]);
+        }
+      },
+      (err) => {
+        console.warn("[DIMABIN Course Registrations] onSnapshot note:", err.message);
+        callback(getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || []);
+      }
+    );
+  } catch (err) {
+    console.warn("[DIMABIN Course Registrations] init note:", err.message);
+  }
+
+  return () => {
+    try { unsubscribe(); } catch (_) {}
+    window.removeEventListener(`dimabin:db:${COLLECTIONS.COURSE_REGISTRATIONS}`, localListener);
+  };
+}
+
+export function getStudentCourseRegistration(studentUid, session, semester) {
+  if (!studentUid) return null;
+  const list = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  const normSession = (session || "2026/2027").trim();
+  const normSemester = (semester || "First Semester").trim();
+
+  return list.find((r) => {
+    const matchesUser = r.studentUid === studentUid || r.userId === studentUid;
+    const matchesSession = !normSession || r.academicSession === normSession;
+    const matchesSemester = !normSemester || r.semester === normSemester;
+    return matchesUser && matchesSession && matchesSemester;
+  }) || null;
+}
+
+export async function submitStudentCourseRegistration({
+  studentUid,
+  studentProfile,
+  academicSession,
+  semester,
+  selectedCourseIds
+}) {
+  if (!studentUid) {
+    throw new Error("Authentication error: Valid student login credentials are required to register courses.");
+  }
+
+  if (!studentProfile) {
+    throw new Error("Student profile could not be loaded. Please re-authenticate and try again.");
+  }
+
+  const session = (academicSession || studentProfile.academicSession || "2026/2027").trim();
+  const sem = (semester || "First Semester").trim();
+
+  if (!["First Semester", "Second Semester", "Third Semester"].includes(sem)) {
+    throw new Error("Invalid academic semester specified for registration.");
+  }
+
+  // 1. Authoritative Server/Firestore check: Is registration currently OPEN for this session and semester?
+  const regSettings = getRegistrationSettings(session, sem);
+  if (!regSettings || !regSettings.isOpen) {
+    throw new Error(
+      `Course registration is currently closed for ${sem} (${session}). Please check the academic calendar or contact the administration.`
+    );
+  }
+
+  // 2. Validate course selection
+  if (!Array.isArray(selectedCourseIds) || selectedCourseIds.length === 0) {
+    throw new Error("Please select at least one course to complete your registration.");
+  }
+
+  // 3. Fetch central catalogue to validate courses
+  const allCourses = getCachedCollection(COLLECTIONS.COURSES) || [...DEFAULT_DIMABIN_COURSES];
+  const allAllocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+
+  // Deduplicate selected IDs
+  const uniqueCourseIds = Array.from(new Set(selectedCourseIds));
+
+  // Find and validate each course in central catalogue
+  const studentCentre = (studentProfile.studyCentre || "Abeokuta Main Campus").trim();
+  const compiledCourses = [];
+  let totalCredits = 0;
+
+  for (const cId of uniqueCourseIds) {
+    const courseObj = allCourses.find((c) => c.id === cId || c.courseCode === cId);
+    if (!courseObj) {
+      throw new Error(`Selected course with identifier '${cId}' does not exist in the central catalogue.`);
+    }
+
+    if (courseObj.status === "inactive") {
+      throw new Error(`Course [${courseObj.courseCode}] "${courseObj.title}" is currently deactivated and cannot be registered.`);
+    }
+
+    // Verify course belongs to this semester and session
+    if (courseObj.semester !== sem) {
+      throw new Error(`Course [${courseObj.courseCode}] is catalogued for ${courseObj.semester}, not ${sem}.`);
+    }
+
+    const credits = parseInt(courseObj.creditUnits || courseObj.creditUnit || 3, 10);
+    totalCredits += credits;
+
+    // Resolve assigned lecturer from allocations (checking student's centre first, then central/any)
+    const normCode = normalizeCourseCode(courseObj.courseCode);
+    const centreAlloc = allAllocations.find((a) => {
+      const matchCode = normalizeCourseCode(a.courseCode) === normCode || a.courseId === courseObj.id;
+      const matchSem = a.semester === sem;
+      const matchSess = a.academicSession === session;
+      const matchCentre = (a.studyCentre || "").trim().toLowerCase() === studentCentre.toLowerCase();
+      return matchCode && matchSem && matchSess && matchCentre && a.status !== "ended";
+    });
+
+    const generalAlloc = allAllocations.find((a) => {
+      const matchCode = normalizeCourseCode(a.courseCode) === normCode || a.courseId === courseObj.id;
+      const matchSem = a.semester === sem;
+      const matchSess = a.academicSession === session;
+      return matchCode && matchSem && matchSess && a.status !== "ended";
+    });
+
+    const assignedAlloc = centreAlloc || generalAlloc;
+    const lecturerName = assignedAlloc ? assignedAlloc.lecturerName : (courseObj.lecturerName || "To be announced (TBA)");
+    const lecturerId = assignedAlloc ? assignedAlloc.lecturerId : (courseObj.lecturerId || "");
+
+    compiledCourses.push({
+      courseId: courseObj.id,
+      courseCode: courseObj.courseCode,
+      courseTitle: courseObj.title || courseObj.courseTitle,
+      creditUnits: credits,
+      department: courseObj.department || "Biblical Studies & Theology",
+      programme: courseObj.programme || "Diploma in Theology (Dipl.Th.)",
+      lecturerName: lecturerName,
+      lecturerId: lecturerId
+    });
+  }
+
+  // 4. Validate credit units limits
+  if (regSettings.maxCredits && totalCredits > regSettings.maxCredits) {
+    throw new Error(`Total credit units (${totalCredits}) exceeds the maximum allowed limit of ${regSettings.maxCredits} units.`);
+  }
+
+  // 5. Existing registration check: Prevent duplicate registration overwriting approved records
+  const regDocId = `${studentUid}_${session.replace(/[^0-9]/g, "_")}_${sem.replace(/\s+/g, "_")}`;
+  const existingReg = getStudentCourseRegistration(studentUid, session, sem);
+
+  if (existingReg && existingReg.status === "approved") {
+    throw new Error(`Your course registration for ${sem} (${session}) has already been approved by the Academic Registry and cannot be modified.`);
+  }
+
+  const nowIso = new Date().toISOString();
+  const studentId = studentProfile.studentId || studentProfile.admissionNumber || "DIMABIN/STU/2026";
+  const studentName = studentProfile.fullName || "Student Candidate";
+
+  const registrationRecord = {
+    id: regDocId,
+    studentUid: studentUid,
+    userId: studentUid,
+    studentId: studentId,
+    admissionNumber: studentId,
+    studentName: studentName,
+    studentEmail: studentProfile.email || "",
+    studentPhone: studentProfile.phone || "",
+    studyCentre: studentCentre,
+    studyCentreId: studentProfile.studyCentreId || "",
+    programme: studentProfile.programme || "Diploma in Theology (Dipl.Th.)",
+    level: studentProfile.level || "Diploma I",
+    academicSession: session,
+    semester: sem,
+    courseIds: compiledCourses.map((c) => c.courseId),
+    courses: compiledCourses,
+    totalCredits: totalCredits,
+    courseCount: compiledCourses.length,
+    status: existingReg && existingReg.status === "returned" ? "resubmitted" : "submitted",
+    submittedAt: existingReg ? (existingReg.submittedAt || nowIso) : nowIso,
+    updatedAt: nowIso,
+    history: existingReg && Array.isArray(existingReg.history) ? [...existingReg.history, { timestamp: nowIso, action: "resubmitted" }] : [{ timestamp: nowIso, action: "initial_submission" }]
+  };
+
+  upsertCachedItem(COLLECTIONS.COURSE_REGISTRATIONS, registrationRecord);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.COURSE_REGISTRATIONS, regDocId);
+    await setDoc(docRef, {
+      ...registrationRecord,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.warn("[DIMABIN Course Registrations] Firestore save note:", err.message);
+  }
+
+  await logActivity({
+    action: "course_registration_submitted",
+    description: `Student [${studentId}] "${studentName}" at ${studentCentre} registered for ${compiledCourses.length} course(s) (${totalCredits} credit units) in ${sem} (${session}).`,
+    targetCollection: COLLECTIONS.COURSE_REGISTRATIONS,
+    targetDocumentId: regDocId
+  });
+
+  return { success: true, registrationId: regDocId, registration: registrationRecord };
+}
+
+export async function updateCourseRegistrationStatus(registrationId, newStatus, reviewNotes = "", adminId = ADMIN_CREDENTIALS.ADMIN_ID) {
+  if (!registrationId) throw new Error("Registration ID is required.");
+
+  const validStatuses = ["submitted", "approved", "rejected", "returned", "resubmitted"];
+  if (!validStatuses.includes(newStatus)) {
+    throw new Error(`Invalid status: ${newStatus}. Must be one of: ${validStatuses.join(", ")}`);
+  }
+
+  const list = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  const existing = list.find((r) => r.id === registrationId);
+  if (!existing) {
+    throw new Error(`Registration record '${registrationId}' was not found.`);
+  }
+
+  const nowIso = new Date().toISOString();
+  const updatedRecord = {
+    ...existing,
+    status: newStatus,
+    reviewNotes: (reviewNotes || "").trim(),
+    reviewedBy: adminId,
+    reviewedAt: nowIso,
+    updatedAt: nowIso,
+    history: [
+      ...(Array.isArray(existing.history) ? existing.history : []),
+      { timestamp: nowIso, action: `status_${newStatus}`, notes: reviewNotes, adminId }
+    ]
+  };
+
+  upsertCachedItem(COLLECTIONS.COURSE_REGISTRATIONS, updatedRecord);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.COURSE_REGISTRATIONS, registrationId);
+    await updateDoc(docRef, {
+      status: newStatus,
+      reviewNotes: updatedRecord.reviewNotes,
+      reviewedBy: adminId,
+      reviewedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      history: updatedRecord.history
+    });
+  } catch (err) {
+    console.warn("[DIMABIN Course Registrations] Status update note:", err.message);
+  }
+
+  await logActivity({
+    action: `course_registration_${newStatus}`,
+    description: `Registration for [${existing.studentId}] "${existing.studentName}" at ${existing.studyCentre} set to '${newStatus.toUpperCase()}' by Registry.`,
+    targetCollection: COLLECTIONS.COURSE_REGISTRATIONS,
+    targetDocumentId: registrationId
+  });
+
+  return { success: true, registrationId, status: newStatus };
 }
 
 /**

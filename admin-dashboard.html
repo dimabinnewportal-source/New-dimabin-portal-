@@ -174,6 +174,16 @@
             </svg>
             <span>Course Allocation</span>
           </button>
+          <button type="button" class="nav-item" data-section="course-registration-control">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span>Registration Control</span>
+          </button>
           <button type="button" class="nav-item" data-section="study-centres">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -2484,6 +2494,367 @@
 
         </section>
 
+        <!-- ======================================================================
+             SECTION 9B: COURSE REGISTRATION CONTROL (CENTRAL INSTITUTIONAL)
+             ====================================================================== -->
+        <section class="admin-section" id="section-course-registration-control" aria-label="Course Registration Control">
+
+          <!-- Academic Session & Trimester Summary Strip -->
+          <div class="session-info-strip">
+            <div class="session-strip-group">
+              <div class="session-strip-item">
+                <span class="session-strip-label">Academic Session:</span>
+                <span class="session-strip-badge" id="reg-ctrl-active-session-badge">2026/2027</span>
+              </div>
+              <div class="session-strip-item">
+                <span class="session-strip-label">Academic Semester:</span>
+                <span class="session-strip-badge" id="reg-ctrl-active-semester-badge">First Semester</span>
+              </div>
+              <div class="session-strip-item">
+                <span class="session-strip-label">Central Scope:</span>
+                <span class="session-strip-badge" style="color: var(--gold); border-color: rgba(245, 184, 0, 0.45);">All Active Study Centres</span>
+              </div>
+            </div>
+            <div class="session-strip-item">
+              <span class="session-strip-label" style="color: #93C5FD;">Live Status:</span>
+              <span class="session-strip-badge" id="reg-ctrl-live-status-badge" style="background: rgba(22, 163, 74, 0.2); color: #86EFAC; border-color: #86EFAC;">● Registration Open</span>
+            </div>
+          </div>
+
+          <!-- Page Header & Action Controls -->
+          <div class="section-heading-wrap" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 class="section-main-title">Course Registration Control</h2>
+              <p class="section-sub-title">Centrally manage semester enrollment availability, review submitted course registrations, and monitor student participation across all active study centres.</p>
+            </div>
+            <div class="section-heading-actions" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+              <button type="button" class="btn-card-action" onclick="window.dimabinAdmin?.navigateToSection('course-management')" style="padding: 0.55rem 1rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+                Curriculum Catalogue
+              </button>
+              <button type="button" class="btn-card-action" onclick="window.dimabinAdmin?.navigateToSection('course-allocation')" style="padding: 0.55rem 1rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <polyline points="16 3 21 3 21 8"></polyline>
+                  <line x1="4" y1="20" x2="21" y2="3"></line>
+                </svg>
+                Faculty Allocations
+              </button>
+            </div>
+          </div>
+
+          <!-- Session & Semester Selector Card with Registration Window Status -->
+          <div class="admin-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--primary-blue);">
+            <div class="card-header-clean" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+              <div>
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--dark-navy); margin-bottom: 0.2rem;">
+                  1. Central Registration Availability Window
+                </h3>
+                <p style="font-size: 0.8125rem; color: var(--admin-text-muted); margin: 0;">
+                  Controlled centrally for the entire institution. Opening or closing a semester takes immediate effect for all active study centres.
+                </p>
+              </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <!-- Session Selector -->
+                <select class="table-filter-select" id="reg-ctrl-session-select" style="min-width: 140px; font-weight: 700;">
+                  <option value="2026/2027" selected>2026/2027</option>
+                  <option value="2025/2026">2025/2026</option>
+                  <option value="2027/2028">2027/2028</option>
+                </select>
+                <!-- Semester Selector -->
+                <select class="table-filter-select" id="reg-ctrl-semester-select" style="min-width: 160px; font-weight: 700; color: var(--primary-blue);">
+                  <option value="First Semester" selected>First Semester</option>
+                  <option value="Second Semester">Second Semester</option>
+                  <option value="Third Semester">Third Semester</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="card-body-clean" style="padding: 1.25rem;">
+              <!-- Master Status Banner and Toggle -->
+              <div id="reg-ctrl-banner-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1.25rem; border-radius: var(--admin-radius-md); background: #F0FDF4; border: 1.5px solid #86EFAC; margin-bottom: 1.25rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                  <div id="reg-ctrl-status-icon" style="width: 44px; height: 44px; border-radius: 50%; background: #16A34A; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 900; flex-shrink: 0;">
+                    ✓
+                  </div>
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                      <h4 id="reg-ctrl-status-title" style="font-size: 1.05rem; font-weight: 800; color: #15803D; margin: 0;">
+                        COURSE REGISTRATION IS OPEN GLOBALLY
+                      </h4>
+                      <span class="status-pill-badge badge-green" id="reg-ctrl-status-badge">ACTIVE</span>
+                    </div>
+                    <p id="reg-ctrl-status-desc" style="font-size: 0.8125rem; color: #166534; margin: 0.25rem 0 0 0;">
+                      Eligible students across all active study centres can currently register for centrally configured <strong id="reg-ctrl-status-sem-text">First Semester (2026/2027)</strong> courses.
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <button type="button" class="btn-card-action" id="btn-toggle-reg-status" style="background: #DC2626; color: #fff; font-weight: 800; border-color: #DC2626; padding: 0.65rem 1.25rem; border-radius: 6px;">
+                    Close Registration
+                  </button>
+                </div>
+              </div>
+
+              <!-- Window Details Form -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: flex-end;">
+                <div>
+                  <label class="filter-label" for="reg-ctrl-open-date">Opening Date</label>
+                  <input type="date" class="form-control-admin" id="reg-ctrl-open-date" value="2026-09-01">
+                </div>
+                <div>
+                  <label class="filter-label" for="reg-ctrl-close-date">Closing Date (Deadline)</label>
+                  <input type="date" class="form-control-admin" id="reg-ctrl-close-date" value="2026-11-30">
+                </div>
+                <div>
+                  <label class="filter-label" for="reg-ctrl-max-credits">Max Credit Units</label>
+                  <input type="number" class="form-control-admin" id="reg-ctrl-max-credits" value="24" min="1" max="35">
+                </div>
+                <div>
+                  <label class="filter-label" for="reg-ctrl-notes">Administrative Instructions</label>
+                  <input type="text" class="form-control-admin" id="reg-ctrl-notes" placeholder="e.g. Add/Drop period ends Nov 30...">
+                </div>
+                <div>
+                  <button type="button" class="btn-admin-primary" id="btn-save-reg-window" style="width: 100%; height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 700;">
+                    <span>💾 Save Window Settings</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Statistics Row -->
+          <div class="stats-grid-6" style="margin-bottom: 1.5rem;">
+            <!-- 1. Total Registered Students -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Registered Students</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-reg-students-count">0</div>
+              <span class="stat-foot" id="stat-reg-students-sub">In Selected Semester</span>
+            </div>
+
+            <!-- 2. Total Course Units Enrolled -->
+            <div class="stat-card gold-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Enrolled Credit Units</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-reg-credits-count">0</div>
+              <span class="stat-foot">Cumulative Registered Load</span>
+            </div>
+
+            <!-- 3. Approved Registrations -->
+            <div class="stat-card green-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Approved Registrations</span>
+                <div class="stat-icon-wrap" style="color: #16A34A; background: #DCFCE7;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-reg-approved-count">0</div>
+              <span class="stat-foot">Verified by Registry</span>
+            </div>
+
+            <!-- 4. Pending Review -->
+            <div class="stat-card warning-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Pending / Submitted</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-reg-pending-count">0</div>
+              <span class="stat-foot">Awaiting Administrative Audit</span>
+            </div>
+
+            <!-- 5. Central Courses Available -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Catalogue Offerings</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-reg-offerings-count">0</div>
+              <span class="stat-foot">Eligible Central Courses</span>
+            </div>
+
+            <!-- 6. Active Study Centres -->
+            <div class="stat-card gold-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Study Centres</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-reg-centres-count">0</div>
+              <span class="stat-foot">Participating Campuses</span>
+            </div>
+          </div>
+
+          <!-- Study Centre Registration Distribution Strip -->
+          <div class="admin-card" style="margin-bottom: 1.5rem;">
+            <div class="card-header-clean">
+              <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--dark-navy); margin: 0;">
+                2. Registration Distribution Across Study Centres
+              </h3>
+            </div>
+            <div class="card-body-clean" style="padding: 1rem 1.25rem;">
+              <div id="reg-centre-breakdown-container" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <!-- Dynamically populated centre breakdown pills -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Central Course Offerings for Selected Semester -->
+          <div class="admin-card" style="margin-bottom: 1.5rem;">
+            <div class="card-header-clean" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--dark-navy); margin: 0;">
+                  3. Central Course Offerings for <span id="reg-offerings-title-sem">First Semester</span> (<span id="reg-offerings-title-sess">2026/2027</span>)
+                </h3>
+                <p style="font-size: 0.78rem; color: var(--admin-text-muted); margin: 0.15rem 0 0 0;">
+                  These central courses are simultaneously available to eligible students at every active study centre.
+                </p>
+              </div>
+              <button type="button" class="btn-card-action" onclick="window.dimabinAdmin?.navigateToSection('course-management')" style="padding: 0.4rem 0.85rem; font-size: 0.75rem;">
+                + Add / Manage Courses
+              </button>
+            </div>
+            <div class="card-body-clean" style="padding: 0;">
+              <div class="table-responsive-wrapper">
+                <table class="admin-data-table" style="font-size: 0.8125rem;">
+                  <thead>
+                    <tr>
+                      <th>Course Code</th>
+                      <th>Course Title</th>
+                      <th>Department</th>
+                      <th>Units</th>
+                      <th>Assigned Lecturer</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reg-offerings-tbody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Student Registrations Review & Management Section -->
+          <div class="admin-card">
+            <div class="card-header-clean" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+              <div>
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--dark-navy); margin: 0;">
+                  4. Student Course Registrations Registry
+                </h3>
+                <p style="font-size: 0.8125rem; color: var(--admin-text-muted); margin: 0.2rem 0 0 0;">
+                  Review submitted registrations, verify credit unit loads, and track student enrollment per study centre.
+                </p>
+              </div>
+              <div style="font-size: 0.8125rem; font-weight: 700; color: var(--primary-blue);" id="reg-results-count-pill">
+                Showing 0 registrations
+              </div>
+            </div>
+
+            <!-- Filters Bar -->
+            <div style="padding: 1rem 1.25rem; background: #F8FAFC; border-bottom: 1px solid var(--admin-border-subtle); display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; align-items: center;">
+              <!-- Search -->
+              <div>
+                <input type="text" class="form-control-admin" id="reg-filter-search" placeholder="Search by student name or ID..." style="font-size: 0.8125rem;">
+              </div>
+              <!-- Study Centre Filter -->
+              <div>
+                <select class="form-control-admin" id="reg-filter-centre" style="font-size: 0.8125rem;">
+                  <option value="all">All Study Centres</option>
+                </select>
+              </div>
+              <!-- Status Filter -->
+              <div>
+                <select class="form-control-admin" id="reg-filter-status" style="font-size: 0.8125rem;">
+                  <option value="all">All Registration Statuses</option>
+                  <option value="submitted">Submitted (Under Review)</option>
+                  <option value="approved">Approved by Registry</option>
+                  <option value="returned">Returned for Correction</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <!-- Course Filter -->
+              <div>
+                <select class="form-control-admin" id="reg-filter-course" style="font-size: 0.8125rem;">
+                  <option value="all">All Registered Courses</option>
+                </select>
+              </div>
+              <!-- Reset Filter Button -->
+              <div>
+                <button type="button" class="btn-card-action" id="btn-reset-reg-filters" style="width: 100%; justify-content: center; font-size: 0.8125rem;">
+                  Reset Filters
+                </button>
+              </div>
+            </div>
+
+            <div class="card-body-clean" style="padding: 0;">
+              <div class="table-responsive-wrapper">
+                <table class="admin-data-table" id="reg-students-table">
+                  <thead>
+                    <tr>
+                      <th>Student / Candidate</th>
+                      <th>Student ID / Matric</th>
+                      <th>Study Centre</th>
+                      <th>Session &amp; Semester</th>
+                      <th>Registered Courses</th>
+                      <th>Total Units</th>
+                      <th>Status</th>
+                      <th>Submission Date</th>
+                      <th style="text-align: right;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reg-students-tbody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Empty State -->
+              <div id="reg-students-empty" style="display: none; padding: 3rem 1rem; text-align: center;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
+                <h4 style="font-size: 1rem; font-weight: 700; color: var(--dark-navy); margin-bottom: 0.25rem;">No Course Registrations Found</h4>
+                <p style="font-size: 0.8125rem; color: var(--admin-text-muted); max-width: 480px; margin: 0 auto;" id="reg-empty-msg">
+                  No student registrations currently match the selected session, semester, and filter criteria.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
         <!-- SECTION 10: STUDY CENTRES -->
         <section class="admin-section" id="section-study-centres" aria-label="Study Centres">
           <div class="section-heading-wrap" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
@@ -4391,6 +4762,92 @@
         <button type="button" class="btn-admin-cancel" id="btn-close-letter">Close</button>
         <button type="button" class="btn-admin-primary" id="btn-print-admission-letter">
           🖨️ Print Admission Letter
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL: REVIEW & AUDIT STUDENT COURSE REGISTRATION
+       ====================================================================== -->
+  <div class="admin-modal-backdrop" id="modal-review-course-reg" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="reg-modal-title">
+    <div class="admin-modal-card" style="max-width: 720px;">
+      <div class="admin-modal-header">
+        <div>
+          <h3 class="admin-modal-title" id="reg-modal-title">Student Course Registration Dossier</h3>
+          <p class="admin-modal-subtitle">Official academic course enrollment verification and credit audit.</p>
+        </div>
+        <button type="button" class="btn-admin-modal-close" id="btn-close-reg-modal" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="admin-modal-body" style="padding: 1.25rem;">
+        <!-- Student Information Card -->
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+            <div>
+              <span style="font-size: 0.75rem; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase;">Student Full Name:</span>
+              <div id="reg-modal-student-name" style="font-weight: 800; color: var(--dark-navy); font-size: 0.95rem;">-</div>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase;">Student ID / Matric:</span>
+              <div id="reg-modal-student-id" style="font-weight: 700; color: var(--primary-blue); font-size: 0.9rem;">-</div>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase;">Study Centre / Campus:</span>
+              <div id="reg-modal-centre" style="font-weight: 700; color: var(--dark-navy); font-size: 0.9rem;">-</div>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase;">Session &amp; Semester:</span>
+              <div id="reg-modal-term" style="font-weight: 700; color: #B45309; font-size: 0.9rem;">-</div>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase;">Current Status:</span>
+              <div id="reg-modal-status-badge">-</div>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase;">Total Registered Units:</span>
+              <div id="reg-modal-total-credits" style="font-weight: 800; color: var(--primary-blue); font-size: 1.1rem;">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enrolled Courses List -->
+        <h4 style="font-size: 0.9rem; font-weight: 800; color: var(--dark-navy); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          Enrolled Course Offerings
+        </h4>
+        <div class="table-responsive-wrapper" style="margin-bottom: 1.25rem;">
+          <table class="admin-data-table" style="font-size: 0.8125rem;">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Course Title</th>
+                <th>Units</th>
+                <th>Assigned Lecturer</th>
+              </tr>
+            </thead>
+            <tbody id="reg-modal-courses-tbody">
+              <!-- Courses rendered here -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Registry Review Remarks Input -->
+        <div style="margin-bottom: 1rem;">
+          <label class="filter-label" for="reg-modal-remarks" style="font-weight: 700;">Registry Audit Remarks / Feedback to Student</label>
+          <textarea class="form-control-admin" id="reg-modal-remarks" rows="2" placeholder="e.g. Approved by Academic Board / Credit overload detected, please drop elective..."></textarea>
+        </div>
+      </div>
+
+      <div class="admin-modal-footer" style="flex-wrap: wrap; gap: 0.5rem;">
+        <button type="button" class="btn-admin-cancel" id="btn-close-reg-modal-bottom">Close</button>
+        <button type="button" class="btn-card-action" id="btn-reg-modal-return" style="background: #F59E0B; color: #fff; border-color: #F59E0B;">
+          ↩ Return for Correction
+        </button>
+        <button type="button" class="btn-card-action" id="btn-reg-modal-reject" style="background: #EF4444; color: #fff; border-color: #EF4444;">
+          ✕ Reject Registration
+        </button>
+        <button type="button" class="btn-admin-primary" id="btn-reg-modal-approve" style="background: #16A34A; border-color: #16A34A;">
+          ✓ Approve Registration
         </button>
       </div>
     </div>

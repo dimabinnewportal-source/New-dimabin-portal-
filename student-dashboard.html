@@ -577,23 +577,216 @@
         </section>
 
         <!-- ================================================================
-             SECTION 3: COURSE REGISTRATION
+             SECTION 3: COURSE REGISTRATION (REAL-TIME FIRESTORE WORKFLOW)
              ================================================================ -->
         <section class="student-section" id="section-course-reg" aria-label="Course Registration">
-          <div class="student-content-card">
-            <div class="student-card-header">
-              <h3 class="student-card-title">Course Registration — First Semester 2026/2027</h3>
-              <span class="status-pill-badge badge-gold">REGISTRATION OPEN</span>
-            </div>
-            <div class="student-card-body">
-              <p style="font-size: 0.875rem; color: var(--student-text-muted); margin-bottom: 1.5rem;">
-                Enrolled courses will be registered in this module. Full registration workflow engine will be implemented in the subsequent phase.
-              </p>
-              <div class="student-empty-box">
-                <div class="student-empty-icon">📖</div>
-                <div class="student-empty-text">No courses registered yet for the 2026/2027 session.</div>
-                <div class="student-empty-sub">Course selection and credit unit enrollment will open per academic calendar.</div>
+          <!-- Institutional Banner with Student Profile & Semester Tabs -->
+          <div class="student-content-card" style="margin-bottom: 1.5rem;">
+            <div class="student-card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+              <div>
+                <h3 class="student-card-title" id="student-reg-card-title">Institutional Course Registration</h3>
+                <p style="font-size: 0.8125rem; color: var(--student-text-muted); margin: 0.2rem 0 0 0;">
+                  Study Centre: <strong id="student-reg-centre-badge" style="color: var(--student-navy);">-</strong> · Session: <strong id="student-reg-session-badge" style="color: var(--student-blue);">2026/2027</strong>
+                </p>
               </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <span class="status-pill-badge" id="student-reg-live-status-badge">CHECKING AVAILABILITY...</span>
+              </div>
+            </div>
+
+            <!-- Three-Semester Switcher Tabs -->
+            <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--student-border); padding: 0.75rem 1.25rem; background: #F8FAFC; overflow-x: auto;">
+              <button type="button" class="student-sem-tab active" data-sem="First Semester" style="padding: 0.45rem 1rem; border-radius: 6px; font-size: 0.8125rem; font-weight: 700; cursor: pointer; border: 1px solid var(--student-blue); background: var(--student-blue); color: #fff;">
+                First Semester
+              </button>
+              <button type="button" class="student-sem-tab" data-sem="Second Semester" style="padding: 0.45rem 1rem; border-radius: 6px; font-size: 0.8125rem; font-weight: 700; cursor: pointer; border: 1px solid #CBD5E1; background: #fff; color: #475569;">
+                Second Semester
+              </button>
+              <button type="button" class="student-sem-tab" data-sem="Third Semester" style="padding: 0.45rem 1rem; border-radius: 6px; font-size: 0.8125rem; font-weight: 700; cursor: pointer; border: 1px solid #CBD5E1; background: #fff; color: #475569;">
+                Third Semester
+              </button>
+            </div>
+
+            <div class="student-card-body" style="padding: 1.25rem;">
+
+              <!-- STATE A: REGISTRATION CLOSED STATE -->
+              <div id="student-reg-closed-pane" style="display: none;">
+                <div class="student-empty-box" style="padding: 2.5rem 1.5rem; text-align: center; background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 8px;">
+                  <div class="student-empty-icon" style="font-size: 2.5rem;">🔒</div>
+                  <div class="student-empty-text" style="color: #92400E; font-size: 1.05rem; font-weight: 800; margin-bottom: 0.5rem;" id="student-reg-closed-heading">
+                    Registration Closed
+                  </div>
+                  <div class="student-empty-sub" style="color: #78350F; font-size: 0.875rem; max-width: 580px; margin: 0 auto; line-height: 1.5;" id="student-reg-closed-message">
+                    Course registration is currently closed for your academic session and semester. Please check the academic calendar or contact the administration.
+                  </div>
+                </div>
+              </div>
+
+              <!-- STATE B: REGISTRATION OPEN & READY TO SELECT COURSES -->
+              <div id="student-reg-form-pane" style="display: none;">
+                <!-- Instructions & Credit Counter Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: #EEF3FF; border: 1.5px solid #BFDBFE; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+                  <div>
+                    <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--student-navy); margin: 0;">
+                      Select Your Required &amp; Elective Courses
+                    </h4>
+                    <p style="font-size: 0.8125rem; color: #475569; margin: 0.2rem 0 0 0;">
+                      Central institutional course catalogue for <span id="student-reg-open-sem-text" style="font-weight: 700;">First Semester 2026/2027</span>.
+                    </p>
+                  </div>
+                  <div style="text-align: right;">
+                    <div style="font-size: 0.8125rem; color: var(--student-text-muted); font-weight: 600;">Selected Load:</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: var(--student-blue);">
+                      <span id="student-selected-courses-count">0</span> Courses · <span id="student-selected-credits-count">0</span> Credit Units
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Select All Controls Bar -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                  <div style="display: flex; gap: 0.5rem;">
+                    <button type="button" class="student-card-action-btn" id="btn-student-select-all" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                      ✓ Select All Courses
+                    </button>
+                    <button type="button" class="student-card-action-btn" id="btn-student-clear-all" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                      ✕ Clear Selection
+                    </button>
+                  </div>
+                  <span style="font-size: 0.75rem; color: var(--student-text-muted);">
+                    Maximum allowed load: <strong id="student-max-credits-limit">24</strong> units
+                  </span>
+                </div>
+
+                <!-- Courses List Table -->
+                <div class="student-table-wrap" style="margin-bottom: 1.5rem;">
+                  <table class="student-table" id="student-courses-select-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 48px; text-align: center;">Select</th>
+                        <th>Course Code</th>
+                        <th>Course Title</th>
+                        <th>Credit Units</th>
+                        <th>Assigned Faculty Lecturer</th>
+                        <th>Department</th>
+                      </tr>
+                    </thead>
+                    <tbody id="student-courses-tbody">
+                      <!-- Dynamically rendered course rows -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Empty Course State (when open but no courses configured) -->
+                <div id="student-no-courses-available" style="display: none; padding: 2.5rem 1rem; text-align: center;">
+                  <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📚</div>
+                  <h4 style="font-size: 1rem; font-weight: 700; color: var(--student-navy); margin-bottom: 0.25rem;">No Courses Configured for this Semester</h4>
+                  <p style="font-size: 0.8125rem; color: var(--student-text-muted); max-width: 480px; margin: 0 auto;">
+                    No eligible central course offerings have been catalogued by the Academic Board for this semester yet. Please check back shortly or contact the Registry.
+                  </p>
+                </div>
+
+                <!-- Submit Button Bar -->
+                <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; border-top: 1px solid var(--student-border); padding-top: 1.25rem;">
+                  <span id="student-submit-error" style="color: #DC2626; font-size: 0.8125rem; font-weight: 600; display: none;"></span>
+                  <button type="button" class="student-btn-gold" id="btn-submit-course-reg" style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 800; padding: 0.75rem 2rem;">
+                    <span>📝</span>
+                    <span id="btn-submit-course-reg-text">CONFIRM &amp; SUBMIT COURSE REGISTRATION</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- STATE C: REGISTRATION ALREADY SUBMITTED / CONFIRMED SLIP -->
+              <div id="student-reg-slip-pane" style="display: none;">
+                <div class="dimabin-reg-slip-card" style="background: #ffffff; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 1.75rem; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                  
+                  <!-- Slip Header -->
+                  <div style="display: flex; align-items: center; gap: 1rem; border-bottom: 2px solid var(--student-navy); padding-bottom: 1rem; margin-bottom: 1.25rem;">
+                    <img src="assets/images/dimabin-logo.png" alt="DIMABIN Seal" style="width: 55px; height: 55px; object-fit: contain;">
+                    <div style="flex: 1; text-align: center;">
+                      <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--student-navy); margin: 0; letter-spacing: 0.02em;">
+                        DIVINE MANDATE BIBLE INSTITUTE (DIMABIN)
+                      </h3>
+                      <div style="font-size: 0.75rem; font-weight: 700; color: #B45309; margin-top: 2px;">
+                        MOTTO: FEAR OF GOD WITHOUT A MESS
+                      </div>
+                      <div style="font-size: 0.85rem; font-weight: 800; color: var(--student-blue); margin-top: 4px; text-transform: uppercase;">
+                        OFFICIAL STUDENT COURSE REGISTRATION SLIP
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Student & Registration Metadata Grid -->
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 1rem; margin-bottom: 1.25rem; font-size: 0.8125rem;">
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase;">Student Full Name:</span>
+                      <div id="slip-student-name" style="font-weight: 800; color: var(--student-navy); font-size: 0.95rem;">-</div>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase;">Matriculation / ID:</span>
+                      <div id="slip-student-id" style="font-weight: 800; color: var(--student-blue);">-</div>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase;">Official Study Centre:</span>
+                      <div id="slip-study-centre" style="font-weight: 700; color: var(--student-navy);">-</div>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase;">Academic Programme:</span>
+                      <div id="slip-programme" style="font-weight: 700;">Diploma in Theology (Dipl.Th.)</div>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase;">Academic Session &amp; Semester:</span>
+                      <div id="slip-term" style="font-weight: 800; color: #B45309;">-</div>
+                    </div>
+                    <div>
+                      <span style="color: var(--student-text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase;">Registration Status:</span>
+                      <div id="slip-status-badge">-</div>
+                    </div>
+                  </div>
+
+                  <!-- Registered Courses Table -->
+                  <div class="student-table-wrap" style="margin-bottom: 1.25rem;">
+                    <table class="student-table" style="font-size: 0.8125rem;">
+                      <thead>
+                        <tr>
+                          <th>Code</th>
+                          <th>Course Title</th>
+                          <th style="text-align: center;">Units</th>
+                          <th>Assigned Lecturer</th>
+                        </tr>
+                      </thead>
+                      <tbody id="slip-courses-tbody">
+                        <!-- Populated dynamically -->
+                      </tbody>
+                      <tfoot>
+                        <tr style="background: #F1F5F9; font-weight: 800;">
+                          <td colspan="2" style="text-align: right;">TOTAL ENROLLED CREDIT UNITS:</td>
+                          <td style="text-align: center; color: var(--student-blue);" id="slip-total-units">0 Units</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  <!-- Remarks and Date Bar -->
+                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.75rem; color: var(--student-text-muted); border-top: 1px dashed #CBD5E1; padding-top: 0.75rem; margin-bottom: 1.25rem;">
+                    <div>Submitted to Academic Registry: <strong id="slip-submitted-date">-</strong></div>
+                    <div id="slip-remarks-note" style="color: var(--student-blue); font-weight: 600;"></div>
+                  </div>
+
+                  <!-- Slip Action Buttons -->
+                  <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+                    <button type="button" class="student-btn-gold" id="btn-print-reg-slip" onclick="window.print()" style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 800; padding: 0.65rem 1.5rem;">
+                      <span>🖨️</span>
+                      <span>Print Registration Slip</span>
+                    </button>
+                    <button type="button" class="student-card-action-btn" id="btn-modify-reg-selection" style="font-size: 0.875rem; padding: 0.65rem 1.25rem;">
+                      ✏️ Modify Course Selection
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+
             </div>
           </div>
         </section>
@@ -640,14 +833,41 @@
              ================================================================ -->
         <section class="student-section" id="section-course-ledger" aria-label="Course Ledger">
           <div class="student-content-card">
-            <div class="student-card-header">
-              <h3 class="student-card-title">Course Ledger &amp; Credit Audits</h3>
+            <div class="student-card-header" style="flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <h3 class="student-card-title">Course Ledger &amp; Credit Audits</h3>
+                <p style="font-size: 0.8125rem; color: var(--student-text-muted); margin: 0.2rem 0 0 0;">
+                  Cumulative record of all academic course registrations and enrolled credit units.
+                </p>
+              </div>
+              <span class="status-pill-badge badge-blue" id="ledger-total-credits-pill">0 Total Units</span>
             </div>
             <div class="student-card-body">
-              <div class="student-empty-box">
-                <div class="student-empty-icon">📑</div>
-                <div class="student-empty-text">Zero records in current ledger.</div>
-                <div class="student-empty-sub">Credit units completed and pending graduation requirements will appear here.</div>
+              <div class="student-table-wrap">
+                <table class="student-table">
+                  <thead>
+                    <tr>
+                      <th>Course Code</th>
+                      <th>Course Title</th>
+                      <th>Units</th>
+                      <th>Semester</th>
+                      <th>Academic Session</th>
+                      <th>Assigned Lecturer</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="student-ledger-tbody">
+                    <tr>
+                      <td colspan="7">
+                        <div class="student-empty-box">
+                          <div class="student-empty-icon">📑</div>
+                          <div class="student-empty-text">Zero records in current ledger.</div>
+                          <div class="student-empty-sub">Registered courses will appear here once submitted.</div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

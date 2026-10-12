@@ -5016,40 +5016,33 @@ body.drawer-open {
 }
 
 @media print {
-  /* Hide all regular web page containers, navigation, header, footer, body content */
-  body * {
-    visibility: hidden !important;
+  /* Strictly isolate print output to #dimabin-print-root */
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  /* Hide common layout elements specifically */
-  .site-header,
-  .site-footer,
-  .site-topbar,
-  .admissions-hero,
-  .admissions-form-card,
-  .form-actions-row,
-  .admissions-checker-section,
-  .mobile-menu-drawer,
-  #admission-form-section,
-  #check-status {
+  body > *:not(#dimabin-print-root) {
     display: none !important;
   }
 
   /* Show ONLY the print container */
-  #dimabin-print-root,
-  #dimabin-print-root * {
-    visibility: visible !important;
-  }
-
   #dimabin-print-root {
     display: block !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: transparent !important;
+  }
+
+  #dimabin-print-root,
+  #dimabin-print-root * {
+    visibility: visible !important;
   }
 
   .dimabin-a4-sheet {

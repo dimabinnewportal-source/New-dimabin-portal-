@@ -3363,3 +3363,8 @@ button, input, select, textarea {
   margin: 0 auto;
 }
 
+/* Hidden by default on screen */
+#dimabin-print-root {
+  display: none;
+}
+
