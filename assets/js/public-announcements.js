@@ -316,73 +316,50 @@ export function mountProminentAnnouncementBanner(options = {}) {
 
     container.innerHTML = `
       <div class="prominent-ann-card" role="region" aria-labelledby="prominent-ann-heading" data-ann-id="${escapeHTML(latest.id || '')}">
-        <!-- Top Meta Bar: Kicker + Category + Date + Session Dismissal -->
-        <div class="prominent-ann-topbar">
-          <div class="prominent-ann-meta-left">
-            <div class="prominent-ann-kicker-badge">
-              <span class="prominent-ann-pulse-dot" aria-hidden="true"></span>
-              <svg class="prominent-ann-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-              </svg>
-              <span class="kicker-title">IMPORTANT ANNOUNCEMENT</span>
-            </div>
-            <span class="prominent-ann-category">${category}</span>
-            <span class="prominent-ann-sep" aria-hidden="true">·</span>
+        <!-- Header: Category/Badge, Date, and Session Dismissal -->
+        <div class="prominent-ann-header">
+          <div class="prominent-ann-meta">
+            <span class="prominent-ann-badge">IMPORTANT ANNOUNCEMENT</span>
+            ${category ? `<span class="prominent-ann-category">${category}</span>` : ''}
+            <span class="prominent-ann-dot" aria-hidden="true">·</span>
             <time class="prominent-ann-date" datetime="${escapeHTML(String(pubDateStr || ''))}">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-              </svg>
-              <span>${escapeHTML(dateFormatted)}</span>
+              ${escapeHTML(dateFormatted)}
             </time>
-            ${totalCount > 1 ? `<span class="prominent-ann-count-pill">Latest of ${totalCount} Notices</span>` : ''}
           </div>
 
           <!-- Session Dismiss Button (Preserves Database) -->
-          <button type="button" class="prominent-ann-dismiss-btn" id="prominent-ann-dismiss-btn" aria-label="Dismiss this announcement for this visit" title="Dismiss announcement">
-            <span class="dismiss-text">Dismiss</span>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button type="button" class="prominent-ann-dismiss-btn" id="prominent-ann-dismiss-btn" aria-label="Dismiss announcement for this visit" title="Dismiss announcement">
+            <span class="dismiss-label">Dismiss</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
 
-        <!-- Heading & Message Content -->
-        <div class="prominent-ann-content">
-          <h2 class="prominent-ann-title" id="prominent-ann-heading">${title}</h2>
-          <div class="prominent-ann-prose">
-            <p class="prominent-ann-summary" id="prominent-ann-summary">${escapeHTML(shortText)}</p>
-            ${isLong ? `<div class="prominent-ann-full" id="prominent-ann-full" style="display: none;">${escapeHTML(rawMessage)}</div>` : ''}
-          </div>
+        <!-- Heading: Bold & Clearly Visible in Dark Green (#1B5E20) -->
+        <h2 class="prominent-ann-title" id="prominent-ann-heading">${title}</h2>
+
+        <!-- Message Body in Dark Charcoal Green (#263A2B) -->
+        <div class="prominent-ann-prose">
+          <p class="prominent-ann-summary" id="prominent-ann-summary">${escapeHTML(shortText)}</p>
+          ${isLong ? `<div class="prominent-ann-full" id="prominent-ann-full" style="display: none;">${escapeHTML(rawMessage)}</div>` : ''}
         </div>
 
-        <!-- Action Footer Row -->
-        <div class="prominent-ann-footer">
-          <div class="prominent-ann-btn-group">
+        <!-- Action / Toggle Button (Medium green background, white text) -->
+        ${isLong || totalCount > 1 ? `
+          <div class="prominent-ann-actions">
             ${isLong ? `
-              <button type="button" class="btn btn-gold btn-sm prominent-ann-toggle-btn" id="prominent-ann-toggle-btn" aria-expanded="false">
+              <button type="button" class="prominent-ann-btn prominent-ann-toggle-btn" id="prominent-ann-toggle-btn" aria-expanded="false">
                 <span>Read Full Announcement</span>
                 <span class="ann-btn-arrow" aria-hidden="true">↓</span>
               </button>
             ` : ''}
-
-            <a href="#notice-board" class="btn btn-outline-gold btn-sm prominent-ann-noticeboard-btn" id="prominent-ann-noticeboard-btn">
-              <span>${totalCount > 1 ? `View All Announcements (${totalCount})` : 'Visit Notice Board'}</span>
-              <span class="ann-btn-arrow" aria-hidden="true">↓</span>
-            </a>
+            ${totalCount > 1 ? `
+              <span class="prominent-ann-count-note">Latest of ${totalCount} announcements</span>
+            ` : ''}
           </div>
-
-          <div class="prominent-ann-seal">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f0c43f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
-            <span>Official Institute Broadcast · Registry Directive</span>
-          </div>
-        </div>
+        ` : ''}
       </div>
     `;
 
@@ -399,7 +376,7 @@ export function mountProminentAnnouncementBanner(options = {}) {
           section.style.display = "none";
           section.classList.remove("is-dismissing");
           document.body.classList.remove("has-prominent-announcement");
-        }, 280);
+        }, 260);
       });
     }
 
@@ -428,18 +405,6 @@ export function mountProminentAnnouncementBanner(options = {}) {
           }
         });
       }
-    }
-
-    // Bind smooth scroll to Notice Board
-    const nbBtn = document.getElementById("prominent-ann-noticeboard-btn");
-    if (nbBtn) {
-      nbBtn.addEventListener("click", (e) => {
-        const target = document.getElementById("notice-board");
-        if (target) {
-          e.preventDefault();
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      });
     }
   };
 
