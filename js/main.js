@@ -6,7 +6,7 @@
 import './firebase-test.js';
 import { subscribeAdmissionSettings, formatAdmissionDate, DEFAULT_ADMISSION_SETTINGS } from './firebase-admissions.js';
 import { savePublicApplication, checkAdmissionStatus, subscribeStudyCentres } from './firebase-backend.js';
-import { mountPublicNoticeBoard } from './public-announcements.js';
+import { mountPublicNoticeBoard, mountProminentAnnouncementBanner } from './public-announcements.js';
 import { printApplicationForm, downloadApplicationPdf } from './admission-print-pdf.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -991,6 +991,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================================
   // 11. DIMABIN PUBLIC NOTICE BOARD / ANNOUNCEMENTS INITIALIZER
   // =========================================================================
+  // Prominent Top Announcement Display (Immediately below Navigation Bar on Homepage)
+  if (document.getElementById('prominent-announcement-container')) {
+    mountProminentAnnouncementBanner({
+      sectionId: 'prominent-announcement-section',
+      containerId: 'prominent-announcement-container'
+    });
+  }
+
   // Homepage Notice Board
   if (document.getElementById('home-notice-board-container')) {
     mountPublicNoticeBoard({

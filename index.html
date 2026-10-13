@@ -191,6 +191,24 @@
        ======================================================================== -->
   <main id="main-content">
 
+    <!-- ========================================================================
+         PROMINENT PUBLIC ANNOUNCEMENT DISPLAY (Immediate Top Visibility)
+         High-contrast, attention-grabbing section for the latest active announcement.
+         Connected dynamically in real-time to Firestore "announcements" collection.
+         ======================================================================== -->
+    <section 
+      class="prominent-announcement-section" 
+      id="prominent-announcement-section" 
+      aria-label="Important Announcement" 
+      style="display: none;"
+    >
+      <div class="container">
+        <div id="prominent-announcement-container" class="prominent-announcement-container">
+          <!-- Populated dynamically in real-time by assets/js/public-announcements.js -->
+        </div>
+      </div>
+    </section>
+
     <!-- 1. HERO SECTION -->
     <section class="hero-section" id="hero" aria-label="Introduction and Hero Banner">
       <div class="hero-bg-wrapper">
