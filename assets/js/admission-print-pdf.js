@@ -98,7 +98,7 @@ export function buildApplicationDocHtml(app) {
           <h1 class="a4-inst-title">DIVINE MANDATE BIBLE INSTITUTE</h1>
           <div class="a4-inst-subtitle">(DIMABIN) · AN INTERDENOMINATIONAL CITADEL OF LEARNING</div>
           <div class="a4-motto">MOTTO: FEAR OF GOD WITHOUT A MESS</div>
-          <div class="a4-contact-bar">Goshen 13, Kusimo Street, Idi-Aba, Abeokuta, Ogun State, Nigeria · portal: www.dimabin.edu.ng</div>
+          <div class="a4-contact-bar">Goshen 13, Kusimo Street, Idi-Aba, Abeokuta, Ogun State, Nigeria · portal: https://dimabinportal.com.ng</div>
         </div>
       </div>
 
@@ -237,7 +237,7 @@ export function buildApplicationDocHtml(app) {
 
       <!-- FOOTER -->
       <div class="a4-footer">
-        <div>Generated via Divine Mandate Bible Institute Portal · Verification: admissions.html#check-status</div>
+        <div>Generated via Divine Mandate Bible Institute Portal · Verification: https://dimabinportal.com.ng/admissions.html#check-status</div>
         <div class="font-bold">A4 Page 1 of 1 · Official Document</div>
       </div>
     </div>

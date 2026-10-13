@@ -1,0 +1,18 @@
+# Robots.txt for DIMABIN Bible Institute
+# Official Website: https://dimabinportal.com.ng
+
+User-agent: *
+Allow: /
+
+# Private Portal & Dashboard Authentication Areas
+Disallow: /admin-dashboard.html
+Disallow: /student-dashboard.html
+Disallow: /lecturer-dashboard.html
+Disallow: /admin-login.html
+Disallow: /student-login.html
+Disallow: /lecturer-login.html
+Disallow: /student-password-setup.html
+Disallow: /lecturer-password-setup.html
+
+# XML Sitemap
+Sitemap: https://dimabinportal.com.ng/sitemap.xml
