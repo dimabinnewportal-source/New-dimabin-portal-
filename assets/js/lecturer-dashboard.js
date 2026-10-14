@@ -76,16 +76,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // Helper to render avatar photo or initials
   const updateAvatarDisplays = (photoSrc) => {
     const avatarBoxes = [
+      { id: "header-lecturer-avatar", isTextOnly: true },
+      { id: "hero-avatar", isContainer: true },
+      { id: "hero-avatar-initials", isTextOnly: true },
       { id: "lec-avatar-initials", isTextOnly: true },
       { id: "lec-banner-avatar", isContainer: true },
-      { id: "prof-avatar-box", isContainer: true }
+      { id: "prof-avatar-box", isContainer: true },
+      { id: "prof-avatar-initials", isTextOnly: true }
     ];
 
     avatarBoxes.forEach(({ id, isTextOnly, isContainer }) => {
       const el = document.getElementById(id);
       if (!el) return;
       if (photoSrc) {
-        el.innerHTML = `<img src="${photoSrc}" alt="${fullName}" class="lec-avatar-img">`;
+        if (isTextOnly) {
+          el.innerHTML = `<img src="${photoSrc}" alt="${fullName}" class="lec-avatar-img" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        } else {
+          el.innerHTML = `<img src="${photoSrc}" alt="${fullName}" class="lec-avatar-img">`;
+        }
       } else {
         el.innerHTML = `<span style="font-weight: 800;">${initials}</span>`;
       }
@@ -100,6 +108,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (el) el.textContent = val;
   };
 
+  // Student-Portal-matching Topbar & Hero fields
+  safeSetText("header-lecturer-name", fullName);
+  safeSetText("header-lecturer-role", `${dept.split("&")[0].trim()} · ${staffId}`);
+  safeSetText("header-study-centre", centre.split(",")[0]);
+  safeSetText("hero-lecturer-name", fullName);
+  safeSetText("hero-lecturer-id", staffId);
+  safeSetText("hero-lecturer-department", `Department: ${dept}`);
+  safeSetText("hero-lecturer-centre", `Study Centre: ${centre.split(",")[0]}`);
+  safeSetText("hero-lecturer-session", "Session: 2026/2027");
+  safeSetText("hero-academic-status", "Active");
+
+  // Legacy & Sidebar bindings
   safeSetText("lec-sidebar-name", fullName);
   safeSetText("lec-sidebar-id", staffId);
   safeSetText("lec-banner-name", fullName);
@@ -107,6 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
   safeSetText("lec-banner-email", email || "faculty@dimabin.org");
   safeSetText("lec-banner-centre", centre);
   safeSetText("lec-topbar-centre-name", centre.split(",")[0]);
+  safeSetText("card-centre-name", centre.split(",")[0]);
   safeSetText("stat-card-centre-name", centre.split(",")[0]);
 
   // Profile section elements
@@ -163,13 +184,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Close mobile drawer if open
-    const sidebar = document.getElementById("lecturer-sidebar");
-    const overlay = document.getElementById("lecturer-drawer-overlay");
+    const sidebar = document.getElementById("student-sidebar") || document.getElementById("lecturer-sidebar");
+    const overlay = document.getElementById("student-drawer-overlay") || document.getElementById("lecturer-drawer-overlay");
     if (sidebar) sidebar.classList.remove("open");
     if (overlay) overlay.classList.remove("open");
+    document.body.style.overflow = "";
 
     // Scroll to top of content
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Expose global navigator
+  window.dimabinLecturerPortal = {
+    navigateTo
   };
 
   navItems.forEach((btn) => {
@@ -199,33 +226,37 @@ document.addEventListener("DOMContentLoaded", () => {
   if (jumpToNoticesBtn) jumpToNoticesBtn.addEventListener("click", () => navigateTo("announcements"));
 
   // Mobile Drawer Toggle
-  const mobileToggle = document.getElementById("lecturer-mobile-toggle");
-  const sidebar = document.getElementById("lecturer-sidebar");
-  const overlay = document.getElementById("lecturer-drawer-overlay");
+  const mobileToggle = document.getElementById("student-menu-toggle") || document.getElementById("lecturer-mobile-toggle");
+  const sidebar = document.getElementById("student-sidebar") || document.getElementById("lecturer-sidebar");
+  const overlay = document.getElementById("student-drawer-overlay") || document.getElementById("lecturer-drawer-overlay");
 
   if (mobileToggle && sidebar && overlay) {
     mobileToggle.addEventListener("click", () => {
-      sidebar.classList.toggle("open");
-      overlay.classList.toggle("open");
+      const isOpen = sidebar.classList.toggle("open");
+      overlay.classList.toggle("open", isOpen);
+      document.body.style.overflow = isOpen ? "hidden" : "";
     });
     overlay.addEventListener("click", () => {
       sidebar.classList.remove("open");
       overlay.classList.remove("open");
+      document.body.style.overflow = "";
     });
   }
 
-  // Sign Out Handler
-  const logoutBtn = document.getElementById("btn-lecturer-logout");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", async () => {
-      try {
-        await signOutUser();
-      } catch (_) {}
-      sessionStorage.removeItem("dimabin_lecturer_session");
-      localStorage.removeItem("dimabin_lecturer_session");
-      window.location.href = "lecturer-login.html";
-    });
-  }
+  // Sign Out Handlers
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+    } catch (_) {}
+    sessionStorage.removeItem("dimabin_lecturer_session");
+    localStorage.removeItem("dimabin_lecturer_session");
+    window.location.href = "lecturer-login.html";
+  };
+
+  ["btn-lecturer-logout", "sidebar-logout-btn", "nav-logout-btn"].forEach((btnId) => {
+    const btn = document.getElementById(btnId);
+    if (btn) btn.addEventListener("click", handleSignOut);
+  });
 
   // =========================================================================
   // 3. REAL-TIME DATA STATE MANAGEMENT
@@ -304,10 +335,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 1. Overview Metrics Update
     const coursesCount = myAllocations.length;
+    safeSetText("hero-courses-val", coursesCount);
+    safeSetText("card-courses-val", coursesCount);
     safeSetText("stat-banner-courses", coursesCount);
     safeSetText("stat-card-courses", coursesCount);
 
     const uniqueStudents = new Set(enrolledStudents.map((s) => s.matricNumber));
+    safeSetText("hero-students-val", uniqueStudents.size);
+    safeSetText("card-students-val", uniqueStudents.size);
     safeSetText("stat-banner-students", uniqueStudents.size);
     safeSetText("stat-card-students", uniqueStudents.size);
 
@@ -315,6 +350,7 @@ document.addEventListener("DOMContentLoaded", () => {
       centre,
       ...myAllocations.map((a) => a.studyCentre).filter(Boolean)
     ]);
+    safeSetText("card-centres-val", uniqueCentres.size);
     safeSetText("stat-banner-centres", uniqueCentres.size);
     safeSetText("stat-card-centres", uniqueCentres.size);
 
@@ -430,17 +466,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       fullCoursesContainer.innerHTML = `
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+        <div class="student-table-wrap">
+          <table class="student-table">
             <thead>
-              <tr style="border-bottom: 2px solid var(--student-border); text-align: left; color: var(--student-text-muted); font-size: 0.75rem; text-transform: uppercase;">
-                <th style="padding: 0.85rem 1rem;">Course Code</th>
-                <th style="padding: 0.85rem 1rem;">Course Title</th>
-                <th style="padding: 0.85rem 1rem;">Study Centre</th>
-                <th style="padding: 0.85rem 1rem;">Semester</th>
-                <th style="padding: 0.85rem 1rem;">Enrolled</th>
-                <th style="padding: 0.85rem 1rem;">Session</th>
-                <th style="padding: 0.85rem 1rem; text-align: right;">Actions</th>
+              <tr>
+                <th>Course Code</th>
+                <th>Course Title</th>
+                <th>Study Centre</th>
+                <th>Semester</th>
+                <th>Enrolled</th>
+                <th>Session</th>
+                <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -450,18 +486,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 ).length;
 
                 return `
-                  <tr style="border-bottom: 1px solid var(--student-border-subtle);">
-                    <td style="padding: 0.85rem 1rem; font-weight: 800; color: var(--student-blue);">${alloc.courseCode || "N/A"}</td>
-                    <td style="padding: 0.85rem 1rem; font-weight: 600; color: var(--student-navy);">${alloc.courseTitle || "N/A"}</td>
-                    <td style="padding: 0.85rem 1rem; color: var(--student-text-muted);">${alloc.studyCentre || "All Centres"}</td>
-                    <td style="padding: 0.85rem 1rem;"><span class="faculty-badge badge-blue">${alloc.semester || "1st Sem"}</span></td>
-                    <td style="padding: 0.85rem 1rem; font-weight: 700; color: var(--student-navy);">${countForCourse} students</td>
-                    <td style="padding: 0.85rem 1rem; color: var(--student-text-muted);">${alloc.academicSession || "2026/2027"}</td>
-                    <td style="padding: 0.85rem 1rem; text-align: right; white-space: nowrap;">
-                      <button type="button" class="btn btn-outline-blue btn-sm" style="font-size: 0.75rem; margin-right: 0.35rem;" onclick="window.viewCourseRoster('${alloc.courseCode}')">
+                  <tr>
+                    <td style="font-weight: 800; color: var(--student-blue);">${alloc.courseCode || "N/A"}</td>
+                    <td style="font-weight: 600; color: var(--student-navy);">${alloc.courseTitle || "N/A"}</td>
+                    <td style="color: var(--student-text-muted);">${alloc.studyCentre || "All Centres"}</td>
+                    <td><span class="status-pill-badge badge-blue">${alloc.semester || "1st Sem"}</span></td>
+                    <td style="font-weight: 700; color: var(--student-navy);">${countForCourse} students</td>
+                    <td style="color: var(--student-text-muted);">${alloc.academicSession || "2026/2027"}</td>
+                    <td style="text-align: right; white-space: nowrap;">
+                      <button type="button" class="btn btn-outline-blue btn-sm" style="margin-right: 0.35rem;" onclick="window.viewCourseRoster('${alloc.courseCode}')">
                         Roster
                       </button>
-                      <button type="button" class="btn btn-primary btn-sm" style="font-size: 0.75rem; background: var(--student-navy);" onclick="window.openCourseGradeBook('${alloc.courseCode}')">
+                      <button type="button" class="btn btn-primary btn-sm" onclick="window.openCourseGradeBook('${alloc.courseCode}')">
                         Grade
                       </button>
                     </td>
@@ -555,8 +591,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     rosterContainer.innerHTML = `
-      <div style="overflow-x: auto;">
-        <table class="grade-table">
+      <div class="student-table-wrap">
+        <table class="student-table">
           <thead>
             <tr>
               <th style="width: 45px;">#</th>
@@ -577,14 +613,14 @@ document.addEventListener("DOMContentLoaded", () => {
                   (r.courseCode || "").trim().toUpperCase() === stu.courseCode.trim().toUpperCase()
               );
 
-              let statusBadge = `<span class="faculty-badge badge-pending">Pending Grading</span>`;
+              let statusBadge = `<span class="status-pill-badge badge-gold">Pending Grading</span>`;
               if (existingResult) {
                 if (existingResult.status === "approved" || existingResult.status === "published") {
-                  statusBadge = `<span class="faculty-badge badge-active">Approved (${existingResult.score}%)</span>`;
+                  statusBadge = `<span class="status-pill-badge badge-green">Approved (${existingResult.score}%)</span>`;
                 } else if (existingResult.status === "submitted") {
-                  statusBadge = `<span class="faculty-badge badge-blue">Submitted (${existingResult.score}%)</span>`;
+                  statusBadge = `<span class="status-pill-badge badge-blue">Submitted (${existingResult.score}%)</span>`;
                 } else {
-                  statusBadge = `<span class="faculty-badge badge-draft">Draft (${existingResult.score}%)</span>`;
+                  statusBadge = `<span class="status-pill-badge badge-gold">Draft (${existingResult.score}%)</span>`;
                 }
               }
 

@@ -2,9 +2,9 @@
 
 /**
  * DIMABIN LECTURER PORTAL — FACULTY DASHBOARD STYLES
- * Institutional Faculty Interface
- * Pure Vanilla CSS (Zero External Frameworks)
- * Palette: Navy (#122452), Primary Blue (#1F3C82), Gold (#F5B800), White (#FFFFFF), Bg (#F6F7FB)
+ * Matches DIMABIN Student Portal Design System 100%
+ * Colors: Navy (#122452), Primary Blue (#1F3C82), Gold (#F5B800), White (#FFFFFF), Bg (#F6F7FB)
+ * Strict Zero-Framework Vanilla CSS
  */
 
 :root {
@@ -20,17 +20,43 @@
   --lecturer-border-subtle: #EDF2F7;
 }
 
-/* Faculty Badges */
+/* Faculty Avatar with Photo Support */
+.lec-avatar-container {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--student-gold);
+  background: var(--student-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  box-shadow: var(--student-shadow-sm);
+}
+
+.lec-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Faculty Badges & Status Pills */
 .faculty-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   padding: 0.25rem 0.65rem;
   border-radius: 9999px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
@@ -68,6 +94,52 @@
   background: #F1F5F9;
   color: #475569;
   border: 1px solid #CBD5E1;
+}
+
+/* Quick Action Shortcuts Grid */
+.quick-action-card {
+  background: #FFFFFF;
+  border: 1px solid var(--student-border);
+  border-radius: var(--student-radius-md);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--student-shadow-sm);
+}
+
+.quick-action-card:hover {
+  border-color: var(--student-blue);
+  transform: translateY(-2px);
+  box-shadow: var(--student-shadow-md);
+}
+
+.quick-action-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--student-radius-sm);
+  background: var(--student-blue-subtle);
+  color: var(--student-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.quick-action-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--student-navy);
+}
+
+.quick-action-desc {
+  font-size: 0.8125rem;
+  color: var(--student-text-muted);
+  line-height: 1.4;
 }
 
 /* Course Offering Cards */
@@ -122,81 +194,10 @@
 }
 
 .lecturer-stat-highlight {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 800;
   color: var(--student-navy);
   line-height: 1.1;
-}
-
-/* Quick Action Cards */
-.quick-action-card {
-  background: #FFFFFF;
-  border: 1px solid var(--student-border);
-  border-radius: var(--student-radius-md);
-  padding: 1.25rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  text-decoration: none;
-  color: inherit;
-  box-shadow: var(--student-shadow-sm);
-}
-
-.quick-action-card:hover {
-  border-color: var(--lecturer-blue);
-  transform: translateY(-2px);
-  box-shadow: var(--student-shadow-md);
-}
-
-.quick-action-icon-box {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--student-radius-sm);
-  background: var(--student-blue-subtle);
-  color: var(--student-blue);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-}
-
-.quick-action-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--student-navy);
-}
-
-.quick-action-desc {
-  font-size: 0.8125rem;
-  color: var(--student-text-muted);
-  line-height: 1.4;
-}
-
-/* Lecturer Avatar with optional photo */
-.lec-avatar-container {
-  position: relative;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 3px solid var(--student-gold);
-  background: var(--student-navy);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #FFFFFF;
-  font-weight: 800;
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.lec-avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 /* Interactive Grade Entry Table */
@@ -205,6 +206,7 @@
   background: #FFFFFF;
   border-radius: var(--student-radius-sm);
   border: 1px solid var(--student-border);
+  width: 100%;
 }
 
 .grade-table {
@@ -217,11 +219,11 @@
   background: #F8FAFC;
   padding: 0.85rem 1rem;
   text-align: left;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--student-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   border-bottom: 2px solid var(--student-border);
   white-space: nowrap;
 }
@@ -230,22 +232,24 @@
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--student-border-subtle);
   vertical-align: middle;
+  color: var(--student-text-main);
 }
 
-.grade-table tr:hover {
+.grade-table tr:hover td {
   background-color: #F8FAFC;
 }
 
 .grade-score-input {
   width: 75px;
-  padding: 0.4rem 0.5rem;
+  padding: 0.45rem 0.5rem;
   border: 1px solid var(--student-border);
-  border-radius: 4px;
+  border-radius: var(--student-radius-sm);
   font-size: 0.9rem;
   font-weight: 700;
   text-align: center;
   color: var(--student-navy);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
 }
 
 .grade-score-input:focus {
@@ -262,12 +266,12 @@
 
 .grade-letter-pill {
   display: inline-block;
-  min-width: 28px;
-  padding: 0.2rem 0.5rem;
+  min-width: 32px;
+  padding: 0.25rem 0.5rem;
   text-align: center;
   font-weight: 800;
   font-size: 0.8125rem;
-  border-radius: 4px;
+  border-radius: var(--student-radius-sm);
 }
 
 .grade-letter-pill.A { background: #DCFCE7; color: #166534; }
@@ -277,7 +281,7 @@
 .grade-letter-pill.E { background: #F3E8FF; color: #6B21A8; }
 .grade-letter-pill.F { background: #FEE2E2; color: #991B1B; }
 
-/* Filter Bars */
+/* Filter Bars & Inputs */
 .portal-filter-bar {
   display: flex;
   gap: 0.75rem;
@@ -293,6 +297,9 @@
   font-size: 0.875rem;
   min-width: 220px;
   flex: 1;
+  font-family: inherit;
+  color: var(--student-text-main);
+  background-color: #FFFFFF;
 }
 
 .portal-filter-select {
@@ -303,13 +310,83 @@
   background-color: #FFFFFF;
   color: var(--student-text-main);
   min-width: 170px;
+  font-family: inherit;
+}
+
+.portal-form-input {
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--student-border);
+  border-radius: var(--student-radius-sm);
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--student-text-main);
+  background: #FFFFFF;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .portal-search-input:focus,
-.portal-filter-select:focus {
+.portal-filter-select:focus,
+.portal-form-input:focus {
   outline: none;
   border-color: var(--student-blue);
   box-shadow: 0 0 0 2px rgba(31, 60, 130, 0.15);
+}
+
+/* Button Standards */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: var(--student-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--student-navy);
+  color: #FFFFFF;
+  padding: 0.65rem 1.25rem;
+}
+
+.btn-primary:hover {
+  background: var(--student-navy-light);
+}
+
+.btn-outline-blue {
+  background: transparent;
+  border: 1px solid var(--student-border);
+  color: var(--student-blue);
+  padding: 0.55rem 1rem;
+}
+
+.btn-outline-blue:hover {
+  background: var(--student-blue-subtle);
+  border-color: var(--student-blue);
+}
+
+.btn-sm {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.75rem;
+}
+
+.student-btn-gold {
+  background: var(--student-gold);
+  color: var(--student-navy);
+  border: 1px solid #D4AF37;
+  border-radius: var(--student-radius-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.student-btn-gold:hover {
+  background: var(--student-gold-hover);
 }
 
 /* Activity stream */
@@ -354,6 +431,45 @@
   color: var(--student-text-muted);
 }
 
+/* Alert Boxes */
+.student-info-alert {
+  background: var(--student-blue-subtle);
+  border: 1px solid #BFDBFE;
+  border-radius: var(--student-radius-sm);
+  padding: 1rem;
+  color: var(--student-navy);
+  font-size: 0.875rem;
+}
+
+.student-success-alert {
+  background: var(--student-success-bg);
+  border: 1px solid #BBF7D0;
+  border-radius: var(--student-radius-sm);
+  padding: 0.85rem 1rem;
+  color: #15803D;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.student-danger-alert {
+  background: var(--student-danger-bg);
+  border: 1px solid #FECACA;
+  border-radius: var(--student-radius-sm);
+  padding: 0.85rem 1rem;
+  color: #B91C1C;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Card Header Subtitle */
+.student-card-subtitle {
+  font-size: 0.78rem;
+  color: var(--student-text-muted);
+  display: block;
+  margin-top: 0.2rem;
+  font-weight: 400;
+}
+
 /* Print Roster Formatting */
 @media print {
   body {
@@ -361,15 +477,16 @@
     color: #000000 !important;
   }
   .student-sidebar,
-  .student-topbar,
+  .student-header,
   .student-drawer-overlay,
   .no-print,
   button {
     display: none !important;
   }
-  .student-main-wrapper {
+  .student-main-content {
     margin: 0 !important;
     padding: 0 !important;
+    max-width: 100% !important;
   }
   .student-section {
     display: block !important;
