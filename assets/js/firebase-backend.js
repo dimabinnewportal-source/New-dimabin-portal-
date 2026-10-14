@@ -23,7 +23,12 @@ import { app } from "./firebase-config.js";
 import { auth, db, getCurrentAuthUser } from "./firebase-users.js";
 import {
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updatePassword,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   collection,
@@ -1198,6 +1203,8 @@ export async function updateLecturer(lecturerId, updateData) {
     }
   }
 
+  const photoUrl = updateData.photoUrl !== undefined ? updateData.photoUrl : (target.photoUrl || "");
+
   const nowIso = new Date().toISOString();
   const updatedRecord = {
     ...target,
@@ -1211,6 +1218,7 @@ export async function updateLecturer(lecturerId, updateData) {
     accountStatus,
     employmentStatus,
     status: accountStatus,
+    photoUrl,
     updatedAt: nowIso
   };
 
@@ -1229,6 +1237,7 @@ export async function updateLecturer(lecturerId, updateData) {
       accountStatus,
       employmentStatus,
       status: accountStatus,
+      photoUrl,
       updatedAt: serverTimestamp()
     });
   } catch (err) {
@@ -1587,6 +1596,7 @@ export async function authenticateLecturer(rawUserId, rawPassword, rememberMe = 
     qualification: lecturer.qualification,
     specialization: lecturer.specialization,
     studyCentre: lecturer.studyCentre,
+    photoUrl: lecturer.photoUrl || lecturer.passportPhoto || "",
     role: "lecturer",
     authenticatedAt: new Date().toISOString()
   };
@@ -3529,6 +3539,154 @@ export async function updateResultStatus(resultId, newStatus) {
   });
 
   return { success: true, resultId, status: newStatus };
+}
+
+/**
+ * Save or submit an individual course grade record for a student
+ * Allows lecturers to save drafts or submit official Continuous Assessment & Exam marks
+ */
+export async function saveLecturerGradeRecord(gradeData) {
+  const caScore = Math.max(0, Math.min(30, parseInt(gradeData.caScore, 10) || 0));
+  const examScore = Math.max(0, Math.min(70, parseInt(gradeData.examScore, 10) || 0));
+  const totalScore = caScore + examScore;
+
+  let grade = "F";
+  let remarks = "Fail";
+  if (totalScore >= 70) { grade = "A"; remarks = "Distinction / Excellent"; }
+  else if (totalScore >= 60) { grade = "B"; remarks = "Very Good"; }
+  else if (totalScore >= 50) { grade = "C"; remarks = "Good"; }
+  else if (totalScore >= 45) { grade = "D"; remarks = "Fair"; }
+  else if (totalScore >= 40) { grade = "E"; remarks = "Pass"; }
+
+  const status = (gradeData.status || "draft").toLowerCase(); // "draft" or "submitted"
+  const matricNumber = (gradeData.matricNumber || "").trim().toUpperCase();
+  const courseCode = (gradeData.courseCode || "").trim().toUpperCase();
+  const session = gradeData.academicSession || "2026/2027";
+  const semester = gradeData.semester || "First Semester";
+
+  const existingResults = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const existing = existingResults.find(
+    (r) =>
+      (r.matricNumber || "").trim().toUpperCase() === matricNumber &&
+      (r.courseCode || "").trim().toUpperCase() === courseCode &&
+      (r.academicSession || "") === session &&
+      (r.semester || "") === semester
+  );
+
+  const nowIso = new Date().toISOString();
+  const recordPayload = {
+    studentName: (gradeData.studentName || "").trim(),
+    matricNumber,
+    courseCode,
+    courseTitle: (gradeData.courseTitle || "").trim(),
+    studyCentre: gradeData.studyCentre || "",
+    academicSession: session,
+    semester,
+    caScore,
+    examScore,
+    score: totalScore,
+    grade,
+    remarks,
+    status,
+    lecturerStaffId: gradeData.lecturerStaffId || "",
+    lecturerName: gradeData.lecturerName || "",
+    submittedBy: gradeData.lecturerName || gradeData.lecturerStaffId || "Faculty Lecturer",
+    updatedAt: nowIso
+  };
+
+  let resultId;
+  if (existing) {
+    resultId = existing.id;
+    upsertCachedItem(COLLECTIONS.RESULTS, { id: resultId, ...recordPayload });
+    try {
+      const docRef = doc(db, COLLECTIONS.RESULTS, resultId);
+      await updateDoc(docRef, { ...recordPayload, updatedAt: serverTimestamp() });
+    } catch (err) {
+      console.warn(`[DIMABIN Results] Update note: ${err.message}`);
+    }
+  } else {
+    resultId = `res_${matricNumber.replace(/[^A-Za-z0-9]/g, "_")}_${courseCode.replace(/[^A-Za-z0-9]/g, "_")}_${Date.now()}`;
+    upsertCachedItem(COLLECTIONS.RESULTS, { id: resultId, ...recordPayload, createdAt: nowIso });
+    try {
+      const docRef = await addDoc(collection(db, COLLECTIONS.RESULTS), {
+        ...recordPayload,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      resultId = docRef.id;
+    } catch (err) {
+      console.warn(`[DIMABIN Results] Add note: ${err.message}`);
+    }
+  }
+
+  await logActivity({
+    action: status === "submitted" ? "grade_submitted_registry" : "grade_draft_saved",
+    description: `Faculty instructor ${gradeData.lecturerName || gradeData.lecturerStaffId} saved ${status} grade for ${recordPayload.studentName} (${matricNumber}) in ${courseCode}: ${totalScore}% (${grade}).`,
+    targetCollection: COLLECTIONS.RESULTS,
+    targetDocumentId: resultId
+  });
+
+  return { success: true, id: resultId, ...recordPayload };
+}
+
+/**
+ * Change Lecturer Password securely
+ */
+export async function changeLecturerPassword(email, currentPassword, newPassword) {
+  if (!email || !currentPassword || !newPassword) {
+    throw new Error("Please supply current password and new password.");
+  }
+  if (newPassword.length < 6) {
+    throw new Error("New password must be at least 6 characters.");
+  }
+
+  const userCredential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), currentPassword);
+  const user = userCredential.user;
+
+  await updatePassword(user, newPassword);
+
+  await logActivity({
+    action: "lecturer_password_changed",
+    description: `Faculty instructor ${email} successfully changed their portal password.`,
+    targetCollection: COLLECTIONS.USERS,
+    targetDocumentId: user.uid
+  });
+
+  return { success: true };
+}
+
+/**
+ * Update Faculty Lecturer Self Profile
+ */
+export async function updateLecturerSelfProfile(staffId, { phone, qualification, specialization, photoUrl }) {
+  const existingLecturers = getCachedCollection(COLLECTIONS.LECTURERS) || [];
+  const target = existingLecturers.find((l) => (l.staffId || "").trim().toLowerCase() === (staffId || "").trim().toLowerCase());
+  if (!target) throw new Error("Faculty profile record not found.");
+
+  const updateData = {};
+  if (phone !== undefined) updateData.phone = phone.trim();
+  if (qualification !== undefined) updateData.qualification = qualification.trim();
+  if (specialization !== undefined) updateData.specialization = specialization.trim();
+  if (photoUrl !== undefined) updateData.photoUrl = photoUrl;
+
+  const result = await updateLecturer(target.id, updateData);
+
+  // Update active session in storage
+  let sessionRaw = sessionStorage.getItem("dimabin_lecturer_session") || localStorage.getItem("dimabin_lecturer_session");
+  if (sessionRaw) {
+    try {
+      const s = JSON.parse(sessionRaw);
+      const updatedS = { ...s, ...updateData };
+      if (sessionStorage.getItem("dimabin_lecturer_session")) {
+        sessionStorage.setItem("dimabin_lecturer_session", JSON.stringify(updatedS));
+      }
+      if (localStorage.getItem("dimabin_lecturer_session")) {
+        localStorage.setItem("dimabin_lecturer_session", JSON.stringify(updatedS));
+      }
+    } catch (_) {}
+  }
+
+  return result;
 }
 
 /**

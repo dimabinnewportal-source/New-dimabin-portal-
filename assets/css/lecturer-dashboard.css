@@ -3,15 +3,24 @@
 /**
  * DIMABIN LECTURER PORTAL — FACULTY DASHBOARD STYLES
  * Institutional Faculty Interface
+ * Pure Vanilla CSS (Zero External Frameworks)
+ * Palette: Navy (#122452), Primary Blue (#1F3C82), Gold (#F5B800), White (#FFFFFF), Bg (#F6F7FB)
  */
 
 :root {
   --lecturer-navy: #122452;
+  --lecturer-navy-dark: #0A1633;
+  --lecturer-navy-light: #1A326E;
   --lecturer-blue: #1F3C82;
+  --lecturer-blue-light: #2D54B2;
   --lecturer-gold: #F5B800;
+  --lecturer-gold-hover: #D4AF37;
   --lecturer-bg: #F6F7FB;
+  --lecturer-border: #E2E8F0;
+  --lecturer-border-subtle: #EDF2F7;
 }
 
+/* Faculty Badges */
 .faculty-badge {
   display: inline-flex;
   align-items: center;
@@ -22,6 +31,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .faculty-badge.badge-active {
@@ -42,13 +52,32 @@
   border: 1px solid #DBEAFE;
 }
 
+.faculty-badge.badge-purple {
+  background: #F3E8FF;
+  color: #6B21A8;
+  border: 1px solid #E9D5FF;
+}
+
+.faculty-badge.badge-pending {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FCD34D;
+}
+
+.faculty-badge.badge-draft {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+}
+
+/* Course Offering Cards */
 .course-offering-card {
   background: #FFFFFF;
   border: 1px solid var(--student-border);
   border-radius: var(--student-radius-md);
   padding: 1.25rem;
   box-shadow: var(--student-shadow-sm);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -97,4 +126,264 @@
   font-weight: 800;
   color: var(--student-navy);
   line-height: 1.1;
+}
+
+/* Quick Action Cards */
+.quick-action-card {
+  background: #FFFFFF;
+  border: 1px solid var(--student-border);
+  border-radius: var(--student-radius-md);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--student-shadow-sm);
+}
+
+.quick-action-card:hover {
+  border-color: var(--lecturer-blue);
+  transform: translateY(-2px);
+  box-shadow: var(--student-shadow-md);
+}
+
+.quick-action-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--student-radius-sm);
+  background: var(--student-blue-subtle);
+  color: var(--student-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.quick-action-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--student-navy);
+}
+
+.quick-action-desc {
+  font-size: 0.8125rem;
+  color: var(--student-text-muted);
+  line-height: 1.4;
+}
+
+/* Lecturer Avatar with optional photo */
+.lec-avatar-container {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--student-gold);
+  background: var(--student-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.lec-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Interactive Grade Entry Table */
+.grade-table-wrapper {
+  overflow-x: auto;
+  background: #FFFFFF;
+  border-radius: var(--student-radius-sm);
+  border: 1px solid var(--student-border);
+}
+
+.grade-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.grade-table th {
+  background: #F8FAFC;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--student-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid var(--student-border);
+  white-space: nowrap;
+}
+
+.grade-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--student-border-subtle);
+  vertical-align: middle;
+}
+
+.grade-table tr:hover {
+  background-color: #F8FAFC;
+}
+
+.grade-score-input {
+  width: 75px;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--student-border);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--student-navy);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.grade-score-input:focus {
+  outline: none;
+  border-color: var(--student-blue);
+  box-shadow: 0 0 0 2px rgba(31, 60, 130, 0.15);
+}
+
+.grade-score-input:disabled {
+  background: #F1F5F9;
+  color: #94A3B8;
+  cursor: not-allowed;
+}
+
+.grade-letter-pill {
+  display: inline-block;
+  min-width: 28px;
+  padding: 0.2rem 0.5rem;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.8125rem;
+  border-radius: 4px;
+}
+
+.grade-letter-pill.A { background: #DCFCE7; color: #166534; }
+.grade-letter-pill.B { background: #DBEAFE; color: #1E40AF; }
+.grade-letter-pill.C { background: #FEF3C7; color: #92400E; }
+.grade-letter-pill.D { background: #FFEDD5; color: #9A3412; }
+.grade-letter-pill.E { background: #F3E8FF; color: #6B21A8; }
+.grade-letter-pill.F { background: #FEE2E2; color: #991B1B; }
+
+/* Filter Bars */
+.portal-filter-bar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.portal-search-input {
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--student-border);
+  border-radius: var(--student-radius-sm);
+  font-size: 0.875rem;
+  min-width: 220px;
+  flex: 1;
+}
+
+.portal-filter-select {
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--student-border);
+  border-radius: var(--student-radius-sm);
+  font-size: 0.875rem;
+  background-color: #FFFFFF;
+  color: var(--student-text-main);
+  min-width: 170px;
+}
+
+.portal-search-input:focus,
+.portal-filter-select:focus {
+  outline: none;
+  border-color: var(--student-blue);
+  box-shadow: 0 0 0 2px rgba(31, 60, 130, 0.15);
+}
+
+/* Activity stream */
+.activity-stream-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--student-border-subtle);
+}
+
+.activity-stream-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon-bubble {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--student-blue-subtle);
+  color: var(--student-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--student-navy);
+  margin-bottom: 0.15rem;
+}
+
+.activity-time {
+  font-size: 0.75rem;
+  color: var(--student-text-muted);
+}
+
+/* Print Roster Formatting */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  .student-sidebar,
+  .student-topbar,
+  .student-drawer-overlay,
+  .no-print,
+  button {
+    display: none !important;
+  }
+  .student-main-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .student-section {
+    display: block !important;
+  }
+  .grade-table-wrapper {
+    border: none !important;
+    overflow: visible !important;
+  }
+  .grade-table {
+    border: 1px solid #000000 !important;
+  }
+  .grade-table th,
+  .grade-table td {
+    border: 1px solid #000000 !important;
+    padding: 6px 8px !important;
+  }
 }

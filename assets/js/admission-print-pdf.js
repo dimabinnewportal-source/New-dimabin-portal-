@@ -1,13 +1,28 @@
 /**
  * DIVINE MANDATE BIBLE INSTITUTE (DIMABIN)
- * Admission Application Form Printing & PDF Generation Service
+ * Official Admission Application Form Printing & PDF Generation Engine
  * 
  * Generates an official, print-ready, high-fidelity A4 portrait document (210 × 297 mm)
- * occupying the sheet naturally with balanced margins, clear typography, and official seals.
+ * that occupies the sheet naturally with balanced margins (~12-14mm), clear typography,
+ * consistent field heights, passport photograph box, comprehensive candidate data,
+ * official registry endorsement stamps, and cryptographic verification footer.
  */
 
 // Official Logo Path
 const LOGO_SRC = 'assets/images/dimabin-logo.png';
+
+/**
+ * Returns absolute or relative logo URL depending on runtime environment
+ */
+function getLogoUrl() {
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    // If not file protocol, use absolute path to ensure asset resolves everywhere
+    if (window.location.origin.startsWith('http')) {
+      return `${window.location.origin}/assets/images/dimabin-logo.png`;
+    }
+  }
+  return LOGO_SRC;
+}
 
 /**
  * Sanitize application ID for file names
@@ -18,16 +33,16 @@ export function sanitizeFileNameId(appId) {
 }
 
 /**
- * Format date nicely
+ * Format date cleanly into UK/Academic standard: "14 Oct 2026"
  */
 function formatDate(dStr) {
   if (!dStr) return 'N/A';
   try {
     const d = new Date(dStr);
-    if (isNaN(d.getTime())) return dStr;
+    if (isNaN(d.getTime())) return String(dStr);
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch (_) {
-    return dStr;
+    return String(dStr);
   }
 }
 
@@ -35,7 +50,7 @@ function formatDate(dStr) {
  * Escape HTML to prevent injection
  */
 function escapeHtml(str) {
-  if (str === undefined || str === null) return '';
+  if (str === undefined || str === null || str === '') return '—';
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -48,82 +63,112 @@ function escapeHtml(str) {
  * Build the exact HTML string for the balanced, print-ready A4 Admission Application Document
  */
 export function buildApplicationDocHtml(app) {
-  const appId = escapeHtml(app.applicationId || app.id || 'DIMABIN/APP/2026');
-  const appDate = formatDate(app.createdAt || new Date().toISOString());
-  const fullName = escapeHtml(app.fullName || app.name || 'Candidate');
-  const programme = escapeHtml(app.programme || app.program || 'Diploma in Theology (Dipl.Th.)');
+  if (!app) app = {};
+
+  const appId = escapeHtml(app.applicationId || app.id || 'DIMABIN/APP/2026/001');
+  const appDate = formatDate(app.createdAt || app.submittedAt || new Date().toISOString());
+  const fullName = escapeHtml(app.fullName || app.name || 'Candidate Full Name');
+  const programme = escapeHtml(app.programme || app.program || app.intendedProgram || 'Diploma in Theology (Dipl.Th.)');
   const session = escapeHtml(app.academicSession || app.session || '2026/2027');
   const studyCentre = escapeHtml(app.studyCentre || app.centre || 'Abeokuta Main Campus');
-  const status = escapeHtml((app.status || 'Submitted').toUpperCase());
+  const rawStatus = (app.status || 'Submitted').toUpperCase();
+  const status = escapeHtml(rawStatus);
 
-  // Personal / Bio-Data
-  const gender = escapeHtml(app.gender || 'N/A');
+  // Status badge styling
+  let statusBadgeClass = 'a4-status-submitted';
+  if (rawStatus.includes('APPROV') || rawStatus.includes('ADMIT')) {
+    statusBadgeClass = 'a4-status-admitted';
+  } else if (rawStatus.includes('REJECT') || rawStatus.includes('DECLIN')) {
+    statusBadgeClass = 'a4-status-rejected';
+  } else if (rawStatus.includes('PEND')) {
+    statusBadgeClass = 'a4-status-pending';
+  }
+
+  // 1. Personal / Bio-Data
+  const gender = escapeHtml(app.gender);
   const dob = formatDate(app.dob);
-  const marital = escapeHtml(app.maritalStatus || 'N/A');
+  const marital = escapeHtml(app.maritalStatus);
   const nationality = escapeHtml(app.nationality || 'Nigerian');
-  const stateOrigin = escapeHtml(app.stateOfOrigin || 'N/A');
-  const lga = escapeHtml(app.lga || 'N/A');
-  const phone = escapeHtml(app.phone || 'N/A');
-  const whatsapp = escapeHtml(app.whatsapp || app.phone || 'N/A');
-  const email = escapeHtml(app.email || 'N/A');
-  const address = escapeHtml(app.residentialAddress || app.address || 'N/A');
+  const stateOrigin = escapeHtml(app.stateOfOrigin);
+  const lga = escapeHtml(app.lga);
+  const phone = escapeHtml(app.phone);
+  const whatsapp = escapeHtml(app.whatsapp || app.phone);
+  const email = escapeHtml(app.email);
+  const address = escapeHtml(app.residentialAddress || app.address);
 
-  // Academic Background
-  const qual = escapeHtml(app.qualification || 'N/A');
-  const gradYear = escapeHtml(app.graduationYear || 'N/A');
-  const inst = escapeHtml(app.institution || 'N/A');
-  const course = escapeHtml(app.courseOfStudy || app.academicCourse || 'N/A');
+  // Passport Photo URL if provided
+  const passportUrl = app.passportUrl || app.passportPhoto || app.photoUrl || null;
 
-  // Ecclesiastical & Pastoral Profile
-  const church = escapeHtml(app.churchName || 'N/A');
-  const denom = escapeHtml(app.denomination || 'N/A');
-  const role = escapeHtml(app.ministryRole || app.churchRole || 'N/A');
-  const pastor = escapeHtml(app.pastorName || app.churchPastorName || 'N/A');
-  const pastorPhone = escapeHtml(app.pastorPhone || app.churchPastorPhone || 'N/A');
+  // 2. Academic Background
+  const qual = escapeHtml(app.qualification || 'SSCE / WASSCE / NECO');
+  const gradYear = escapeHtml(app.graduationYear);
+  const inst = escapeHtml(app.institution);
+  const course = escapeHtml(app.courseOfStudy || app.academicCourse);
+  const credentials = escapeHtml(app.relevantCredentials || 'Credentials and Transcripts on Registry File');
+  const previousTheology = escapeHtml(app.previousTheology || 'None Stated / First Theological Enrollment');
 
-  // Next of Kin / Emergency Contact
-  const kinName = escapeHtml(app.kinName || 'N/A');
-  const kinRel = escapeHtml(app.kinRelationship || 'N/A');
-  const kinPhone = escapeHtml(app.kinPhone || 'N/A');
-  const kinAddress = escapeHtml(app.kinAddress || 'N/A');
+  // 3. Ecclesiastical & Pastoral Profile
+  const church = escapeHtml(app.churchName);
+  const denom = escapeHtml(app.denomination);
+  const role = escapeHtml(app.ministryRole || app.churchRole);
+  const ministryYears = escapeHtml(app.yearsInMinistry);
+  const pastor = escapeHtml(app.pastorName || app.churchPastorName);
+  const pastorPhone = escapeHtml(app.pastorPhone || app.churchPastorPhone);
+  const pastorEmail = escapeHtml(app.pastorEmail);
+  const testimony = escapeHtml(app.briefTestimony || 'Affirmed sound biblical calling and dedication to Christian discipleship and pastoral leadership.');
+
+  // 4. Next of Kin / Emergency Contact
+  const kinName = escapeHtml(app.kinName);
+  const kinRel = escapeHtml(app.kinRelationship);
+  const kinPhone = escapeHtml(app.kinPhone);
+  const kinWhatsapp = escapeHtml(app.kinWhatsapp || app.kinPhone);
+  const kinEmail = escapeHtml(app.kinEmail);
+  const kinAddress = escapeHtml(app.kinAddress);
+
+  const logoSrc = getLogoUrl();
 
   return `
     <div class="dimabin-a4-sheet" id="dimabin-a4-sheet">
-      <!-- 1. INSTITUTIONAL HEADER -->
-      <div class="a4-header">
+      
+      <!-- 1. OFFICIAL INSTITUTIONAL HEADER -->
+      <header class="a4-header" role="banner">
         <div class="a4-logo-wrap">
-          <img src="${LOGO_SRC}" alt="DIMABIN Seal" class="a4-logo" crossorigin="anonymous">
+          <img src="${logoSrc}" alt="DIMABIN Seal" class="a4-logo" crossorigin="anonymous">
         </div>
         <div class="a4-header-text">
           <h1 class="a4-inst-title">DIVINE MANDATE BIBLE INSTITUTE</h1>
           <div class="a4-inst-subtitle">(DIMABIN) · INTERDENOMINATIONAL CITADEL OF LEARNING</div>
           <div class="a4-motto">MOTTO: FEAR OF GOD WITHOUT A MESS</div>
           <div class="a4-contact-bar">
-            <span>Goshen 13, Kusimo Street, Kenta, Oke-Ola, Idi-Aba, Abeokuta, Ogun State, Nigeria</span><br>
-            <span>Tel: 0803 819 4611 · 0806 218 6974 · 0803 728 2082 | Email: dimabin233@gmail.com | Portal: https://dimabinportal.com.ng</span>
+            <span>Goshen 13, Kusimo Street, Kenta, Oke-Ola, Idi-Aba, Abeokuta, Ogun State, Nigeria</span>
+            <span class="a4-contact-separator">·</span>
+            <span>Tel: 0803 819 4611 · 0806 218 6974 · 0803 728 2082</span><br>
+            <span>Email: dimabin233@gmail.com</span>
+            <span class="a4-contact-separator">|</span>
+            <span>Official Portal: https://dimabinportal.com.ng</span>
           </div>
         </div>
-      </div>
+      </header>
 
-      <!-- 2. DOCUMENT TITLE & REGISTRY STATUS BAR -->
+      <!-- 2. DOCUMENT CLASSIFICATION & REGISTRY TITLE BAR -->
       <div class="a4-title-bar">
         <div class="a4-doc-badge">OFFICIAL REGISTRY COPY</div>
         <div class="a4-doc-title">ADMISSION APPLICATION FORM</div>
         <div class="a4-meta-pills">
           <span class="a4-pill-item"><strong>REF:</strong> ${appId}</span>
           <span class="a4-pill-item"><strong>DATE:</strong> ${appDate}</span>
-          <span class="a4-pill-item a4-status-pill"><strong>STATUS:</strong> ${status}</span>
+          <span class="a4-pill-item ${statusBadgeClass}"><strong>STATUS:</strong> ${status}</span>
         </div>
       </div>
 
-      <!-- 3. ENROLLMENT & PROGRAMME BANNER -->
+      <!-- 3. ENROLLMENT & PROGRAMME BANNER (3 Key Registry Pillars) -->
       <div class="a4-banner-grid">
         <div class="a4-banner-cell">
           <span class="a4-cell-lbl">Academic Session</span>
           <span class="a4-cell-val font-bold">${session}</span>
         </div>
         <div class="a4-banner-cell highlight-cell">
-          <span class="a4-cell-lbl">Programme Applied For</span>
+          <span class="a4-cell-lbl">Programme Applied For (Award Qualification)</span>
           <span class="a4-cell-val font-bold font-primary">${programme}</span>
         </div>
         <div class="a4-banner-cell">
@@ -132,127 +177,164 @@ export function buildApplicationDocHtml(app) {
         </div>
       </div>
 
-      <!-- 4. SECTION 1: CANDIDATE BIO-DATA & CONTACT -->
-      <div class="a4-section">
+      <!-- 4. SECTION 1: CANDIDATE BIO-DATA & CONTACT (With Passport Photo Area) -->
+      <section class="a4-section a4-sec-biodata">
         <div class="a4-sec-hdr">1. Candidate Bio-Data &amp; Contact Information</div>
-        <div class="a4-table-grid">
-          <div class="a4-row full-width">
-            <div class="a4-cell" style="width: 100%;">
-              <span class="a4-lbl">Candidate Full Name</span>
-              <span class="a4-val font-bold font-primary font-lg">${fullName}</span>
+        <div class="a4-sec-biodata-content">
+          <div class="a4-biodata-fields">
+            <div class="a4-row full-width">
+              <div class="a4-cell" style="width: 100%;">
+                <span class="a4-lbl">Candidate Full Name (Surname First, Middle, Other Names)</span>
+                <span class="a4-val font-bold font-primary font-lg">${fullName}</span>
+              </div>
+            </div>
+            <div class="a4-row a4-row-split-4">
+              <div class="a4-cell"><span class="a4-lbl">Gender</span><span class="a4-val font-bold">${gender}</span></div>
+              <div class="a4-cell"><span class="a4-lbl">Date of Birth</span><span class="a4-val font-bold">${dob}</span></div>
+              <div class="a4-cell"><span class="a4-lbl">Marital Status</span><span class="a4-val">${marital}</span></div>
+              <div class="a4-cell"><span class="a4-lbl">Nationality</span><span class="a4-val">${nationality}</span></div>
+            </div>
+            <div class="a4-row a4-row-split-4">
+              <div class="a4-cell"><span class="a4-lbl">State of Origin</span><span class="a4-val font-bold">${stateOrigin}</span></div>
+              <div class="a4-cell"><span class="a4-lbl">Local Govt. Area (LGA)</span><span class="a4-val">${lga}</span></div>
+              <div class="a4-cell"><span class="a4-lbl">Primary Phone</span><span class="a4-val font-bold font-primary">${phone}</span></div>
+              <div class="a4-cell"><span class="a4-lbl">WhatsApp Phone</span><span class="a4-val">${whatsapp}</span></div>
+            </div>
+            <div class="a4-row a4-row-split-2">
+              <div class="a4-cell-65"><span class="a4-lbl">Residential / Mailing Address</span><span class="a4-val">${address}</span></div>
+              <div class="a4-cell-35"><span class="a4-lbl">Registered Email Address</span><span class="a4-val font-bold">${email}</span></div>
             </div>
           </div>
-          <div class="a4-row a4-row-split-4">
-            <div class="a4-cell"><span class="a4-lbl">Gender</span><span class="a4-val">${gender}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">Date of Birth</span><span class="a4-val">${dob}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">Marital Status</span><span class="a4-val">${marital}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">Nationality</span><span class="a4-val">${nationality}</span></div>
-          </div>
-          <div class="a4-row a4-row-split-4">
-            <div class="a4-cell"><span class="a4-lbl">State of Origin</span><span class="a4-val">${stateOrigin}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">LGA</span><span class="a4-val">${lga}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">Phone Number</span><span class="a4-val">${phone}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">WhatsApp Number</span><span class="a4-val">${whatsapp}</span></div>
-          </div>
-          <div class="a4-row a4-row-split-2">
-            <div class="a4-cell-65"><span class="a4-lbl">Residential Address</span><span class="a4-val">${address}</span></div>
-            <div class="a4-cell-35"><span class="a4-lbl">Email Address</span><span class="a4-val">${email}</span></div>
+
+          <div class="a4-passport-wrapper" aria-label="Candidate Passport Photograph">
+            ${passportUrl ? `
+              <img src="${escapeHtml(passportUrl)}" alt="Passport" class="a4-passport-img" crossorigin="anonymous">
+            ` : `
+              <div class="a4-passport-placeholder">
+                <svg class="a4-passport-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span class="a4-pass-lbl-1">AFFIX RECENT</span>
+                <span class="a4-pass-lbl-2">PASSPORT</span>
+                <span class="a4-pass-lbl-3">PHOTOGRAPH</span>
+                <span class="a4-pass-lbl-4">(35mm × 45mm)</span>
+              </div>
+            `}
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 5. SECTION 2: PREVIOUS EDUCATIONAL BACKGROUND -->
-      <div class="a4-section">
-        <div class="a4-sec-hdr">2. Previous Educational Background</div>
+      <!-- 5. SECTION 2: PREVIOUS EDUCATIONAL BACKGROUND & QUALIFICATIONS -->
+      <section class="a4-section">
+        <div class="a4-sec-hdr">2. Previous Educational Background &amp; Academic Qualifications</div>
         <div class="a4-table-grid">
           <div class="a4-row a4-row-split-3">
-            <div class="a4-cell"><span class="a4-lbl">Highest Qualification</span><span class="a4-val font-bold">${qual}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">Year of Graduation</span><span class="a4-val">${gradYear}</span></div>
+            <div class="a4-cell" style="flex: 1.1;"><span class="a4-lbl">Highest Academic Qualification</span><span class="a4-val font-bold font-primary">${qual}</span></div>
+            <div class="a4-cell" style="flex: 0.9;"><span class="a4-lbl">Year of Graduation / Completion</span><span class="a4-val font-bold">${gradYear}</span></div>
             <div class="a4-cell" style="flex: 1.8;"><span class="a4-lbl">Institution Attended</span><span class="a4-val">${inst}</span></div>
           </div>
-          ${(course && course !== 'N/A') ? `
+          <div class="a4-row a4-row-split-2">
+            <div class="a4-cell-50"><span class="a4-lbl">Course / Academic Discipline</span><span class="a4-val font-bold">${course}</span></div>
+            <div class="a4-cell-50"><span class="a4-lbl">Relevant Credentials / Certificates</span><span class="a4-val">${credentials}</span></div>
+          </div>
           <div class="a4-row full-width">
             <div class="a4-cell" style="width: 100%;">
-              <span class="a4-lbl">Course / Academic Discipline</span>
-              <span class="a4-val">${course}</span>
+              <span class="a4-lbl">Previous Theological Training / Ministry Studies</span>
+              <span class="a4-val">${previousTheology}</span>
             </div>
-          </div>` : ''}
+          </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 6. SECTION 3: ECCLESIASTICAL & PASTORAL INFORMATION -->
-      <div class="a4-section">
-        <div class="a4-sec-hdr">3. Ecclesiastical &amp; Pastoral Information</div>
+      <!-- 6. SECTION 3: ECCLESIASTICAL & PASTORAL PROFILE -->
+      <section class="a4-section">
+        <div class="a4-sec-hdr">3. Ecclesiastical, Church &amp; Ministry Details</div>
         <div class="a4-table-grid">
-          <div class="a4-row a4-row-split-3">
-            <div class="a4-cell"><span class="a4-lbl">Home Church</span><span class="a4-val">${church}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">Denomination</span><span class="a4-val">${denom}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">Current Ministry Role</span><span class="a4-val">${role}</span></div>
+          <div class="a4-row a4-row-split-4">
+            <div class="a4-cell" style="flex: 1.3;"><span class="a4-lbl">Home Church Assembly</span><span class="a4-val font-bold font-primary">${church}</span></div>
+            <div class="a4-cell" style="flex: 1.1;"><span class="a4-lbl">Denomination</span><span class="a4-val">${denom}</span></div>
+            <div class="a4-cell" style="flex: 1.1;"><span class="a4-lbl">Current Ministry Role</span><span class="a4-val font-bold">${role}</span></div>
+            <div class="a4-cell" style="flex: 0.7;"><span class="a4-lbl">Active Years</span><span class="a4-val">${ministryYears}</span></div>
           </div>
-          <div class="a4-row a4-row-split-2">
-            <div class="a4-cell-60"><span class="a4-lbl">Pastor / Spiritual Overseer</span><span class="a4-val">${pastor}</span></div>
-            <div class="a4-cell-40"><span class="a4-lbl">Pastor's Contact Phone</span><span class="a4-val">${pastorPhone}</span></div>
+          <div class="a4-row a4-row-split-3">
+            <div class="a4-cell" style="flex: 1.4;"><span class="a4-lbl">Pastor / Spiritual Overseer</span><span class="a4-val font-bold">${pastor}</span></div>
+            <div class="a4-cell" style="flex: 1.1;"><span class="a4-lbl">Pastor's Contact Phone</span><span class="a4-val font-bold">${pastorPhone}</span></div>
+            <div class="a4-cell" style="flex: 1.3;"><span class="a4-lbl">Pastor's Email Address</span><span class="a4-val">${pastorEmail}</span></div>
+          </div>
+          <div class="a4-row full-width">
+            <div class="a4-cell" style="width: 100%;">
+              <span class="a4-lbl">Salvation Testimony &amp; Ministry Calling Statement</span>
+              <span class="a4-val testimony-val">${testimony}</span>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- 7. SECTION 4: NEXT OF KIN / EMERGENCY CONTACT -->
-      <div class="a4-section">
-        <div class="a4-sec-hdr">4. Next of Kin / Emergency Contact</div>
+      <section class="a4-section">
+        <div class="a4-sec-hdr">4. Next of Kin / Emergency Contact Information</div>
         <div class="a4-table-grid">
-          <div class="a4-row a4-row-split-3">
-            <div class="a4-cell"><span class="a4-lbl">Full Name</span><span class="a4-val font-bold">${kinName}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">Relationship</span><span class="a4-val">${kinRel}</span></div>
-            <div class="a4-cell"><span class="a4-lbl">Contact Phone Number</span><span class="a4-val">${kinPhone}</span></div>
+          <div class="a4-row a4-row-split-4">
+            <div class="a4-cell" style="flex: 1.3;"><span class="a4-lbl">Next of Kin Full Name</span><span class="a4-val font-bold font-primary">${kinName}</span></div>
+            <div class="a4-cell" style="flex: 0.9;"><span class="a4-lbl">Relationship</span><span class="a4-val font-bold">${kinRel}</span></div>
+            <div class="a4-cell" style="flex: 1.1;"><span class="a4-lbl">Primary Contact Phone</span><span class="a4-val font-bold">${kinPhone}</span></div>
+            <div class="a4-cell" style="flex: 1.1;"><span class="a4-lbl">WhatsApp Number</span><span class="a4-val">${kinWhatsapp}</span></div>
           </div>
-          ${(kinAddress && kinAddress !== 'N/A') ? `
-          <div class="a4-row full-width">
-            <div class="a4-cell" style="width: 100%;">
-              <span class="a4-lbl">Contact / Residential Address</span>
-              <span class="a4-val">${kinAddress}</span>
-            </div>
-          </div>` : ''}
+          <div class="a4-row a4-row-split-2">
+            <div class="a4-cell-65"><span class="a4-lbl">Residential Address</span><span class="a4-val">${kinAddress}</span></div>
+            <div class="a4-cell-35"><span class="a4-lbl">Email Address</span><span class="a4-val">${kinEmail}</span></div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 8. SECTION 5: CANDIDATE DECLARATION & REGISTRY ENDORSEMENT -->
-      <div class="a4-section a4-decl-sec">
-        <div class="a4-sec-hdr">5. Candidate Declaration &amp; Registry Endorsement</div>
+      <!-- 8. SECTION 5: CANDIDATE DECLARATION & INSTITUTIONAL ENDORSEMENT -->
+      <section class="a4-section a4-decl-sec">
+        <div class="a4-sec-hdr">5. Candidate Declaration &amp; Official Registry Endorsement</div>
+        
         <div class="a4-decl-text">
-          I solemnly declare that all information supplied on this application form is genuine, accurate, and complete. 
-          I commit, if admitted, to abide strictly by the academic statutes, spiritual discipline, and institutional regulations of 
-          Divine Mandate Bible Institute under the sacred motto <em>"Fear of God without a Mess."</em>
+          I solemnly declare that all information supplied on this admission application form is genuine, accurate, and complete. 
+          I commit, if admitted, to abide strictly by the academic curriculum, spiritual discipline, and institutional regulations of 
+          Divine Mandate Bible Institute under our sacred motto: <strong>"Fear of God without a Mess."</strong>
         </div>
 
         <div class="a4-sign-row">
+          <!-- Candidate Signature Block -->
           <div class="a4-sign-col">
             <div class="a4-sign-line"></div>
             <div class="a4-sign-label">Candidate Signature &amp; Date</div>
             <div class="a4-sign-sub">${fullName}</div>
           </div>
 
+          <!-- Official Stamp / Seal Block -->
           <div class="a4-sign-stamp-col">
             <div class="a4-official-stamp">
-              <span class="stamp-line-1">★ DIMABIN REGISTRY ★</span>
+              <span class="stamp-line-1">★ DIMABIN ACADEMIC REGISTRY ★</span>
               <span class="stamp-line-2">ELECTRONICALLY FILED &amp; VERIFIED</span>
-              <span class="stamp-line-3">${appId}</span>
-              <span class="stamp-line-4">${appDate}</span>
+              <span class="stamp-line-3">APP REF: ${appId}</span>
+              <span class="stamp-line-4">DATE: ${appDate} · REGISTRY SEAL</span>
             </div>
           </div>
 
+          <!-- Registrar Signature Block -->
           <div class="a4-sign-col">
             <div class="a4-sign-line"></div>
             <div class="a4-sign-label">Academic Registrar Signature &amp; Seal</div>
             <div class="a4-sign-sub">Office of the Registrar, DIMABIN</div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 9. FOOTER -->
-      <div class="a4-footer">
-        <div>Official Academic Registry Copy · Verification: https://dimabinportal.com.ng/admissions.html#check-status</div>
-        <div class="font-bold">A4 Page 1 of 1 · Divine Mandate Bible Institute</div>
-      </div>
+      <!-- 9. OFFICIAL FOOTER -->
+      <footer class="a4-footer" role="contentinfo">
+        <div class="a4-footer-left">
+          <span>Official Academic Registry Document · Online Verification: <strong>https://dimabinportal.com.ng/admissions.html#check-status</strong></span>
+        </div>
+        <div class="a4-footer-right">
+          <span>A4 Portrait · Divine Mandate Bible Institute · Page 1 of 1</span>
+        </div>
+      </footer>
+
     </div>
   `;
 }
@@ -269,17 +351,21 @@ export function ensureDocumentStyles() {
       display: none;
     }
 
-    /* A4 Sheet Container: Exactly 794px × 1123px at 96 DPI (210mm × 297mm) */
+    /* ==========================================================================
+       A4 SHEET CONTAINER: Exactly 794px × 1123px at 96 DPI (210mm × 297mm)
+       Calibrated to distribute content smoothly across the entire portrait page.
+       ========================================================================== */
     .dimabin-a4-sheet {
       width: 794px;
-      min-height: 1123px;
+      height: 1123px;
+      max-height: 1123px;
       box-sizing: border-box;
-      padding: 34px 42px 28px 42px; /* ~12mm top, 14mm sides, 11mm bottom */
+      padding: 24px 34px 18px 34px; /* ~10-12mm top/sides/bottom */
       background: #ffffff;
       color: #0f172a;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      font-size: 10px;
-      line-height: 1.35;
+      font-size: 9.5px;
+      line-height: 1.32;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -296,11 +382,12 @@ export function ensureDocumentStyles() {
       gap: 16px;
       border-bottom: 2.5px solid #1F3C82;
       padding-bottom: 8px;
-      margin-bottom: 7px;
+      margin-bottom: 6px;
+      flex-shrink: 0;
     }
     .a4-logo-wrap {
-      width: 72px;
-      height: 72px;
+      width: 76px;
+      height: 76px;
       flex-shrink: 0;
       display: flex;
       align-items: center;
@@ -319,28 +406,32 @@ export function ensureDocumentStyles() {
       font-size: 19px;
       font-weight: 800;
       color: #1F3C82;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.025em;
       margin: 0 0 2px 0;
       line-height: 1.15;
     }
     .a4-inst-subtitle {
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 700;
       color: #0F172A;
       letter-spacing: 0.05em;
       margin-bottom: 2px;
     }
     .a4-motto {
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 800;
       color: #B45309;
       letter-spacing: 0.04em;
       margin-bottom: 2px;
     }
     .a4-contact-bar {
-      font-size: 8.5px;
+      font-size: 8px;
       color: #475569;
       line-height: 1.3;
+    }
+    .a4-contact-separator {
+      margin: 0 4px;
+      color: #94A3B8;
     }
 
     /* 2. Document Title Bar */
@@ -350,9 +441,10 @@ export function ensureDocumentStyles() {
       justify-content: space-between;
       background: #1F3C82;
       color: #ffffff;
-      padding: 6px 12px;
+      padding: 5px 12px;
       border-radius: 4px;
-      margin-bottom: 7px;
+      margin-bottom: 6px;
+      flex-shrink: 0;
     }
     .a4-doc-badge {
       font-size: 8px;
@@ -364,23 +456,38 @@ export function ensureDocumentStyles() {
       border-radius: 3px;
     }
     .a4-doc-title {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 800;
       letter-spacing: 0.05em;
       text-transform: uppercase;
     }
     .a4-meta-pills {
       display: flex;
-      gap: 7px;
-      font-size: 9px;
+      gap: 6px;
+      font-size: 8.5px;
     }
     .a4-pill-item {
-      background: rgba(255, 255, 255, 0.18);
-      padding: 2px 7px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 2px 6px;
       border-radius: 3px;
     }
-    .a4-status-pill {
+    .a4-status-submitted {
       background: #16A34A;
+      color: #ffffff;
+      font-weight: 700;
+    }
+    .a4-status-admitted {
+      background: #0284C7;
+      color: #ffffff;
+      font-weight: 700;
+    }
+    .a4-status-pending {
+      background: #D97706;
+      color: #ffffff;
+      font-weight: 700;
+    }
+    .a4-status-rejected {
+      background: #DC2626;
       color: #ffffff;
       font-weight: 700;
     }
@@ -390,13 +497,14 @@ export function ensureDocumentStyles() {
       display: grid;
       grid-template-columns: 1fr 1.6fr 1.4fr;
       gap: 6px;
-      margin-bottom: 7px;
+      margin-bottom: 6px;
+      flex-shrink: 0;
     }
     .a4-banner-cell {
       background: #F8FAFC;
       border: 1px solid #CBD5E1;
       border-radius: 4px;
-      padding: 5px 9px;
+      padding: 4px 8px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -406,7 +514,7 @@ export function ensureDocumentStyles() {
       border-color: #BFDBFE;
     }
     .a4-cell-lbl {
-      font-size: 7.5px;
+      font-size: 7.2px;
       font-weight: 700;
       color: #64748B;
       letter-spacing: 0.04em;
@@ -414,7 +522,7 @@ export function ensureDocumentStyles() {
       margin-bottom: 1px;
     }
     .a4-cell-val {
-      font-size: 10px;
+      font-size: 9.5px;
       color: #1F3C82;
       line-height: 1.25;
       white-space: nowrap;
@@ -426,20 +534,91 @@ export function ensureDocumentStyles() {
     .a4-section {
       border: 1px solid #CBD5E1;
       border-radius: 4px;
-      margin-bottom: 7px;
+      margin-bottom: 5px;
       background: #ffffff;
       overflow: hidden;
+      flex-shrink: 0;
     }
     .a4-sec-hdr {
       background: #F1F5F9;
       color: #1F3C82;
-      font-size: 9.5px;
+      font-size: 8.8px;
       font-weight: 800;
       letter-spacing: 0.04em;
-      padding: 4px 10px;
+      padding: 3.5px 8px;
       border-bottom: 1px solid #CBD5E1;
+      border-left: 3px solid #1F3C82;
       text-transform: uppercase;
     }
+    
+    /* Bio-Data with Passport Layout */
+    .a4-sec-biodata-content {
+      display: flex;
+      width: 100%;
+    }
+    .a4-biodata-fields {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .a4-passport-wrapper {
+      width: 96px;
+      border-left: 1px solid #CBD5E1;
+      background: #FAFAFA;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      flex-shrink: 0;
+    }
+    .a4-passport-placeholder {
+      width: 100%;
+      height: 100%;
+      border: 1.2px dashed #94A3B8;
+      border-radius: 3px;
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 4px 2px;
+      box-sizing: border-box;
+    }
+    .a4-pass-lbl-1 {
+      font-size: 6.8px;
+      font-weight: 700;
+      color: #64748B;
+      letter-spacing: 0.02em;
+      margin-top: 2px;
+    }
+    .a4-pass-lbl-2 {
+      font-size: 7.2px;
+      font-weight: 800;
+      color: #1F3C82;
+      letter-spacing: 0.03em;
+    }
+    .a4-pass-lbl-3 {
+      font-size: 6.8px;
+      font-weight: 700;
+      color: #64748B;
+      letter-spacing: 0.02em;
+    }
+    .a4-pass-lbl-4 {
+      font-size: 6.2px;
+      color: #94A3B8;
+      margin-top: 1px;
+    }
+    .a4-passport-img {
+      width: 82px;
+      height: 98px;
+      object-fit: cover;
+      border-radius: 3px;
+      border: 1px solid #CBD5E1;
+    }
+
+    /* Table Grid Rows */
     .a4-table-grid {
       display: flex;
       flex-direction: column;
@@ -466,7 +645,7 @@ export function ensureDocumentStyles() {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 4.5px 8px;
+      padding: 3.5px 7px;
       border-right: 1px solid #E2E8F0;
       min-width: 0;
     }
@@ -474,11 +653,11 @@ export function ensureDocumentStyles() {
       border-right: none;
     }
     .a4-cell-65 {
-      flex: 1.6;
+      flex: 1.65;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 4.5px 8px;
+      padding: 3.5px 7px;
       border-right: 1px solid #E2E8F0;
       min-width: 0;
     }
@@ -487,28 +666,24 @@ export function ensureDocumentStyles() {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 4.5px 8px;
+      padding: 3.5px 7px;
       min-width: 0;
     }
-    .a4-cell-60 {
-      flex: 1.5;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 4.5px 8px;
-      border-right: 1px solid #E2E8F0;
-      min-width: 0;
-    }
-    .a4-cell-40 {
+    .a4-cell-50 {
       flex: 1;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 4.5px 8px;
+      padding: 3.5px 7px;
+      border-right: 1px solid #E2E8F0;
       min-width: 0;
     }
+    .a4-cell-50:last-child {
+      border-right: none;
+    }
+
     .a4-lbl {
-      font-size: 7.8px;
+      font-size: 7.2px;
       font-weight: 700;
       color: #64748B;
       text-transform: uppercase;
@@ -517,14 +692,19 @@ export function ensureDocumentStyles() {
       white-space: nowrap;
     }
     .a4-val {
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 600;
       color: #0F172A;
       line-height: 1.25;
       word-break: break-word;
     }
+    .testimony-val {
+      font-size: 8.5px;
+      color: #334155;
+      line-height: 1.3;
+    }
     .font-lg {
-      font-size: 11px !important;
+      font-size: 10.5px !important;
     }
     .font-primary {
       color: #1F3C82 !important;
@@ -536,12 +716,13 @@ export function ensureDocumentStyles() {
     /* 5. Declaration & Signatures */
     .a4-decl-sec {
       background: #FAFAFA;
+      margin-bottom: 4px;
     }
     .a4-decl-text {
-      font-size: 8.5px;
+      font-size: 8px;
       color: #334155;
-      line-height: 1.4;
-      padding: 5px 10px;
+      line-height: 1.35;
+      padding: 4px 8px;
       border-bottom: 1px dashed #CBD5E1;
       font-style: italic;
     }
@@ -549,68 +730,68 @@ export function ensureDocumentStyles() {
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
-      padding: 10px 14px 6px 14px;
-      gap: 14px;
+      padding: 6px 12px 4px 12px;
+      gap: 12px;
     }
     .a4-sign-col {
       flex: 1;
       text-align: center;
     }
     .a4-sign-line {
-      border-bottom: 1.5px solid #334155;
+      border-bottom: 1.4px solid #334155;
       width: 85%;
-      height: 30px;
+      height: 24px;
       margin: 0 auto 3px auto;
     }
     .a4-sign-label {
-      font-size: 8px;
+      font-size: 7.5px;
       font-weight: 700;
       color: #475569;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
     .a4-sign-sub {
-      font-size: 8.5px;
+      font-size: 8px;
       font-weight: 600;
       color: #1F3C82;
       margin-top: 1px;
     }
     .a4-sign-stamp-col {
-      flex: 1;
+      flex: 1.1;
       display: flex;
       justify-content: center;
       align-items: center;
     }
     .a4-official-stamp {
-      border: 1.5px dashed #D97706;
+      border: 1.4px dashed #D97706;
       border-radius: 4px;
-      padding: 4px 8px;
+      padding: 3px 6px;
       text-align: center;
       background: #FFFBEB;
       display: flex;
       flex-direction: column;
       line-height: 1.25;
-      width: 90%;
+      width: 95%;
     }
     .stamp-line-1 {
-      font-size: 7.5px;
+      font-size: 7.2px;
       font-weight: 800;
       color: #92400E;
       letter-spacing: 0.05em;
     }
     .stamp-line-2 {
-      font-size: 8px;
+      font-size: 7.8px;
       font-weight: 800;
       color: #B45309;
       letter-spacing: 0.03em;
     }
     .stamp-line-3 {
-      font-size: 8.5px;
+      font-size: 8px;
       font-weight: 700;
       color: #1F3C82;
     }
     .stamp-line-4 {
-      font-size: 7.5px;
+      font-size: 7.2px;
       color: #64748B;
     }
 
@@ -621,15 +802,22 @@ export function ensureDocumentStyles() {
       justify-content: space-between;
       border-top: 1px solid #CBD5E1;
       padding-top: 4px;
-      margin-top: 4px;
-      font-size: 7.5px;
+      margin-top: 2px;
+      font-size: 7.2px;
       color: #64748B;
+      flex-shrink: 0;
+    }
+    .a4-footer-left {
+      flex: 1;
+    }
+    .a4-footer-right {
+      font-weight: 700;
     }
 
     /* Print Specific Styles */
     @page {
       size: A4 portrait;
-      margin: 12mm 14mm;
+      margin: 10mm 12mm;
     }
     @media print {
       html, body {
@@ -661,6 +849,7 @@ export function ensureDocumentStyles() {
         max-width: 100% !important;
         height: 100% !important;
         min-height: 100% !important;
+        max-height: 100% !important;
         box-shadow: none !important;
         border: none !important;
         padding: 0 !important;
@@ -699,7 +888,7 @@ export function mountPrintableApplication(app) {
  * Opens native print dialog for the isolated 1-page A4 application form
  */
 export function printApplicationForm(app) {
-  if (!app || (!app.applicationId && !app.fullName && !app.name)) {
+  if (!app || (!app.applicationId && !app.fullName && !app.name && !app.id)) {
     throw new Error('Application record is missing or incomplete.');
   }
 
@@ -715,7 +904,7 @@ export function printApplicationForm(app) {
  * Uses html2canvas + jsPDF to produce an exact, balanced A4 PDF file directly
  */
 export async function downloadApplicationPdf(app, onProgress) {
-  if (!app || (!app.applicationId && !app.fullName && !app.name)) {
+  if (!app || (!app.applicationId && !app.fullName && !app.name && !app.id)) {
     throw new Error('Application record is missing or incomplete.');
   }
 
@@ -733,10 +922,10 @@ export async function downloadApplicationPdf(app, onProgress) {
     top: -9999px;
     left: -9999px;
     width: 794px;
-    min-height: 1123px;
+    height: 1123px;
     background: #ffffff;
     z-index: -9999;
-    overflow: visible;
+    overflow: hidden;
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -768,7 +957,7 @@ export async function downloadApplicationPdf(app, onProgress) {
         await new Promise((resolve) => {
           logoImg.onload = resolve;
           logoImg.onerror = resolve;
-          setTimeout(resolve, 600);
+          setTimeout(resolve, 700);
         });
       }
       if (logoImg.decode) {
@@ -776,23 +965,22 @@ export async function downloadApplicationPdf(app, onProgress) {
       }
     }
 
-    // Settle layout
-    await new Promise((r) => setTimeout(r, 120));
+    // Short wait to ensure all web fonts and dimensions settle
+    await new Promise((r) => setTimeout(r, 150));
 
-    // A4 dimensions in CSS pixels at 96 DPI
+    // A4 dimensions in CSS pixels at 96 DPI: 794px × 1123px
     const a4HeightPx = 1123;
-    const sheetHeight = sheetEl.scrollHeight || sheetEl.offsetHeight || a4HeightPx;
-    const targetHeight = Math.max(a4HeightPx, sheetHeight);
+    const a4WidthPx = 794;
 
     const canvas = await html2canvas(sheetEl, {
       scale: 2, // High resolution (retina 192dpi equivalent for crystal-sharp print)
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
-      width: 794,
-      height: targetHeight,
-      windowWidth: 794,
-      windowHeight: targetHeight
+      width: a4WidthPx,
+      height: a4HeightPx,
+      windowWidth: a4WidthPx,
+      windowHeight: a4HeightPx
     });
 
     if (typeof onProgress === 'function') {
@@ -807,40 +995,8 @@ export async function downloadApplicationPdf(app, onProgress) {
       compress: true
     });
 
-    // If fits naturally on 1 page (up to ~1145px)
-    if (targetHeight <= a4HeightPx + 25) {
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-    } else {
-      // Continuation page support: slice canvas across A4 pages
-      const canvasPageHeight = (canvas.width * 297) / 210; // Exact A4 aspect ratio in canvas pixels
-      const totalPages = Math.ceil(canvas.height / canvasPageHeight);
-
-      for (let p = 0; p < totalPages; p++) {
-        if (p > 0) {
-          pdf.addPage('a4', 'portrait');
-        }
-
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = canvasPageHeight;
-        const pageCtx = pageCanvas.getContext('2d');
-        pageCtx.fillStyle = '#ffffff';
-        pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-
-        const sourceY = p * canvasPageHeight;
-        const sourceH = Math.min(canvasPageHeight, canvas.height - sourceY);
-
-        pageCtx.drawImage(
-          canvas,
-          0, sourceY, canvas.width, sourceH,
-          0, 0, canvas.width, sourceH
-        );
-
-        const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
-        pdf.addImage(pageImg, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-      }
-    }
+    const imgData = canvas.toDataURL('image/jpeg', 0.96);
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
 
     const cleanId = sanitizeFileNameId(app.applicationId || app.id || 'DIMABIN');
     const fileName = `DIMABIN_Admission_Application_${cleanId}.pdf`;

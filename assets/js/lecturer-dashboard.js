@@ -1,19 +1,41 @@
 /**
  * DIMABIN LECTURER PORTAL — FACULTY DASHBOARD CONTROLLER
  * Pure Vanilla JavaScript ES Module (Firebase Web SDK v12.19.0 CDN)
+ *
+ * Implements:
+ * - Session verification & authoritative lecturer profile display
+ * - Dynamic assigned course allocations from Firestore
+ * - Enrolled student roster connected to real course registrations
+ * - Interactive Continuous Assessment (30%) & Exam (70%) grade book
+ * - Registry announcement circulars & real-time notices
+ * - Audit log activity feed
+ * - Account settings: password change, contact info update, photo update
  */
 
 import { signOutUser } from "./firebase-users.js";
 import {
   subscribeCourseAllocations,
+  subscribeCourseRegistrations,
+  subscribeResults,
   subscribeAnnouncements,
-  getLecturerAssignments,
-  COLLECTIONS
+  subscribePortalNotifications,
+  subscribeStudyCentres,
+  subscribeActivityLogs,
+  saveLecturerGradeRecord,
+  changeLecturerPassword,
+  updateLecturerSelfProfile,
+  sendLecturerPasswordReset,
+  formatDateTime,
+  formatDateOnly
 } from "./firebase-backend.js";
 
 document.addEventListener("DOMContentLoaded", () => {
-  // 1. Session Verification
-  let sessionRaw = sessionStorage.getItem("dimabin_lecturer_session") || localStorage.getItem("dimabin_lecturer_session");
+  // =========================================================================
+  // 1. SESSION VERIFICATION & AUTHENTICATED PROFILE LOAD
+  // =========================================================================
+  let sessionRaw =
+    sessionStorage.getItem("dimabin_lecturer_session") ||
+    localStorage.getItem("dimabin_lecturer_session");
   let session = null;
   if (sessionRaw) {
     try {
@@ -27,68 +49,105 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // 2. Populate Faculty Header & Profile
-  const fullName = session.fullName || "Faculty Member";
   const staffId = session.staffId || "DIMABIN/FAC/2026/01";
+  const normStaffId = staffId.trim().toLowerCase();
+  const fullName = session.fullName || "Faculty Member";
+  const normName = fullName.trim().toLowerCase();
   const dept = session.department || "Biblical Studies & Theology";
-  const centre = session.studyCentre || "Faculty Base";
+  const centre = session.studyCentre || "Abeokuta Main Campus";
   const email = session.email || "";
   const phone = session.phone || "";
   const qualification = session.qualification || "B.Th., M.Div.";
   const specialization = session.specialization || "General Biblical Studies";
+  const photoUrl = session.photoUrl || "";
 
-  // Initials for avatar
-  const initials = fullName
-    .split(" ")
-    .filter((n) => !["rev.", "dr.", "pastor", "pst.", "evang.", "prophet"].includes(n.toLowerCase()))
-    .map((n) => n[0])
-    .join("")
-    .substring(0, 2)
-    .toUpperCase() || "DR";
+  // Derive initials for avatar
+  const getInitials = (nameStr) => {
+    return (nameStr || "")
+      .split(" ")
+      .filter((n) => !["rev.", "dr.", "pastor", "pst.", "evang.", "prophet", "bishop", "elder"].includes(n.toLowerCase()))
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase() || "FM";
+  };
+  const initials = getInitials(fullName);
 
-  const elAvatar = document.getElementById("lec-avatar-initials");
-  if (elAvatar) elAvatar.textContent = initials;
+  // Helper to render avatar photo or initials
+  const updateAvatarDisplays = (photoSrc) => {
+    const avatarBoxes = [
+      { id: "lec-avatar-initials", isTextOnly: true },
+      { id: "lec-banner-avatar", isContainer: true },
+      { id: "prof-avatar-box", isContainer: true }
+    ];
 
-  const elSidebarName = document.getElementById("lec-sidebar-name");
-  if (elSidebarName) elSidebarName.textContent = fullName;
+    avatarBoxes.forEach(({ id, isTextOnly, isContainer }) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (photoSrc) {
+        el.innerHTML = `<img src="${photoSrc}" alt="${fullName}" class="lec-avatar-img">`;
+      } else {
+        el.innerHTML = `<span style="font-weight: 800;">${initials}</span>`;
+      }
+    });
+  };
 
-  const elSidebarId = document.getElementById("lec-sidebar-id");
-  if (elSidebarId) elSidebarId.textContent = staffId;
+  updateAvatarDisplays(photoUrl);
 
-  const elBannerName = document.getElementById("lec-banner-name");
-  if (elBannerName) elBannerName.textContent = fullName;
+  // Populate Header, Banner, Sidebar & Profile fields
+  const safeSetText = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
 
-  const elTopbarCentreName = document.getElementById("lec-topbar-centre-name");
-  if (elTopbarCentreName) elTopbarCentreName.textContent = centre.split(",")[0];
-
-  const elCardCentre = document.getElementById("stat-card-centre");
-  if (elCardCentre) elCardCentre.textContent = centre;
-
-  const elCardDept = document.getElementById("stat-card-dept");
-  if (elCardDept) elCardDept.textContent = dept;
+  safeSetText("lec-sidebar-name", fullName);
+  safeSetText("lec-sidebar-id", staffId);
+  safeSetText("lec-banner-name", fullName);
+  safeSetText("lec-banner-id", staffId);
+  safeSetText("lec-banner-email", email || "faculty@dimabin.org");
+  safeSetText("lec-banner-centre", centre);
+  safeSetText("lec-topbar-centre-name", centre.split(",")[0]);
+  safeSetText("stat-card-centre-name", centre.split(",")[0]);
 
   // Profile section elements
-  const elProfName = document.getElementById("prof-fullname");
-  if (elProfName) elProfName.textContent = fullName;
-  const elProfStaffId = document.getElementById("prof-staffid");
-  if (elProfStaffId) elProfStaffId.textContent = staffId;
-  const elProfEmail = document.getElementById("prof-email");
-  if (elProfEmail) elProfEmail.textContent = email;
-  const elProfPhone = document.getElementById("prof-phone");
-  if (elProfPhone) elProfPhone.textContent = phone || "Not specified";
-  const elProfDept = document.getElementById("prof-dept");
-  if (elProfDept) elProfDept.textContent = dept;
-  const elProfQual = document.getElementById("prof-qualification");
-  if (elProfQual) elProfQual.textContent = qualification;
-  const elProfSpec = document.getElementById("prof-specialization");
-  if (elProfSpec) elProfSpec.textContent = specialization;
-  const elProfCentre = document.getElementById("prof-centre");
-  if (elProfCentre) elProfCentre.textContent = centre;
+  safeSetText("prof-head-name", fullName);
+  safeSetText("prof-head-dept", dept);
+  safeSetText("prof-head-id", staffId);
+  safeSetText("prof-head-centre", centre);
+  safeSetText("prof-fullname", fullName);
+  safeSetText("prof-staffid", staffId);
+  safeSetText("prof-email", email || "Not specified");
+  safeSetText("prof-phone", phone || "Not specified");
+  safeSetText("prof-dept", dept);
+  safeSetText("prof-qualification", qualification);
+  safeSetText("prof-specialization", specialization);
+  safeSetText("prof-centre", centre);
 
-  // 3. Section Navigation
+  // Pre-fill Settings inputs
+  const inputPhone = document.getElementById("settings-phone");
+  if (inputPhone) inputPhone.value = phone;
+  const inputQual = document.getElementById("settings-qualification");
+  if (inputQual) inputQual.value = qualification;
+  const inputSpec = document.getElementById("settings-specialization");
+  if (inputSpec) inputSpec.value = specialization;
+
+  // =========================================================================
+  // 2. NAVIGATION & TABS LOGIC
+  // =========================================================================
   const navItems = document.querySelectorAll(".student-sidebar-nav .student-nav-item");
   const sections = document.querySelectorAll(".student-section");
   const breadcrumbCurrent = document.getElementById("lecturer-section-title");
+
+  const sectionTitles = {
+    dashboard: "Faculty Dashboard",
+    "my-courses": "Assigned Courses",
+    "my-students": "Enrolled Students Roster",
+    assessments: "Grading & Assessments",
+    announcements: "Academic Notices & Circulars",
+    profile: "Faculty Profile",
+    settings: "Account & Security Settings",
+    support: "Academic Registry Support Desk"
+  };
 
   const navigateTo = (targetSectionId) => {
     navItems.forEach((btn) => {
@@ -100,8 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     if (breadcrumbCurrent) {
-      const activeBtn = Array.from(navItems).find((btn) => btn.getAttribute("data-section") === targetSectionId);
-      breadcrumbCurrent.textContent = activeBtn ? activeBtn.querySelector("span")?.textContent || "Dashboard" : "Dashboard";
+      breadcrumbCurrent.textContent = sectionTitles[targetSectionId] || "Faculty Dashboard";
     }
 
     // Close mobile drawer if open
@@ -109,6 +167,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const overlay = document.getElementById("lecturer-drawer-overlay");
     if (sidebar) sidebar.classList.remove("open");
     if (overlay) overlay.classList.remove("open");
+
+    // Scroll to top of content
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   navItems.forEach((btn) => {
@@ -118,10 +179,24 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Quick Action Buttons
+  document.querySelectorAll("[data-action]").forEach((card) => {
+    card.addEventListener("click", () => {
+      const action = card.getAttribute("data-action");
+      if (action === "jump-courses") navigateTo("my-courses");
+      else if (action === "jump-students") navigateTo("my-students");
+      else if (action === "jump-grades") navigateTo("assessments");
+      else if (action === "jump-notices") navigateTo("announcements");
+      else if (action === "jump-profile") navigateTo("profile");
+      else if (action === "jump-settings") navigateTo("settings");
+    });
+  });
+
   const jumpToAllBtn = document.getElementById("btn-jump-to-all-courses");
-  if (jumpToAllBtn) {
-    jumpToAllBtn.addEventListener("click", () => navigateTo("my-courses"));
-  }
+  if (jumpToAllBtn) jumpToAllBtn.addEventListener("click", () => navigateTo("my-courses"));
+
+  const jumpToNoticesBtn = document.getElementById("btn-jump-to-all-notices");
+  if (jumpToNoticesBtn) jumpToNoticesBtn.addEventListener("click", () => navigateTo("announcements"));
 
   // Mobile Drawer Toggle
   const mobileToggle = document.getElementById("lecturer-mobile-toggle");
@@ -139,7 +214,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 4. Logout Handler
+  // Sign Out Handler
   const logoutBtn = document.getElementById("btn-lecturer-logout");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
@@ -152,161 +227,791 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 5. Real-Time Course Allocations Synchronization
-  const overviewContainer = document.getElementById("overview-courses-container");
-  const fullContainer = document.getElementById("full-courses-container");
-  const assessmentsContainer = document.getElementById("assessments-course-list");
-  const statBannerCourses = document.getElementById("stat-banner-courses");
-  const statCardCourses = document.getElementById("stat-card-courses");
-  const statBannerCentres = document.getElementById("stat-banner-centres");
+  // =========================================================================
+  // 3. REAL-TIME DATA STATE MANAGEMENT
+  // =========================================================================
+  let allAllocationsState = [];
+  let allRegistrationsState = [];
+  let allResultsState = [];
+  let allAnnouncementsState = [];
+  let allCentresState = [];
 
-  const renderAssignedCourses = (allAllocations) => {
-    const normStaffId = staffId.trim().toLowerCase();
-    const myAllocations = (allAllocations || []).filter((a) => {
-      const allocLecturer = (a.lecturerId || "").trim().toLowerCase();
-      const isStatusActive = (a.status || "active").toLowerCase() !== "ended";
-      return isStatusActive && (allocLecturer === normStaffId || allocLecturer.includes(normStaffId) || normStaffId.includes(allocLecturer));
+  // Match course allocations for this lecturer
+  const isMyAllocation = (alloc) => {
+    if (!alloc) return false;
+    const isStatusActive = (alloc.status || "active").toLowerCase() !== "ended";
+    if (!isStatusActive) return false;
+
+    const aId = (alloc.lecturerId || "").trim().toLowerCase();
+    const aName = (alloc.lecturerName || "").trim().toLowerCase();
+
+    return (
+      (aId && (aId === normStaffId || aId.includes(normStaffId) || normStaffId.includes(aId))) ||
+      (aName && (aName === normName || aName.includes(normName) || normName.includes(aName)))
+    );
+  };
+
+  // Compile genuine enrolled students across assigned courses
+  const compileEnrolledStudents = (myAllocations, allRegistrations) => {
+    const myCourseCodes = new Set(myAllocations.map((a) => (a.courseCode || "").trim().toUpperCase()));
+    const myCourseIds = new Set(myAllocations.map((a) => a.courseId).filter(Boolean));
+
+    const studentList = [];
+
+    (allRegistrations || []).forEach((reg) => {
+      const regCourses = reg.courses || [];
+      regCourses.forEach((c) => {
+        const cCode = (c.courseCode || "").trim().toUpperCase();
+        const cId = c.courseId;
+        const cLecId = (c.lecturerId || "").trim().toLowerCase();
+        const cLecName = (c.lecturerName || "").trim().toLowerCase();
+
+        const matchesCourse =
+          myCourseCodes.has(cCode) ||
+          (cId && myCourseIds.has(cId)) ||
+          (cLecId && (cLecId === normStaffId || cLecId.includes(normStaffId))) ||
+          (cLecName && (cLecName === normName || cLecName.includes(normName)));
+
+        if (matchesCourse) {
+          studentList.push({
+            registrationId: reg.id || `${reg.studentUid}_${cCode}`,
+            studentUid: reg.studentUid || reg.userId || "",
+            studentName: reg.studentName || "Candidate",
+            matricNumber: reg.studentId || reg.admissionNumber || "DIMABIN/STU/2026",
+            studentEmail: reg.studentEmail || "",
+            studentPhone: reg.studentPhone || "",
+            studyCentre: reg.studyCentre || "Abeokuta Main Campus",
+            programme: reg.programme || "Diploma in Theology (Dipl.Th.)",
+            level: reg.level || "Diploma I",
+            academicSession: reg.academicSession || "2026/2027",
+            semester: reg.semester || "First Semester",
+            courseCode: cCode,
+            courseTitle: c.courseTitle || c.title || "Theological Study",
+            creditUnits: c.creditUnits || 3,
+            registrationStatus: reg.status || "registered"
+          });
+        }
+      });
     });
 
+    return studentList;
+  };
+
+  // Re-render all views whenever state updates
+  const refreshAllViews = () => {
+    const myAllocations = allAllocationsState.filter(isMyAllocation);
+    const enrolledStudents = compileEnrolledStudents(myAllocations, allRegistrationsState);
+
+    // 1. Overview Metrics Update
     const coursesCount = myAllocations.length;
-    if (statBannerCourses) statBannerCourses.textContent = coursesCount;
-    if (statCardCourses) statCardCourses.textContent = coursesCount;
+    safeSetText("stat-banner-courses", coursesCount);
+    safeSetText("stat-card-courses", coursesCount);
 
-    const uniqueCentres = new Set(myAllocations.map((a) => a.studyCentre || centre));
-    if (statBannerCentres) statBannerCentres.textContent = Math.max(1, uniqueCentres.size);
+    const uniqueStudents = new Set(enrolledStudents.map((s) => s.matricNumber));
+    safeSetText("stat-banner-students", uniqueStudents.size);
+    safeSetText("stat-card-students", uniqueStudents.size);
 
+    const uniqueCentres = new Set([
+      centre,
+      ...myAllocations.map((a) => a.studyCentre).filter(Boolean)
+    ]);
+    safeSetText("stat-banner-centres", uniqueCentres.size);
+    safeSetText("stat-card-centres", uniqueCentres.size);
+
+    safeSetText("courses-total-badge", `${coursesCount} Allocated Courses`);
+    safeSetText("roster-count-badge", `${enrolledStudents.length} Students Enrolled`);
+
+    // 2. Render Courses
+    renderCoursesView(myAllocations, enrolledStudents);
+
+    // 3. Render Enrolled Students Roster
+    renderRosterView(myAllocations, enrolledStudents);
+
+    // 4. Update Course Select Options in Grade Book & Roster
+    updateCourseSelects(myAllocations);
+
+    // 5. Render Grade Book if course selected
+    renderGradeBook(myAllocations, enrolledStudents, allResultsState);
+  };
+
+  // =========================================================================
+  // 4. COURSES VIEW RENDERING
+  // =========================================================================
+  const overviewCoursesContainer = document.getElementById("overview-courses-container");
+  const fullCoursesContainer = document.getElementById("full-courses-container");
+  const courseSearchInput = document.getElementById("courses-search-input");
+  const courseSemesterFilter = document.getElementById("courses-semester-filter");
+  const courseCentreFilter = document.getElementById("courses-centre-filter");
+
+  const renderCoursesView = (myAllocations, enrolledStudents) => {
     if (myAllocations.length === 0) {
       const emptyHtml = `
         <div style="text-align: center; padding: 2.5rem 1rem; color: var(--student-text-muted);">
           <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📚</div>
           <strong style="color: var(--student-navy); font-size: 1rem; display: block;">No Courses Currently Assigned</strong>
           <p style="font-size: 0.875rem; margin-top: 0.25rem;">
-            When the Academic Administrator assigns course offerings to your institutional staff ID (${staffId}), they will appear here automatically.
+            When the Academic Administrator assigns course allocations to your institutional staff ID (${staffId}), they will appear here automatically.
           </p>
         </div>
       `;
-      if (overviewContainer) overviewContainer.innerHTML = emptyHtml;
-      if (fullContainer) fullContainer.innerHTML = emptyHtml;
-      if (assessmentsContainer) assessmentsContainer.innerHTML = emptyHtml;
+      if (overviewCoursesContainer) overviewCoursesContainer.innerHTML = emptyHtml;
+      if (fullCoursesContainer) fullCoursesContainer.innerHTML = emptyHtml;
       return;
     }
 
-    // Render Overview List (Compact Cards Grid)
-    const cardsHtml = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem;">
-        ${myAllocations
-          .map(
-            (alloc) => `
-          <div class="course-offering-card">
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                <span class="card-course-code">${alloc.courseCode || "THY-101"}</span>
-                <span class="faculty-badge badge-active">${alloc.semester || "Trimester 1"}</span>
-              </div>
-              <h4 class="card-course-title">${alloc.courseTitle || "Theological Study"}</h4>
-              <div class="card-course-meta">
-                <div class="meta-row">
-                  <span style="font-weight: 600;">📍 Campus:</span>
-                  <span>${alloc.studyCentre || centre}</span>
+    // Overview Cards Grid (first 4)
+    if (overviewCoursesContainer) {
+      overviewCoursesContainer.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem;">
+          ${myAllocations.slice(0, 4).map((alloc) => {
+            const countForCourse = enrolledStudents.filter(
+              (s) => s.courseCode === (alloc.courseCode || "").trim().toUpperCase()
+            ).length;
+
+            return `
+              <div class="course-offering-card">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                    <span class="card-course-code">${alloc.courseCode || "THY-101"}</span>
+                    <span class="faculty-badge badge-active">${alloc.semester || "First Semester"}</span>
+                  </div>
+                  <h4 class="card-course-title">${alloc.courseTitle || "Theological Study"}</h4>
+                  <div class="card-course-meta">
+                    <div class="meta-row">
+                      <span style="font-weight: 600;">📍 Campus:</span>
+                      <span>${alloc.studyCentre || centre}</span>
+                    </div>
+                    <div class="meta-row">
+                      <span style="font-weight: 600;">👥 Students:</span>
+                      <span style="font-weight: 700; color: var(--student-blue);">${countForCourse} registered</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="meta-row">
-                  <span style="font-weight: 600;">📅 Session:</span>
-                  <span>${alloc.academicSession || "2026/2027"}</span>
+                <div style="padding-top: 0.75rem; border-top: 1px solid var(--student-border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                  <button type="button" class="btn btn-outline-blue btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;" onclick="window.viewCourseRoster('${alloc.courseCode}')">
+                    View Roster
+                  </button>
+                  <button type="button" class="btn btn-primary btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.6rem; background: var(--student-navy);" onclick="window.openCourseGradeBook('${alloc.courseCode}')">
+                    Grade Sheet →
+                  </button>
                 </div>
               </div>
-            </div>
-            <div style="padding-top: 0.75rem; border-top: 1px solid var(--student-border-subtle); display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.75rem; color: var(--student-text-muted);">Assigned Instructor</span>
-              <span class="faculty-badge badge-blue">Teaching</span>
-            </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    // Full Assigned Courses List with search and filtering
+    if (fullCoursesContainer) {
+      const q = (courseSearchInput?.value || "").trim().toLowerCase();
+      const sem = courseSemesterFilter?.value || "all";
+      const cen = courseCentreFilter?.value || "all";
+
+      const filtered = myAllocations.filter((a) => {
+        const matchQ =
+          !q ||
+          (a.courseCode || "").toLowerCase().includes(q) ||
+          (a.courseTitle || "").toLowerCase().includes(q);
+        const matchSem = sem === "all" || a.semester === sem;
+        const matchCen =
+          cen === "all" ||
+          (a.studyCentre || "").toLowerCase().includes(cen.toLowerCase());
+        return matchQ && matchSem && matchCen;
+      });
+
+      if (filtered.length === 0) {
+        fullCoursesContainer.innerHTML = `
+          <div style="text-align: center; padding: 2.5rem 1rem; color: var(--student-text-muted);">
+            <p>No courses match your filter criteria.</p>
           </div>
-        `
-          )
-          .join("")}
-      </div>
-    `;
+        `;
+        return;
+      }
 
-    if (overviewContainer) overviewContainer.innerHTML = cardsHtml;
+      fullCoursesContainer.innerHTML = `
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--student-border); text-align: left; color: var(--student-text-muted); font-size: 0.75rem; text-transform: uppercase;">
+                <th style="padding: 0.85rem 1rem;">Course Code</th>
+                <th style="padding: 0.85rem 1rem;">Course Title</th>
+                <th style="padding: 0.85rem 1rem;">Study Centre</th>
+                <th style="padding: 0.85rem 1rem;">Semester</th>
+                <th style="padding: 0.85rem 1rem;">Enrolled</th>
+                <th style="padding: 0.85rem 1rem;">Session</th>
+                <th style="padding: 0.85rem 1rem; text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.map((alloc) => {
+                const countForCourse = enrolledStudents.filter(
+                  (s) => s.courseCode === (alloc.courseCode || "").trim().toUpperCase()
+                ).length;
 
-    // Render Full Courses Section Table
-    const tableHtml = `
+                return `
+                  <tr style="border-bottom: 1px solid var(--student-border-subtle);">
+                    <td style="padding: 0.85rem 1rem; font-weight: 800; color: var(--student-blue);">${alloc.courseCode || "N/A"}</td>
+                    <td style="padding: 0.85rem 1rem; font-weight: 600; color: var(--student-navy);">${alloc.courseTitle || "N/A"}</td>
+                    <td style="padding: 0.85rem 1rem; color: var(--student-text-muted);">${alloc.studyCentre || "All Centres"}</td>
+                    <td style="padding: 0.85rem 1rem;"><span class="faculty-badge badge-blue">${alloc.semester || "1st Sem"}</span></td>
+                    <td style="padding: 0.85rem 1rem; font-weight: 700; color: var(--student-navy);">${countForCourse} students</td>
+                    <td style="padding: 0.85rem 1rem; color: var(--student-text-muted);">${alloc.academicSession || "2026/2027"}</td>
+                    <td style="padding: 0.85rem 1rem; text-align: right; white-space: nowrap;">
+                      <button type="button" class="btn btn-outline-blue btn-sm" style="font-size: 0.75rem; margin-right: 0.35rem;" onclick="window.viewCourseRoster('${alloc.courseCode}')">
+                        Roster
+                      </button>
+                      <button type="button" class="btn btn-primary btn-sm" style="font-size: 0.75rem; background: var(--student-navy);" onclick="window.openCourseGradeBook('${alloc.courseCode}')">
+                        Grade
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+  };
+
+  if (courseSearchInput) courseSearchInput.addEventListener("input", refreshAllViews);
+  if (courseSemesterFilter) courseSemesterFilter.addEventListener("change", refreshAllViews);
+  if (courseCentreFilter) courseCentreFilter.addEventListener("change", refreshAllViews);
+
+  // Global window helpers for course card buttons
+  window.viewCourseRoster = (courseCode) => {
+    navigateTo("my-students");
+    const sel = document.getElementById("roster-course-select");
+    if (sel) {
+      sel.value = courseCode;
+      renderRosterView(
+        allAllocationsState.filter(isMyAllocation),
+        compileEnrolledStudents(allAllocationsState.filter(isMyAllocation), allRegistrationsState)
+      );
+    }
+  };
+
+  window.openCourseGradeBook = (courseCode) => {
+    navigateTo("assessments");
+    const sel = document.getElementById("gradebook-course-select");
+    if (sel) {
+      sel.value = courseCode;
+      renderGradeBook(
+        allAllocationsState.filter(isMyAllocation),
+        compileEnrolledStudents(allAllocationsState.filter(isMyAllocation), allRegistrationsState),
+        allResultsState
+      );
+    }
+  };
+
+  // =========================================================================
+  // 5. ENROLLED STUDENTS ROSTER VIEW
+  // =========================================================================
+  const rosterContainer = document.getElementById("roster-table-container");
+  const rosterCourseSelect = document.getElementById("roster-course-select");
+  const rosterCentreSelect = document.getElementById("roster-centre-select");
+  const rosterSearchInput = document.getElementById("roster-search-input");
+  const printRosterBtn = document.getElementById("btn-print-roster");
+
+  const renderRosterView = (myAllocations, enrolledStudents) => {
+    if (!rosterContainer) return;
+
+    if (enrolledStudents.length === 0) {
+      rosterContainer.innerHTML = `
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--student-text-muted);">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">👥</div>
+          <strong style="color: var(--student-navy); font-size: 1rem; display: block;">No Registered Students Found</strong>
+          <p style="font-size: 0.875rem; margin-top: 0.25rem;">
+            When students complete course registration for your assigned courses, their enrollment details and rosters will appear here automatically.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const selCourse = rosterCourseSelect?.value || "all";
+    const selCentre = rosterCentreSelect?.value || "all";
+    const q = (rosterSearchInput?.value || "").trim().toLowerCase();
+
+    const filtered = enrolledStudents.filter((stu) => {
+      const matchCourse = selCourse === "all" || stu.courseCode === selCourse;
+      const matchCentre = selCentre === "all" || (stu.studyCentre || "").toLowerCase().includes(selCentre.toLowerCase());
+      const matchQ =
+        !q ||
+        stu.studentName.toLowerCase().includes(q) ||
+        stu.matricNumber.toLowerCase().includes(q) ||
+        stu.programme.toLowerCase().includes(q);
+      return matchCourse && matchCentre && matchQ;
+    });
+
+    if (filtered.length === 0) {
+      rosterContainer.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--student-text-muted);">
+          <p>No student records match the selected filters.</p>
+        </div>
+      `;
+      return;
+    }
+
+    rosterContainer.innerHTML = `
       <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+        <table class="grade-table">
           <thead>
-            <tr style="border-bottom: 2px solid var(--student-border); text-align: left; color: var(--student-text-muted); font-size: 0.75rem; text-transform: uppercase;">
-              <th style="padding: 0.75rem 1rem;">Course Code</th>
-              <th style="padding: 0.75rem 1rem;">Course Title</th>
-              <th style="padding: 0.75rem 1rem;">Study Centre</th>
-              <th style="padding: 0.75rem 1rem;">Term / Semester</th>
-              <th style="padding: 0.75rem 1rem;">Academic Session</th>
-              <th style="padding: 0.75rem 1rem;">Status</th>
+            <tr>
+              <th style="width: 45px;">#</th>
+              <th>Candidate Name</th>
+              <th>Matriculation / Student ID</th>
+              <th>Assigned Course</th>
+              <th>Programme &amp; Level</th>
+              <th>Study Centre Base</th>
+              <th>Grading Status</th>
             </tr>
           </thead>
           <tbody>
-            ${myAllocations
-              .map(
-                (alloc) => `
-              <tr style="border-bottom: 1px solid var(--student-border-subtle);">
-                <td style="padding: 0.85rem 1rem; font-weight: 700; color: var(--student-blue);">${alloc.courseCode || "N/A"}</td>
-                <td style="padding: 0.85rem 1rem; font-weight: 600; color: var(--student-navy);">${alloc.courseTitle || "N/A"}</td>
-                <td style="padding: 0.85rem 1rem; color: var(--student-text-muted);">${alloc.studyCentre || "All Centres"}</td>
-                <td style="padding: 0.85rem 1rem;">${alloc.semester || "First Semester"}</td>
-                <td style="padding: 0.85rem 1rem;">${alloc.academicSession || "2026/2027"}</td>
-                <td style="padding: 0.85rem 1rem;">
-                  <span class="faculty-badge badge-active">${(alloc.status || "active").toUpperCase()}</span>
-                </td>
-              </tr>
-            `
-              )
-              .join("")}
+            ${filtered.map((stu, idx) => {
+              // Check if already graded in results collection
+              const existingResult = allResultsState.find(
+                (r) =>
+                  (r.matricNumber || "").trim().toUpperCase() === stu.matricNumber.trim().toUpperCase() &&
+                  (r.courseCode || "").trim().toUpperCase() === stu.courseCode.trim().toUpperCase()
+              );
+
+              let statusBadge = `<span class="faculty-badge badge-pending">Pending Grading</span>`;
+              if (existingResult) {
+                if (existingResult.status === "approved" || existingResult.status === "published") {
+                  statusBadge = `<span class="faculty-badge badge-active">Approved (${existingResult.score}%)</span>`;
+                } else if (existingResult.status === "submitted") {
+                  statusBadge = `<span class="faculty-badge badge-blue">Submitted (${existingResult.score}%)</span>`;
+                } else {
+                  statusBadge = `<span class="faculty-badge badge-draft">Draft (${existingResult.score}%)</span>`;
+                }
+              }
+
+              return `
+                <tr>
+                  <td style="color: var(--student-text-muted); font-weight: 700;">${idx + 1}</td>
+                  <td>
+                    <strong style="color: var(--student-navy); display: block;">${stu.studentName}</strong>
+                    <span style="font-size: 0.75rem; color: var(--student-text-muted);">${stu.studentEmail || ""}</span>
+                  </td>
+                  <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${stu.matricNumber}</td>
+                  <td>
+                    <span style="font-weight: 700; color: var(--student-navy);">${stu.courseCode}</span>
+                    <span style="font-size: 0.75rem; color: var(--student-text-muted); display: block;">${stu.courseTitle}</span>
+                  </td>
+                  <td>
+                    <span>${stu.programme}</span>
+                    <span style="font-size: 0.75rem; color: var(--student-text-muted); display: block;">${stu.level}</span>
+                  </td>
+                  <td>${stu.studyCentre}</td>
+                  <td>${statusBadge}</td>
+                </tr>
+              `;
+            }).join("")}
           </tbody>
         </table>
       </div>
     `;
-    if (fullContainer) fullContainer.innerHTML = tableHtml;
-
-    // Render Assessment Cards
-    const assessHtml = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem;">
-        ${myAllocations
-          .map(
-            (alloc) => `
-          <div class="student-content-card" style="padding: 1.25rem; border: 1px solid var(--student-border);">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-              <span class="card-course-code">${alloc.courseCode}</span>
-              <span class="faculty-badge badge-gold">Open for Grading</span>
-            </div>
-            <h4 style="font-size: 1rem; font-weight: 700; color: var(--student-navy); margin-bottom: 0.25rem;">${alloc.courseTitle}</h4>
-            <p style="font-size: 0.8125rem; color: var(--student-text-muted); margin-bottom: 1rem;">Campus: ${alloc.studyCentre}</p>
-            <div style="background: var(--student-bg); padding: 0.75rem; border-radius: var(--student-radius-sm); font-size: 0.8125rem; margin-bottom: 1rem;">
-              <div>Continuous Assessment (CA): <strong>30%</strong></div>
-              <div>End-of-Term Examination: <strong>70%</strong></div>
-            </div>
-            <button type="button" class="btn btn-outline-blue btn-sm" style="width: 100%;" onclick="alert('Grade upload for ${alloc.courseCode} (${alloc.studyCentre}) will synchronize with the Academic Registry on term close.');">
-              Open Grade Sheet
-            </button>
-          </div>
-        `
-          )
-          .join("")}
-      </div>
-    `;
-    if (assessmentsContainer) assessmentsContainer.innerHTML = assessHtml;
   };
 
-  // Subscribe to Course Allocations in real time
-  subscribeCourseAllocations((allocs) => {
-    renderAssignedCourses(allocs);
-  });
+  if (rosterCourseSelect) rosterCourseSelect.addEventListener("change", refreshAllViews);
+  if (rosterCentreSelect) rosterCentreSelect.addEventListener("change", refreshAllViews);
+  if (rosterSearchInput) rosterSearchInput.addEventListener("input", refreshAllViews);
 
-  // 6. Announcements Subscription
+  if (printRosterBtn) {
+    printRosterBtn.addEventListener("click", () => {
+      window.print();
+    });
+  }
+
+  // =========================================================================
+  // 6. CONTINUOUS ASSESSMENT & GRADE BOOK ENGINE
+  // =========================================================================
+  const gradebookCourseSelect = document.getElementById("gradebook-course-select");
+  const gradebookGridContainer = document.getElementById("gradebook-grid-container");
+  const gradebookAlert = document.getElementById("gradebook-alert");
+  const btnSaveDraft = document.getElementById("btn-save-grade-draft");
+  const btnSubmitRegistry = document.getElementById("btn-submit-grade-registry");
+
+  const updateCourseSelects = (myAllocations) => {
+    const currentVal = gradebookCourseSelect?.value || "";
+    const rosterCurrentVal = rosterCourseSelect?.value || "all";
+
+    if (gradebookCourseSelect) {
+      gradebookCourseSelect.innerHTML = `
+        <option value="">-- Choose Assigned Course --</option>
+        ${myAllocations.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle} (${a.studyCentre || "Main"})</option>`).join("")}
+      `;
+      if (currentVal && myAllocations.some((a) => a.courseCode === currentVal)) {
+        gradebookCourseSelect.value = currentVal;
+      }
+    }
+
+    if (rosterCourseSelect) {
+      rosterCourseSelect.innerHTML = `
+        <option value="all">All Assigned Courses</option>
+        ${myAllocations.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle}</option>`).join("")}
+      `;
+      if (rosterCurrentVal) {
+        rosterCourseSelect.value = rosterCurrentVal;
+      }
+    }
+  };
+
+  const getLetterAndRemarks = (totalScore) => {
+    if (totalScore >= 70) return { grade: "A", remarks: "Distinction / Excellent" };
+    if (totalScore >= 60) return returnObj("B", "Very Good");
+    if (totalScore >= 50) return returnObj("C", "Good");
+    if (totalScore >= 45) return returnObj("D", "Fair");
+    if (totalScore >= 40) return returnObj("E", "Pass");
+    return { grade: "F", remarks: "Fail" };
+  };
+  const returnObj = (grade, remarks) => ({ grade, remarks });
+
+  const renderGradeBook = (myAllocations, enrolledStudents, allResults) => {
+    if (!gradebookGridContainer) return;
+    const selectedCourseCode = gradebookCourseSelect?.value || "";
+
+    if (!selectedCourseCode) {
+      gradebookGridContainer.innerHTML = `
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--student-text-muted);">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📖</div>
+          <strong style="color: var(--student-navy); font-size: 1rem; display: block;">Select a Course Offering Above</strong>
+          <p style="font-size: 0.875rem; margin-top: 0.25rem;">
+            Choose one of your assigned courses from the dropdown to load the registered student roster and enter grades.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const courseObj = myAllocations.find((a) => a.courseCode === selectedCourseCode);
+    const studentsInCourse = enrolledStudents.filter(
+      (s) => s.courseCode.toUpperCase() === selectedCourseCode.toUpperCase()
+    );
+
+    if (studentsInCourse.length === 0) {
+      gradebookGridContainer.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--student-text-muted);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
+          <strong style="color: var(--student-navy); font-size: 1rem; display: block;">No Students Registered in ${selectedCourseCode}</strong>
+          <p style="font-size: 0.875rem; margin-top: 0.25rem;">
+            No candidates have completed course registration for this offering yet. When registrations are submitted, they will appear here ready for grading.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    // Build interactive grade sheet table
+    gradebookGridContainer.innerHTML = `
+      <div class="grade-table-wrapper">
+        <table class="grade-table" id="grade-entry-table">
+          <thead>
+            <tr>
+              <th style="width: 45px;">#</th>
+              <th>Student Name</th>
+              <th>Matriculation ID</th>
+              <th>Study Centre</th>
+              <th style="text-align: center;">CA Score<br><span style="font-size: 0.68rem; font-weight: normal;">(Max 30)</span></th>
+              <th style="text-align: center;">Exam Mark<br><span style="font-size: 0.68rem; font-weight: normal;">(Max 70)</span></th>
+              <th style="text-align: center;">Total<br><span style="font-size: 0.68rem; font-weight: normal;">(100%)</span></th>
+              <th style="text-align: center;">Letter Grade</th>
+              <th>Remarks</th>
+              <th>Submission Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${studentsInCourse.map((stu, idx) => {
+              const existingResult = allResults.find(
+                (r) =>
+                  (r.matricNumber || "").trim().toUpperCase() === stu.matricNumber.trim().toUpperCase() &&
+                  (r.courseCode || "").trim().toUpperCase() === selectedCourseCode.toUpperCase()
+              );
+
+              const initialCa = existingResult ? (existingResult.caScore !== undefined ? existingResult.caScore : "") : "";
+              const initialExam = existingResult ? (existingResult.examScore !== undefined ? existingResult.examScore : "") : "";
+              const initialTotal = existingResult ? (existingResult.score !== undefined ? existingResult.score : "") : "";
+              const initialGrade = existingResult ? existingResult.grade || "F" : "—";
+              const initialRemarks = existingResult ? existingResult.remarks || "Pending Entry" : "Pending Entry";
+              const statusVal = existingResult ? existingResult.status || "draft" : "draft";
+
+              let statusBadge = `<span class="faculty-badge badge-draft">Draft</span>`;
+              if (statusVal === "approved" || statusVal === "published") {
+                statusBadge = `<span class="faculty-badge badge-active">Approved by Registry</span>`;
+              } else if (statusVal === "submitted") {
+                statusBadge = `<span class="faculty-badge badge-blue">Submitted</span>`;
+              }
+
+              const isLocked = statusVal === "approved" || statusVal === "published";
+
+              return `
+                <tr data-student-name="${stu.studentName}" data-matric="${stu.matricNumber}" data-centre="${stu.studyCentre}" data-session="${stu.academicSession}" data-semester="${stu.semester}">
+                  <td style="color: var(--student-text-muted); font-weight: 700;">${idx + 1}</td>
+                  <td>
+                    <strong style="color: var(--student-navy); display: block;">${stu.studentName}</strong>
+                    <span style="font-size: 0.75rem; color: var(--student-text-muted);">${stu.programme}</span>
+                  </td>
+                  <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${stu.matricNumber}</td>
+                  <td style="font-size: 0.8125rem;">${stu.studyCentre}</td>
+                  <td style="text-align: center;">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max="30" 
+                      class="grade-score-input input-ca" 
+                      value="${initialCa}" 
+                      placeholder="0–30"
+                      ${isLocked ? "disabled" : ""}
+                    >
+                  </td>
+                  <td style="text-align: center;">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max="70" 
+                      class="grade-score-input input-exam" 
+                      value="${initialExam}" 
+                      placeholder="0–70"
+                      ${isLocked ? "disabled" : ""}
+                    >
+                  </td>
+                  <td style="text-align: center; font-weight: 800; font-size: 0.95rem; color: var(--student-navy);" class="cell-total">
+                    ${initialTotal !== "" ? `${initialTotal}%` : "—"}
+                  </td>
+                  <td style="text-align: center;" class="cell-grade">
+                    ${initialTotal !== "" ? `<span class="grade-letter-pill ${initialGrade}">${initialGrade}</span>` : "—"}
+                  </td>
+                  <td style="font-size: 0.8125rem; color: var(--student-text-muted);" class="cell-remarks">
+                    ${initialRemarks}
+                  </td>
+                  <td class="cell-status">
+                    ${statusBadge}
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // Attach dynamic calculation listeners
+    const table = document.getElementById("grade-entry-table");
+    if (!table) return;
+
+    table.querySelectorAll("tbody tr").forEach((row) => {
+      const caInput = row.querySelector(".input-ca");
+      const examInput = row.querySelector(".input-exam");
+      const totalCell = row.querySelector(".cell-total");
+      const gradeCell = row.querySelector(".cell-grade");
+      const remarksCell = row.querySelector(".cell-remarks");
+
+      const recalcRow = () => {
+        let ca = parseInt(caInput.value, 10);
+        let exam = parseInt(examInput.value, 10);
+
+        if (isNaN(ca) && isNaN(exam)) {
+          totalCell.textContent = "—";
+          gradeCell.innerHTML = "—";
+          remarksCell.textContent = "Pending Entry";
+          return;
+        }
+
+        if (ca > 30) { ca = 30; caInput.value = 30; }
+        if (ca < 0) { ca = 0; caInput.value = 0; }
+        if (exam > 70) { exam = 70; examInput.value = 70; }
+        if (exam < 0) { exam = 0; examInput.value = 0; }
+
+        const safeCa = isNaN(ca) ? 0 : ca;
+        const safeExam = isNaN(exam) ? 0 : exam;
+        const total = safeCa + safeExam;
+
+        const { grade, remarks } = getLetterAndRemarks(total);
+        totalCell.textContent = `${total}%`;
+        gradeCell.innerHTML = `<span class="grade-letter-pill ${grade}">${grade}</span>`;
+        remarksCell.textContent = remarks;
+      };
+
+      if (caInput) caInput.addEventListener("input", recalcRow);
+      if (examInput) examInput.addEventListener("input", recalcRow);
+    });
+  };
+
+  if (gradebookCourseSelect) {
+    gradebookCourseSelect.addEventListener("change", () => {
+      renderGradeBook(
+        allAllocationsState.filter(isMyAllocation),
+        compileEnrolledStudents(allAllocationsState.filter(isMyAllocation), allRegistrationsState),
+        allResultsState
+      );
+    });
+  }
+
+  // Grade Book Batch Save Action
+  const handleSaveGrades = async (targetStatus) => {
+    const selectedCourseCode = gradebookCourseSelect?.value;
+    if (!selectedCourseCode) {
+      showGradebookAlert("Please select an assigned course first.", "error");
+      return;
+    }
+
+    const table = document.getElementById("grade-entry-table");
+    if (!table) return;
+
+    const rows = table.querySelectorAll("tbody tr");
+    const myAllocations = allAllocationsState.filter(isMyAllocation);
+    const courseObj = myAllocations.find((a) => a.courseCode === selectedCourseCode);
+
+    const gradeEntriesToSave = [];
+
+    rows.forEach((row) => {
+      const caInput = row.querySelector(".input-ca");
+      const examInput = row.querySelector(".input-exam");
+      if (!caInput || !examInput) return;
+
+      const caVal = caInput.value.trim();
+      const examVal = examInput.value.trim();
+
+      // Only save if at least one score is provided
+      if (caVal !== "" || examVal !== "") {
+        const studentName = row.getAttribute("data-student-name");
+        const matricNumber = row.getAttribute("data-matric");
+        const studyCentre = row.getAttribute("data-centre");
+        const sessionVal = row.getAttribute("data-session") || "2026/2027";
+        const semesterVal = row.getAttribute("data-semester") || "First Semester";
+
+        gradeEntriesToSave.push({
+          studentName,
+          matricNumber,
+          courseCode: selectedCourseCode,
+          courseTitle: courseObj?.courseTitle || "Theological Study",
+          studyCentre,
+          academicSession: sessionVal,
+          semester: semesterVal,
+          caScore: parseInt(caVal, 10) || 0,
+          examScore: parseInt(examVal, 10) || 0,
+          status: targetStatus,
+          lecturerStaffId: staffId,
+          lecturerName: fullName
+        });
+      }
+    });
+
+    if (gradeEntriesToSave.length === 0) {
+      showGradebookAlert("No marks have been entered yet. Enter CA or Exam marks for students before saving.", "error");
+      return;
+    }
+
+    const btn = targetStatus === "submitted" ? btnSubmitRegistry : btnSaveDraft;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span>Saving...</span>`;
+
+    try {
+      for (const entry of gradeEntriesToSave) {
+        await saveLecturerGradeRecord(entry);
+      }
+
+      const count = gradeEntriesToSave.length;
+      if (targetStatus === "submitted") {
+        showGradebookAlert(
+          `✓ Successfully submitted grades for ${count} students in ${selectedCourseCode} to the Academic Registry for verification and publishing.`,
+          "success"
+        );
+      } else {
+        showGradebookAlert(
+          `✓ Draft scores saved for ${count} students in ${selectedCourseCode}. You can return and complete editing anytime.`,
+          "success"
+        );
+      }
+    } catch (err) {
+      showGradebookAlert(`Failed to save grades: ${err.message}`, "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  };
+
+  const showGradebookAlert = (msg, type) => {
+    if (!gradebookAlert) return;
+    gradebookAlert.style.display = "block";
+    if (type === "success") {
+      gradebookAlert.style.background = "#DCFCE7";
+      gradebookAlert.style.color = "#15803D";
+      gradebookAlert.style.border = "1px solid #BBF7D0";
+    } else {
+      gradebookAlert.style.background = "#FEE2E2";
+      gradebookAlert.style.color = "#B91C1C";
+      gradebookAlert.style.border = "1px solid #FCA5A5";
+    }
+    gradebookAlert.textContent = msg;
+    gradebookAlert.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+
+  if (btnSaveDraft) btnSaveDraft.addEventListener("click", () => handleSaveGrades("draft"));
+  if (btnSubmitRegistry) btnSubmitRegistry.addEventListener("click", () => handleSaveGrades("submitted"));
+
+  // =========================================================================
+  // 7. REAL-TIME ANNOUNCEMENTS & NOTICES
+  // =========================================================================
   const announcementsContainer = document.getElementById("announcements-container");
-  subscribeAnnouncements((notices) => {
+  const overviewNoticesContainer = document.getElementById("overview-notices-container");
+  const noticesSearchInput = document.getElementById("notices-search-input");
+  const noticesCategoryFilter = document.getElementById("notices-category-filter");
+
+  const renderNotices = () => {
     if (!announcementsContainer) return;
-    if (!notices || notices.length === 0) {
+    const notices = allAnnouncementsState || [];
+
+    if (notices.length === 0) {
+      const emptyHtml = `
+        <div style="text-align: center; padding: 2rem; color: var(--student-text-muted);">
+          <p>No circulars or official notices currently posted.</p>
+        </div>
+      `;
+      announcementsContainer.innerHTML = emptyHtml;
+      if (overviewNoticesContainer) overviewNoticesContainer.innerHTML = emptyHtml;
+      return;
+    }
+
+    // Overview notices preview (first 3)
+    if (overviewNoticesContainer) {
+      overviewNoticesContainer.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          ${notices.slice(0, 3).map((notice) => `
+            <div style="padding: 0.75rem; background: var(--student-bg); border-left: 3px solid var(--student-blue); border-radius: var(--student-radius-sm);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                <strong style="color: var(--student-navy); font-size: 0.875rem;">${notice.title || "Academic Notice"}</strong>
+                <span style="font-size: 0.72rem; color: var(--student-text-muted);">${formatDateOnly(notice.createdAt)}</span>
+              </div>
+              <p style="font-size: 0.8125rem; color: var(--student-text-main); line-height: 1.4; margin-bottom: 0.25rem;">
+                ${(notice.message || "").substring(0, 140)}${(notice.message || "").length > 140 ? "..." : ""}
+              </p>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    // Full notices section with filtering
+    const q = (noticesSearchInput?.value || "").trim().toLowerCase();
+    const cat = noticesCategoryFilter?.value || "all";
+
+    const filtered = notices.filter((n) => {
+      const matchQ =
+        !q ||
+        (n.title || "").toLowerCase().includes(q) ||
+        (n.message || "").toLowerCase().includes(q);
+      const matchCat = cat === "all" || (n.category || "general").toLowerCase() === cat.toLowerCase();
+      return matchQ && matchCat;
+    });
+
+    if (filtered.length === 0) {
       announcementsContainer.innerHTML = `
         <div style="text-align: center; padding: 2rem; color: var(--student-text-muted);">
-          <p>No new circulars or notices posted at this time.</p>
+          <p>No circulars match your search.</p>
         </div>
       `;
       return;
@@ -314,21 +1019,269 @@ document.addEventListener("DOMContentLoaded", () => {
 
     announcementsContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 1rem;">
-        ${notices
-          .map(
-            (notice) => `
-          <div style="background: var(--student-bg); border-left: 4px solid var(--student-blue); padding: 1.15rem; border-radius: var(--student-radius-sm);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap;">
-              <strong style="color: var(--student-navy); font-size: 0.95rem;">${notice.title || "Academic Notice"}</strong>
-              <span style="font-size: 0.75rem; color: var(--student-text-muted);">${notice.createdAt ? new Date(notice.createdAt).toLocaleDateString() : ""}</span>
+        ${filtered.map((notice) => `
+          <div style="background: var(--student-bg); border-left: 4px solid var(--student-blue); padding: 1.25rem; border-radius: var(--student-radius-sm); border: 1px solid var(--student-border-subtle);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+              <strong style="color: var(--student-navy); font-size: 1rem;">${notice.title || "Academic Circular"}</strong>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <span class="faculty-badge badge-blue">${notice.category || "Official"}</span>
+                <span style="font-size: 0.75rem; color: var(--student-text-muted);">${formatDateTime(notice.createdAt)}</span>
+              </div>
             </div>
-            <p style="font-size: 0.875rem; color: var(--student-text-main); margin-bottom: 0.5rem; line-height: 1.5;">${notice.message || ""}</p>
-            <span style="font-size: 0.72rem; color: var(--student-text-muted); text-transform: uppercase; font-weight: 600;">Category: ${notice.category || "General"}</span>
+            <p style="font-size: 0.9rem; color: var(--student-text-main); margin-bottom: 0.75rem; line-height: 1.55; white-space: pre-line;">
+              ${notice.message || ""}
+            </p>
+            <div style="font-size: 0.75rem; color: var(--student-text-muted); display: flex; justify-content: space-between;">
+              <span>Issued by: <strong>${notice.author || "Academic Registry"}</strong></span>
+              <span>DIMABIN Academic Portal</span>
+            </div>
           </div>
-        `
-          )
-          .join("")}
+        `).join("")}
       </div>
     `;
+  };
+
+  if (noticesSearchInput) noticesSearchInput.addEventListener("input", renderNotices);
+  if (noticesCategoryFilter) noticesCategoryFilter.addEventListener("change", renderNotices);
+
+  // =========================================================================
+  // 8. AUDIT ACTIVITY LOG STREAM
+  // =========================================================================
+  const activityContainer = document.getElementById("dashboard-activity-container");
+
+  const renderActivityFeed = (logs) => {
+    if (!activityContainer) return;
+    const myLogs = (logs || []).filter((log) => {
+      const desc = (log.description || "").toLowerCase();
+      const docId = (log.targetDocumentId || "").toLowerCase();
+      return (
+        docId === normStaffId ||
+        desc.includes(normStaffId) ||
+        desc.includes(normName) ||
+        log.action === "lecturer_login" ||
+        log.action === "grade_submitted_registry"
+      );
+    });
+
+    if (myLogs.length === 0) {
+      activityContainer.innerHTML = `
+        <div style="text-align: center; padding: 1.5rem; color: var(--student-text-muted); font-size: 0.875rem;">
+          No faculty portal activity recorded yet this session.
+        </div>
+      `;
+      return;
+    }
+
+    activityContainer.innerHTML = `
+      <div>
+        ${myLogs.slice(0, 5).map((log) => `
+          <div class="activity-stream-item">
+            <div class="activity-icon-bubble">
+              ${log.action.includes("login") ? "🔑" : log.action.includes("grade") ? "📝" : "📌"}
+            </div>
+            <div class="activity-content">
+              <div class="activity-title">${log.description || "Faculty Activity Recorded"}</div>
+              <div class="activity-time">${formatDateTime(log.timestamp || log.createdAt)}</div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  };
+
+  // =========================================================================
+  // 9. PROFILE PHOTO UPLOAD
+  // =========================================================================
+  const photoInput = document.getElementById("prof-photo-input");
+  if (photoInput) {
+    photoInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith("image/")) {
+        alert("Please select a valid image file (PNG, JPG, JPEG).");
+        return;
+      }
+
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Image file size exceeds 2MB limit. Please select a smaller photo.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result;
+        try {
+          await updateLecturerSelfProfile(staffId, { photoUrl: dataUrl });
+          updateAvatarDisplays(dataUrl);
+          alert("✓ Profile photograph updated successfully.");
+        } catch (err) {
+          alert(`Failed to save photo: ${err.message}`);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // =========================================================================
+  // 10. ACCOUNT & SECURITY SETTINGS CONTROLLERS
+  // =========================================================================
+  const formChangePassword = document.getElementById("form-change-password");
+  const passAlert = document.getElementById("settings-password-alert");
+  const btnResetEmail = document.getElementById("btn-request-reset-email");
+
+  const showPassAlert = (msg, type) => {
+    if (!passAlert) return;
+    passAlert.style.display = "block";
+    passAlert.style.background = type === "success" ? "#DCFCE7" : "#FEE2E2";
+    passAlert.style.color = type === "success" ? "#15803D" : "#B91C1C";
+    passAlert.style.border = type === "success" ? "1px solid #BBF7D0" : "1px solid #FCA5A5";
+    passAlert.textContent = msg;
+  };
+
+  if (formChangePassword) {
+    formChangePassword.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const curPass = document.getElementById("pass-current").value;
+      const newPass = document.getElementById("pass-new").value;
+      const confPass = document.getElementById("pass-confirm").value;
+
+      if (newPass !== confPass) {
+        showPassAlert("New password and confirm password do not match.", "error");
+        return;
+      }
+
+      if (newPass.length < 6) {
+        showPassAlert("New password must be at least 6 characters long.", "error");
+        return;
+      }
+
+      const submitBtn = document.getElementById("btn-submit-change-password");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Updating Password...";
+
+      try {
+        await changeLecturerPassword(email, curPass, newPass);
+        showPassAlert("✓ Password changed successfully! Use your new password on next login.", "success");
+        formChangePassword.reset();
+      } catch (err) {
+        showPassAlert(err.message || "Failed to update password. Verify current credentials.", "error");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Update Password";
+      }
+    });
+  }
+
+  if (btnResetEmail) {
+    btnResetEmail.addEventListener("click", async () => {
+      if (!confirm(`Dispatch an official password reset link to your institutional email (${email})?`)) return;
+      try {
+        await sendLecturerPasswordReset(email);
+        alert(`✓ Password reset email sent to ${email}. Check your inbox for instructions.`);
+      } catch (err) {
+        alert(`Reset request error: ${err.message}`);
+      }
+    });
+  }
+
+  // Profile Information Update
+  const formUpdateProfile = document.getElementById("form-update-profile");
+  const profileAlert = document.getElementById("settings-profile-alert");
+
+  if (formUpdateProfile) {
+    formUpdateProfile.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const updatedPhone = document.getElementById("settings-phone").value.trim();
+      const updatedQual = document.getElementById("settings-qualification").value.trim();
+      const updatedSpec = document.getElementById("settings-specialization").value.trim();
+
+      const btn = document.getElementById("btn-submit-update-profile");
+      btn.disabled = true;
+      btn.textContent = "Saving Profile...";
+
+      try {
+        await updateLecturerSelfProfile(staffId, {
+          phone: updatedPhone,
+          qualification: updatedQual,
+          specialization: updatedSpec
+        });
+
+        safeSetText("prof-phone", updatedPhone || "Not specified");
+        safeSetText("prof-qualification", updatedQual);
+        safeSetText("prof-specialization", updatedSpec);
+
+        if (profileAlert) {
+          profileAlert.style.display = "block";
+          profileAlert.style.background = "#DCFCE7";
+          profileAlert.style.color = "#15803D";
+          profileAlert.style.border = "1px solid #BBF7D0";
+          profileAlert.textContent = "✓ Faculty contact and specialization details updated successfully.";
+        }
+      } catch (err) {
+        if (profileAlert) {
+          profileAlert.style.display = "block";
+          profileAlert.style.background = "#FEE2E2";
+          profileAlert.style.color = "#B91C1C";
+          profileAlert.style.border = "1px solid #FCA5A5";
+          profileAlert.textContent = `Update failed: ${err.message}`;
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Save Profile Details";
+      }
+    });
+  }
+
+  // =========================================================================
+  // 11. SUBSCRIBE TO REAL-TIME FIRESTORE DATA COLLECTIONS
+  // =========================================================================
+  subscribeCourseAllocations((allocs) => {
+    allAllocationsState = allocs || [];
+    refreshAllViews();
+  });
+
+  subscribeCourseRegistrations((regs) => {
+    allRegistrationsState = regs || [];
+    refreshAllViews();
+  });
+
+  subscribeResults((results) => {
+    allResultsState = results || [];
+    refreshAllViews();
+  });
+
+  subscribeAnnouncements((notices) => {
+    allAnnouncementsState = notices || [];
+    renderNotices();
+  });
+
+  subscribePortalNotifications((pNotifs) => {
+    if (pNotifs && pNotifs.length > 0) {
+      // Merge with announcements
+      const merged = [...allAnnouncementsState, ...pNotifs];
+      allAnnouncementsState = merged;
+      renderNotices();
+    }
+  });
+
+  subscribeActivityLogs((logs) => {
+    renderActivityFeed(logs);
+  });
+
+  subscribeStudyCentres((centres) => {
+    allCentresState = centres || [];
+    if (courseCentreFilter && centres.length > 0) {
+      courseCentreFilter.innerHTML = `
+        <option value="all">All Study Centres</option>
+        ${centres.map((c) => `<option value="${c.name}">${c.name}</option>`).join("")}
+      `;
+    }
+    if (rosterCentreSelect && centres.length > 0) {
+      rosterCentreSelect.innerHTML = `
+        <option value="all">All Study Centres</option>
+        ${centres.map((c) => `<option value="${c.name}">${c.name}</option>`).join("")}
+      `;
+    }
   });
 });
