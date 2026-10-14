@@ -1032,7 +1032,6 @@ export function initCourseManagement() {
   const inputDept = document.getElementById("course-form-department");
   const inputProg = document.getElementById("course-form-programme");
   const inputLevel = document.getElementById("course-form-level");
-  const inputCentre = document.getElementById("course-form-centre");
   const inputStatus = document.getElementById("course-form-status");
   const inputPrereqs = document.getElementById("course-form-prereqs");
   const inputDesc = document.getElementById("course-form-desc");
@@ -1143,9 +1142,13 @@ export function initCourseManagement() {
         return false;
       }
 
-      // 5. Study Centre
-      if (filters.centre !== "all" && c.studyCentre !== filters.centre) {
-        return false;
+      // 5. Campus Scope (Central courses are available to all study centres; legacy centre courses match explicitly)
+      if (filters.centre !== "all") {
+        const isLegacyMatch = c.studyCentre && c.studyCentre === filters.centre;
+        const isCentral = !c.studyCentre || c.studyCentre.trim() === "";
+        if (!isLegacyMatch && !isCentral) {
+          return false;
+        }
       }
 
       // 6. Department
@@ -1186,9 +1189,9 @@ export function initCourseManagement() {
       if (filters.session !== "all") activeFilters.push(filters.session);
       if (filters.status !== "all") activeFilters.push(filters.status);
       if (filters.department !== "all") activeFilters.push(filters.department);
-      if (filters.centre !== "all") activeFilters.push(filters.centre);
+      if (filters.centre !== "all") activeFilters.push(`scope: ${filters.centre}`);
 
-      filterSummary.textContent = activeFilters.length > 0 ? `Filtered by ${activeFilters.join(" · ")}` : "Showing all courses";
+      filterSummary.textContent = activeFilters.length > 0 ? `Filtered by ${activeFilters.join(" · ")}` : "Showing all courses (Central Catalogue)";
     }
 
     if (list.length === 0) {
@@ -1213,8 +1216,17 @@ export function initCourseManagement() {
         const level = c.level ? `${c.level} Lvl` : "100 Lvl";
         const sem = c.semester || "First Semester";
         const units = c.creditUnits || c.creditUnit || 3;
-        const centre = c.studyCentre || "All Centres";
         const isActive = c.status === "active";
+
+        const isLegacyCentre = Boolean(c.studyCentre && c.studyCentre.trim() !== "");
+        const scopeHtml = isLegacyCentre
+          ? `<div>
+               <span style="font-size: 0.78rem; font-weight: 700; color: var(--dark-navy);">${c.studyCentre}</span>
+               <span style="display: block; font-size: 0.68rem; color: var(--admin-text-muted);">Legacy Specific</span>
+             </div>`
+          : `<span class="badge-scope-central" style="background: rgba(31, 60, 130, 0.08); color: var(--primary-blue); border: 1px solid rgba(31, 60, 130, 0.2); padding: 0.2rem 0.55rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+               <span style="font-size: 0.72rem;">🌐</span> Institution-Wide
+             </span>`;
 
         const semClass = sem.includes("Second") ? "sem-2" : sem.includes("Third") ? "sem-3" : "sem-1";
 
@@ -1232,7 +1244,7 @@ export function initCourseManagement() {
           <td><span class="badge-credit-pill">${level}</span></td>
           <td><span class="badge-semester-tag ${semClass}">${sem}</span></td>
           <td><span class="badge-credit-pill" style="font-weight: 800; color: var(--primary-blue);">${units} Units</span></td>
-          <td><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${centre}</span></td>
+          <td>${scopeHtml}</td>
           <td>
             <span class="${isActive ? "badge-course-active" : "badge-course-inactive"}">
               ${isActive ? "● Active" : "○ Inactive"}
@@ -1344,7 +1356,6 @@ export function initCourseManagement() {
     if (inputLevel) inputLevel.value = "100";
     if (inputDept) inputDept.value = "Biblical Studies & Theology";
     if (inputProg) inputProg.value = "Diploma in Theology (Dipl.Th.)";
-    if (inputCentre) inputCentre.value = inputCentre.options[0]?.value || "";
 
     openModal(modalForm);
   };
@@ -1369,7 +1380,6 @@ export function initCourseManagement() {
     if (inputDept) inputDept.value = course.department || "Biblical Studies & Theology";
     if (inputProg) inputProg.value = course.programme || "Diploma in Theology (Dipl.Th.)";
     if (inputLevel) inputLevel.value = course.level || "100";
-    if (inputCentre) inputCentre.value = course.studyCentre || inputCentre.options[0]?.value || "";
     if (inputStatus) inputStatus.value = course.status || "active";
     if (inputDesc) inputDesc.value = course.description || "";
 
@@ -1463,7 +1473,6 @@ export function initCourseManagement() {
       const dept = (inputDept?.value || "Biblical Studies & Theology").trim();
       const prog = (inputProg?.value || "Diploma in Theology (Dipl.Th.)").trim();
       const level = (inputLevel?.value || "100").trim();
-      const centre = (inputCentre?.value || "").trim();
       const status = inputStatus?.value === "inactive" ? "inactive" : "active";
       const desc = (inputDesc?.value || "").trim();
       const prereqs = (inputPrereqs?.value || "").trim();
@@ -1510,6 +1519,10 @@ export function initCourseManagement() {
       if (saveSpinner) saveSpinner.style.display = "inline-block";
 
       try {
+        // Central Institution-wide course creation (preserving legacy centre if updating an existing record)
+        const existingRecord = id ? allCourses.find((c) => c.id === id) : null;
+        const targetCentre = existingRecord && existingRecord.studyCentre ? existingRecord.studyCentre : "";
+
         const payload = {
           courseCode: code,
           title,
@@ -1522,7 +1535,7 @@ export function initCourseManagement() {
           semester,
           creditUnits: credits,
           creditUnit: credits,
-          studyCentre: centre,
+          studyCentre: targetCentre,
           status,
           prerequisiteCourseIds: prereqs
         };
@@ -1921,34 +1934,48 @@ export function initCourseAllocation() {
   const calculateOfferings = () => {
     const offeringsMap = new Map();
 
-    // 1. From catalog courses: include primary study centre offering
+    // Determine active study centres for institutional curriculum availability
+    const allKnownCentres = getStudyCentres() || [];
+    const activeCentres = allKnownCentres.filter((c) => (c.status || "active").toLowerCase() === "active");
+    let activeCentreNames = activeCentres.map((c) => (c.centreName || "").trim()).filter(Boolean);
+    if (activeCentreNames.length === 0) {
+      activeCentreNames = ["Abeokuta Main Campus"];
+    }
+
+    // 1. From central catalog courses: make each central course available across all active study centres
     catalogCourses.forEach((c) => {
       const code = normalizeCourseCode(c.courseCode);
       if (!code) return;
-      const centre = (c.studyCentre || "").trim();
       const session = (c.academicSession || ADMIN_CONFIG.SESSION || "2026/2027").trim();
       const semester = (c.semester || "First Semester").trim();
-      const key = `${code}__${centre}__${session}__${semester}`;
 
-      offeringsMap.set(key, {
-        courseCode: code,
-        courseTitle: c.title || c.courseTitle || code,
-        studyCentre: centre,
-        academicSession: session,
-        semester,
-        department: c.department || "Biblical Studies & Theology",
-        programme: c.programme || "Diploma in Theology (Dipl.Th.)",
-        level: c.level || "100",
-        creditUnits: c.creditUnits || c.creditUnit || 3,
-        isCourseInactive: c.status === "inactive"
+      // If course has a legacy specific study centre, respect that; otherwise, central course is available to all active centres
+      const targetCentres = (c.studyCentre && c.studyCentre.trim() !== "")
+        ? [c.studyCentre.trim()]
+        : activeCentreNames;
+
+      targetCentres.forEach((centre) => {
+        const key = `${code}__${centre}__${session}__${semester}`;
+        offeringsMap.set(key, {
+          courseCode: code,
+          courseTitle: c.title || c.courseTitle || code,
+          studyCentre: centre,
+          academicSession: session,
+          semester,
+          department: c.department || "Biblical Studies & Theology",
+          programme: c.programme || "Diploma in Theology (Dipl.Th.)",
+          level: c.level || "100",
+          creditUnits: c.creditUnits || c.creditUnit || 3,
+          isCourseInactive: c.status === "inactive"
+        });
       });
     });
 
-    // 2. Also register any offering from the actual allocations collection
+    // 2. Also register any offering from the actual allocations collection (multi-centre independent)
     allocations.forEach((a) => {
       const code = normalizeCourseCode(a.courseCode);
       if (!code) return;
-      const centre = (a.studyCentre || "").trim();
+      const centre = (a.studyCentre || "Abeokuta Main Campus").trim();
       const session = (a.academicSession || "2026/2027").trim();
       const semester = (a.semester || "First Semester").trim();
       const key = `${code}__${centre}__${session}__${semester}`;
@@ -4459,7 +4486,6 @@ export function populateStudyCentreSelects(centresList) {
   updateSelect(document.getElementById("add-lec-centre"), activeCentres, false);
   updateSelect(document.getElementById("edit-lec-centre"), activeCentres, false);
   updateSelect(document.getElementById("quick-lecturer-centre"), activeCentres, false);
-  updateSelect(document.getElementById("course-form-centre"), activeCentres, false);
   updateSelect(document.getElementById("assign-modal-centre-select"), activeCentres, false);
   updateSelect(document.getElementById("add-student-centre"), activeCentres, false);
 

@@ -2046,7 +2046,7 @@ export async function createCourse(courseData) {
 
   await logActivity({
     action: "course_created",
-    description: `Created course curriculum [${record.courseCode}] "${record.title}" for ${record.semester} (${record.academicSession}).`,
+    description: `Created central institution-wide course [${record.courseCode}] "${record.title}" for ${record.semester} (${record.academicSession}).`,
     targetCollection: COLLECTIONS.COURSES,
     targetDocumentId: savedDocId
   });
@@ -3350,19 +3350,19 @@ export async function deleteStudyCentre(centreId) {
   const target = centres.find((c) => c.id === centreId || c.centreId === centreId);
   if (!target) throw new Error("Study centre record not found.");
 
-  // Relational safety check: Do courses or allocations or students belong to this centre?
-  const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS);
+  // Relational safety check: Do course allocations or students belong to this centre?
+  const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
   const allocCount = allocations.filter((a) => a.studyCentre === target.centreName).length;
 
-  const courses = getCachedCollection(COLLECTIONS.COURSES);
-  const courseCount = courses.filter((c) => c.studyCentre === target.centreName).length;
+  const courses = getCachedCollection(COLLECTIONS.COURSES) || [];
+  const legacyCourseCount = courses.filter((c) => c.studyCentre && c.studyCentre === target.centreName).length;
 
-  const students = getCachedCollection(COLLECTIONS.STUDENTS);
+  const students = getCachedCollection(COLLECTIONS.STUDENTS) || [];
   const studentCount = students.filter((s) => s.studyCentre === target.centreName).length;
 
-  if (allocCount > 0 || courseCount > 0 || studentCount > 0) {
+  if (allocCount > 0 || legacyCourseCount > 0 || studentCount > 0) {
     throw new Error(
-      `Cannot delete "${target.centreName}" because it is actively associated with ${allocCount} course allocation(s), ${courseCount} course(s), and ${studentCount} student(s). Please deactivate the centre instead to maintain academic record integrity.`
+      `Cannot delete "${target.centreName}" because it is actively associated with ${allocCount} course allocation(s), ${legacyCourseCount} legacy assigned course(s), and ${studentCount} student(s). Please deactivate the centre instead to maintain academic record integrity.`
     );
   }
 
@@ -3401,7 +3401,21 @@ export function getStudyCentreMetrics() {
   centres.forEach((c) => {
     const centreName = c.centreName;
     const activeAllocCount = allocations.filter((a) => a.studyCentre === centreName && (a.status === "active" || a.status === "reassigned")).length;
-    const courseCount = courses.filter((co) => co.studyCentre === centreName && co.status === "active").length;
+    
+    // Count active offerings/allocations at this centre (or legacy centre-tagged courses)
+    const offeredCourseCodes = new Set();
+    allocations
+      .filter((a) => a.studyCentre === centreName && (a.status === "active" || a.status === "reassigned"))
+      .forEach((a) => {
+        if (a.courseCode) offeredCourseCodes.add(normalizeCourseCode(a.courseCode));
+      });
+    courses
+      .filter((co) => co.studyCentre === centreName && co.status === "active")
+      .forEach((co) => {
+        if (co.courseCode) offeredCourseCodes.add(normalizeCourseCode(co.courseCode));
+      });
+    const courseOfferingsCount = offeredCourseCodes.size;
+
     const studentCount = students.filter((s) => s.studyCentre === centreName && s.status === "active").length;
 
     // Faculty teaching at this centre
@@ -3416,7 +3430,7 @@ export function getStudyCentreMetrics() {
 
     metrics[c.id || c.centreId] = {
       allocationsCount: activeAllocCount,
-      coursesCount: courseCount,
+      coursesCount: courseOfferingsCount,
       studentsCount: studentCount,
       facultyCount: facultySet.size
     };
