@@ -22,6 +22,12 @@ import {
   subscribeStudyCentres,
   subscribeActivityLogs,
   saveLecturerGradeRecord,
+  publishCourseCAResults,
+  unpublishCourseCAResults,
+  submitCourseGradesToRegistry,
+  subscribeCourseAssessments,
+  createCourseAssessment,
+  deleteCourseAssessment,
   changeLecturerPassword,
   updateLecturerSelfProfile,
   sendLecturerPasswordReset,
@@ -266,6 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let allResultsState = [];
   let allAnnouncementsState = [];
   let allCentresState = [];
+  let allAssessmentsState = [];
 
   // Match course allocations for this lecturer
   const isMyAllocation = (alloc) => {
@@ -662,22 +669,85 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================================================================
-  // 6. CONTINUOUS ASSESSMENT & GRADE BOOK ENGINE
+  // 6. CONTINUOUS ASSESSMENT (30M) & FINAL EXAMINATION (70M) RESULTS ENGINE
   // =========================================================================
   const gradebookCourseSelect = document.getElementById("gradebook-course-select");
-  const gradebookGridContainer = document.getElementById("gradebook-grid-container");
   const gradebookAlert = document.getElementById("gradebook-alert");
-  const btnSaveDraft = document.getElementById("btn-save-grade-draft");
-  const btnSubmitRegistry = document.getElementById("btn-submit-grade-registry");
+
+  // Sub-Tab Switcher Elements
+  const tabBtnCa = document.getElementById("tab-btn-ca");
+  const tabBtnExam = document.getElementById("tab-btn-exam");
+  const tabBtnActivities = document.getElementById("tab-btn-activities");
+  const paneCa = document.getElementById("pane-ca");
+  const paneExam = document.getElementById("pane-exam");
+  const paneActivities = document.getElementById("pane-activities");
+
+  // Grid Containers
+  const caGridContainer = document.getElementById("ca-grid-container");
+  const examGridContainer = document.getElementById("exam-grid-container");
+  const courseActivitiesList = document.getElementById("course-activities-list");
+
+  // Action Buttons
+  const btnSaveCaDraft = document.getElementById("btn-save-ca-draft");
+  const btnPublishCaStudents = document.getElementById("btn-publish-ca-students");
+  const btnUnpublishCa = document.getElementById("btn-unpublish-ca");
+  const btnSaveGradeDraft = document.getElementById("btn-save-grade-draft");
+  const btnSubmitGradeRegistry = document.getElementById("btn-submit-grade-registry");
+  const btnPrintExamBroadsheet = document.getElementById("btn-print-exam-broadsheet");
+  const btnOpenAsmtModal = document.getElementById("btn-open-asmt-modal");
+  const btnNewActivityBtn = document.getElementById("btn-new-activity-btn");
+
+  let activeGradeSubTab = "ca"; // ca | exam | activities
+
+  const switchGradeSubTab = (tabName) => {
+    activeGradeSubTab = tabName;
+    const tabs = [
+      { id: "ca", btn: tabBtnCa, pane: paneCa },
+      { id: "exam", btn: tabBtnExam, pane: paneExam },
+      { id: "activities", btn: tabBtnActivities, pane: paneActivities }
+    ];
+
+    tabs.forEach((t) => {
+      if (t.id === tabName) {
+        if (t.btn) {
+          t.btn.classList.add("active");
+          t.btn.style.background = "var(--student-blue)";
+          t.btn.style.color = "#FFFFFF";
+          t.btn.style.border = "none";
+        }
+        if (t.pane) t.pane.style.display = "block";
+      } else {
+        if (t.btn) {
+          t.btn.classList.remove("active");
+          t.btn.style.background = "#F8FAFC";
+          t.btn.style.color = "var(--student-navy)";
+          t.btn.style.border = "1px solid var(--student-border)";
+        }
+        if (t.pane) t.pane.style.display = "none";
+      }
+    });
+
+    // Re-render corresponding view
+    const myAllocations = allAllocationsState.filter(isMyAllocation);
+    const enrolledStudents = compileEnrolledStudents(myAllocations, allRegistrationsState);
+    if (tabName === "ca") renderCAView(myAllocations, enrolledStudents, allResultsState);
+    else if (tabName === "exam") renderExamView(myAllocations, enrolledStudents, allResultsState);
+    else if (tabName === "activities") renderActivitiesView(myAllocations, allAssessmentsState);
+  };
+
+  if (tabBtnCa) tabBtnCa.addEventListener("click", () => switchGradeSubTab("ca"));
+  if (tabBtnExam) tabBtnExam.addEventListener("click", () => switchGradeSubTab("exam"));
+  if (tabBtnActivities) tabBtnActivities.addEventListener("click", () => switchGradeSubTab("activities"));
 
   const updateCourseSelects = (myAllocations) => {
     const currentVal = gradebookCourseSelect?.value || "";
     const rosterCurrentVal = rosterCourseSelect?.value || "all";
+    const asmtFormCourse = document.getElementById("asmt-form-course");
 
     if (gradebookCourseSelect) {
       gradebookCourseSelect.innerHTML = `
         <option value="">-- Choose Assigned Course --</option>
-        ${myAllocations.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle} (${a.studyCentre || "Main"})</option>`).join("")}
+        ${myAllocations.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle} (${a.studyCentre || "All Centres"})</option>`).join("")}
       `;
       if (currentVal && myAllocations.some((a) => a.courseCode === currentVal)) {
         gradebookCourseSelect.value = currentVal;
@@ -693,69 +763,95 @@ document.addEventListener("DOMContentLoaded", () => {
         rosterCourseSelect.value = rosterCurrentVal;
       }
     }
+
+    if (asmtFormCourse) {
+      asmtFormCourse.innerHTML = `
+        <option value="">-- Select Course --</option>
+        ${myAllocations.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle}</option>`).join("")}
+      `;
+      if (currentVal && myAllocations.some((a) => a.courseCode === currentVal)) {
+        asmtFormCourse.value = currentVal;
+      }
+    }
   };
 
   const getLetterAndRemarks = (totalScore) => {
-    if (totalScore >= 70) return { grade: "A", remarks: "Distinction / Excellent" };
-    if (totalScore >= 60) return returnObj("B", "Very Good");
-    if (totalScore >= 50) return returnObj("C", "Good");
-    if (totalScore >= 45) return returnObj("D", "Fair");
-    if (totalScore >= 40) return returnObj("E", "Pass");
-    return { grade: "F", remarks: "Fail" };
+    if (totalScore >= 70) return { grade: "A", gp: "5.0", remarks: "Distinction / Excellent" };
+    if (totalScore >= 60) return { grade: "B", gp: "4.0", remarks: "Very Good" };
+    if (totalScore >= 50) return { grade: "C", gp: "3.0", remarks: "Good" };
+    if (totalScore >= 45) return { grade: "D", gp: "2.0", remarks: "Fair" };
+    if (totalScore >= 40) return { grade: "E", gp: "1.0", remarks: "Pass" };
+    return { grade: "F", gp: "0.0", remarks: "Fail" };
   };
-  const returnObj = (grade, remarks) => ({ grade, remarks });
 
-  const renderGradeBook = (myAllocations, enrolledStudents, allResults) => {
-    if (!gradebookGridContainer) return;
+  // -------------------------------------------------------------------------
+  // 6A. RENDER CONTINUOUS ASSESSMENT (CA — 30 MARKS) VIEW
+  // -------------------------------------------------------------------------
+  const renderCAView = (myAllocations, enrolledStudents, allResults) => {
+    if (!caGridContainer) return;
     const selectedCourseCode = gradebookCourseSelect?.value || "";
 
     if (!selectedCourseCode) {
-      gradebookGridContainer.innerHTML = `
+      caGridContainer.innerHTML = `
         <div style="text-align: center; padding: 3rem 1rem; color: var(--student-text-muted);">
           <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📖</div>
           <strong style="color: var(--student-navy); font-size: 1rem; display: block;">Select a Course Offering Above</strong>
           <p style="font-size: 0.875rem; margin-top: 0.25rem;">
-            Choose one of your assigned courses from the dropdown to load the registered student roster and enter grades.
+            Choose one of your assigned courses from the dropdown to load the registered student roster and enter Continuous Assessment marks.
           </p>
         </div>
       `;
+      if (btnUnpublishCa) btnUnpublishCa.style.display = "none";
       return;
     }
 
-    const courseObj = myAllocations.find((a) => a.courseCode === selectedCourseCode);
     const studentsInCourse = enrolledStudents.filter(
       (s) => s.courseCode.toUpperCase() === selectedCourseCode.toUpperCase()
     );
 
     if (studentsInCourse.length === 0) {
-      gradebookGridContainer.innerHTML = `
+      caGridContainer.innerHTML = `
         <div style="text-align: center; padding: 2.5rem 1rem; color: var(--student-text-muted);">
           <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
           <strong style="color: var(--student-navy); font-size: 1rem; display: block;">No Students Registered in ${selectedCourseCode}</strong>
           <p style="font-size: 0.875rem; margin-top: 0.25rem;">
-            No candidates have completed course registration for this offering yet. When registrations are submitted, they will appear here ready for grading.
+            No candidates have completed course registration for this offering yet.
           </p>
         </div>
       `;
+      if (btnUnpublishCa) btnUnpublishCa.style.display = "none";
       return;
     }
 
-    // Build interactive grade sheet table
-    gradebookGridContainer.innerHTML = `
+    // Check if CA has been published for this course offering
+    const publishedCount = studentsInCourse.filter((stu) => {
+      const res = allResults.find(
+        (r) =>
+          (r.matricNumber || "").trim().toUpperCase() === stu.matricNumber.trim().toUpperCase() &&
+          (r.courseCode || "").trim().toUpperCase() === selectedCourseCode.toUpperCase()
+      );
+      return res && (res.caPublished || res.caStatus === "published");
+    }).length;
+
+    if (btnUnpublishCa) {
+      btnUnpublishCa.style.display = publishedCount > 0 ? "inline-block" : "none";
+    }
+
+    caGridContainer.innerHTML = `
       <div class="grade-table-wrapper">
-        <table class="grade-table" id="grade-entry-table">
+        <table class="grade-table" id="ca-entry-table">
           <thead>
             <tr>
               <th style="width: 45px;">#</th>
               <th>Student Name</th>
               <th>Matriculation ID</th>
               <th>Study Centre</th>
-              <th style="text-align: center;">CA Score<br><span style="font-size: 0.68rem; font-weight: normal;">(Max 30)</span></th>
-              <th style="text-align: center;">Exam Mark<br><span style="font-size: 0.68rem; font-weight: normal;">(Max 70)</span></th>
-              <th style="text-align: center;">Total<br><span style="font-size: 0.68rem; font-weight: normal;">(100%)</span></th>
-              <th style="text-align: center;">Letter Grade</th>
-              <th>Remarks</th>
-              <th>Submission Status</th>
+              <th style="text-align: center;">CBT Test<br><span style="font-size: 0.68rem; font-weight: normal; color: var(--student-blue);">(Max 10)</span></th>
+              <th style="text-align: center;">Attendance<br><span style="font-size: 0.68rem; font-weight: normal; color: var(--student-blue);">(Max 5)</span></th>
+              <th style="text-align: center;">Assignment<br><span style="font-size: 0.68rem; font-weight: normal; color: var(--student-blue);">(Max 5)</span></th>
+              <th style="text-align: center;">Practical<br><span style="font-size: 0.68rem; font-weight: normal; color: var(--student-blue);">(Max 10)</span></th>
+              <th style="text-align: center;">Total CA<br><span style="font-size: 0.68rem; font-weight: 800; color: #15803D;">(Max 30)</span></th>
+              <th style="text-align: center;">CA Status</th>
             </tr>
           </thead>
           <tbody>
@@ -766,21 +862,16 @@ document.addEventListener("DOMContentLoaded", () => {
                   (r.courseCode || "").trim().toUpperCase() === selectedCourseCode.toUpperCase()
               );
 
-              const initialCa = existingResult ? (existingResult.caScore !== undefined ? existingResult.caScore : "") : "";
-              const initialExam = existingResult ? (existingResult.examScore !== undefined ? existingResult.examScore : "") : "";
-              const initialTotal = existingResult ? (existingResult.score !== undefined ? existingResult.score : "") : "";
-              const initialGrade = existingResult ? existingResult.grade || "F" : "—";
-              const initialRemarks = existingResult ? existingResult.remarks || "Pending Entry" : "Pending Entry";
-              const statusVal = existingResult ? existingResult.status || "draft" : "draft";
+              const cbt = existingResult?.cbtScore !== undefined ? existingResult.cbtScore : "";
+              const att = existingResult?.attendanceScore !== undefined ? existingResult.attendanceScore : "";
+              const ass = existingResult?.assignmentScore !== undefined ? existingResult.assignmentScore : "";
+              const pract = existingResult?.practicalScore !== undefined ? existingResult.practicalScore : "";
+              const caTotal = existingResult?.caScore !== undefined ? existingResult.caScore : "";
 
-              let statusBadge = `<span class="faculty-badge badge-draft">Draft</span>`;
-              if (statusVal === "approved" || statusVal === "published") {
-                statusBadge = `<span class="faculty-badge badge-active">Approved by Registry</span>`;
-              } else if (statusVal === "submitted") {
-                statusBadge = `<span class="faculty-badge badge-blue">Submitted</span>`;
-              }
-
-              const isLocked = statusVal === "approved" || statusVal === "published";
+              const isCaPub = existingResult && (existingResult.caPublished || existingResult.caStatus === "published");
+              const statusPill = isCaPub
+                ? `<span class="faculty-badge badge-active" title="Visible to student in student portal">✓ Published</span>`
+                : `<span class="faculty-badge badge-draft">Draft</span>`;
 
               return `
                 <tr data-student-name="${stu.studentName}" data-matric="${stu.matricNumber}" data-centre="${stu.studyCentre}" data-session="${stu.academicSession}" data-semester="${stu.semester}">
@@ -792,15 +883,170 @@ document.addEventListener("DOMContentLoaded", () => {
                   <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${stu.matricNumber}</td>
                   <td style="font-size: 0.8125rem;">${stu.studyCentre}</td>
                   <td style="text-align: center;">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max="30" 
-                      class="grade-score-input input-ca" 
-                      value="${initialCa}" 
-                      placeholder="0–30"
-                      ${isLocked ? "disabled" : ""}
-                    >
+                    <input type="number" min="0" max="10" class="grade-score-input input-ca-cbt" value="${cbt}" placeholder="0–10">
+                  </td>
+                  <td style="text-align: center;">
+                    <input type="number" min="0" max="5" class="grade-score-input input-ca-att" value="${att}" placeholder="0–5">
+                  </td>
+                  <td style="text-align: center;">
+                    <input type="number" min="0" max="5" class="grade-score-input input-ca-ass" value="${ass}" placeholder="0–5">
+                  </td>
+                  <td style="text-align: center;">
+                    <input type="number" min="0" max="10" class="grade-score-input input-ca-pract" value="${pract}" placeholder="0–10">
+                  </td>
+                  <td style="text-align: center; font-weight: 800; font-size: 1rem; color: #15803D;" class="cell-ca-total">
+                    ${caTotal !== "" ? `${caTotal}/30` : "—"}
+                  </td>
+                  <td style="text-align: center;" class="cell-ca-status">
+                    ${statusPill}
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // Dynamic row calculation
+    const table = document.getElementById("ca-entry-table");
+    if (!table) return;
+
+    table.querySelectorAll("tbody tr").forEach((row) => {
+      const cbtIn = row.querySelector(".input-ca-cbt");
+      const attIn = row.querySelector(".input-ca-att");
+      const assIn = row.querySelector(".input-ca-ass");
+      const practIn = row.querySelector(".input-ca-pract");
+      const caTotalCell = row.querySelector(".cell-ca-total");
+
+      const recalcCaRow = () => {
+        let cbt = parseInt(cbtIn.value, 10);
+        let att = parseInt(attIn.value, 10);
+        let ass = parseInt(assIn.value, 10);
+        let pract = parseInt(practIn.value, 10);
+
+        if (isNaN(cbt) && isNaN(att) && isNaN(ass) && isNaN(pract)) {
+          caTotalCell.textContent = "—";
+          return;
+        }
+
+        // Clamp inputs
+        if (cbt > 10) { cbt = 10; cbtIn.value = 10; }
+        if (cbt < 0) { cbt = 0; cbtIn.value = 0; }
+        if (att > 5) { att = 5; attIn.value = 5; }
+        if (att < 0) { att = 0; attIn.value = 0; }
+        if (ass > 5) { ass = 5; assIn.value = 5; }
+        if (ass < 0) { ass = 0; assIn.value = 0; }
+        if (pract > 10) { pract = 10; practIn.value = 10; }
+        if (pract < 0) { pract = 0; practIn.value = 0; }
+
+        const safeCbt = isNaN(cbt) ? 0 : cbt;
+        const safeAtt = isNaN(att) ? 0 : att;
+        const safeAss = isNaN(ass) ? 0 : ass;
+        const safePract = isNaN(pract) ? 0 : pract;
+        const totalCa = Math.min(30, safeCbt + safeAtt + safeAss + safePract);
+
+        caTotalCell.innerHTML = `<strong>${totalCa}/30</strong>`;
+      };
+
+      if (cbtIn) cbtIn.addEventListener("input", recalcCaRow);
+      if (attIn) attIn.addEventListener("input", recalcCaRow);
+      if (assIn) assIn.addEventListener("input", recalcCaRow);
+      if (practIn) practIn.addEventListener("input", recalcCaRow);
+    });
+  };
+
+  // -------------------------------------------------------------------------
+  // 6B. RENDER FINAL EXAMINATION (70 MARKS) & BROADSHEET VIEW
+  // -------------------------------------------------------------------------
+  const renderExamView = (myAllocations, enrolledStudents, allResults) => {
+    if (!examGridContainer) return;
+    const selectedCourseCode = gradebookCourseSelect?.value || "";
+
+    if (!selectedCourseCode) {
+      examGridContainer.innerHTML = `
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--student-text-muted);">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📖</div>
+          <strong style="color: var(--student-navy); font-size: 1rem; display: block;">Select a Course Offering Above</strong>
+          <p style="font-size: 0.875rem; margin-top: 0.25rem;">
+            Choose one of your assigned courses from the dropdown to load examination scores and registry submissions.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const studentsInCourse = enrolledStudents.filter(
+      (s) => s.courseCode.toUpperCase() === selectedCourseCode.toUpperCase()
+    );
+
+    if (studentsInCourse.length === 0) {
+      examGridContainer.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--student-text-muted);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
+          <strong style="color: var(--student-navy); font-size: 1rem; display: block;">No Students Registered in ${selectedCourseCode}</strong>
+          <p style="font-size: 0.875rem; margin-top: 0.25rem;">
+            No candidates have completed course registration for this offering yet.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    examGridContainer.innerHTML = `
+      <div class="grade-table-wrapper">
+        <table class="grade-table" id="exam-entry-table">
+          <thead>
+            <tr>
+              <th style="width: 45px;">#</th>
+              <th>Student Name</th>
+              <th>Matriculation ID</th>
+              <th style="text-align: center;">Total CA<br><span style="font-size: 0.68rem; font-weight: normal; color: var(--student-blue);">(Max 30)</span></th>
+              <th style="text-align: center;">Exam Mark<br><span style="font-size: 0.68rem; font-weight: normal; color: var(--student-blue);">(Max 70)</span></th>
+              <th style="text-align: center;">Final Total<br><span style="font-size: 0.68rem; font-weight: 800; color: var(--student-navy);">(100%)</span></th>
+              <th style="text-align: center;">Grade</th>
+              <th style="text-align: center;">GP</th>
+              <th>Remarks</th>
+              <th>Registry Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${studentsInCourse.map((stu, idx) => {
+              const existingResult = allResults.find(
+                (r) =>
+                  (r.matricNumber || "").trim().toUpperCase() === stu.matricNumber.trim().toUpperCase() &&
+                  (r.courseCode || "").trim().toUpperCase() === selectedCourseCode.toUpperCase()
+              );
+
+              const caVal = existingResult?.caScore !== undefined ? existingResult.caScore : 0;
+              const initialExam = existingResult?.examScore !== undefined ? existingResult.examScore : "";
+              const initialTotal = existingResult?.score !== undefined ? existingResult.score : "";
+              const initialGrade = existingResult ? existingResult.grade || "F" : "—";
+              const initialGp = existingResult?.gradePoint !== undefined ? existingResult.gradePoint : "—";
+              const initialRemarks = existingResult ? existingResult.remarks || "Pending Entry" : "Pending Entry";
+              const statusVal = existingResult ? existingResult.status || "draft" : "draft";
+
+              let statusBadge = `<span class="faculty-badge badge-draft">Draft</span>`;
+              if (statusVal === "approved" || statusVal === "published") {
+                statusBadge = `<span class="faculty-badge badge-active">Approved &amp; Published</span>`;
+              } else if (statusVal === "submitted") {
+                statusBadge = `<span class="faculty-badge badge-blue">Submitted to Registry</span>`;
+              } else if (statusVal === "rejected") {
+                statusBadge = `<span class="faculty-badge" style="background:#FEE2E2; color:#B91C1C; border:1px solid #FCA5A5;">Revision Requested</span>`;
+              }
+
+              const isLocked = statusVal === "approved" || statusVal === "published";
+
+              return `
+                <tr data-student-name="${stu.studentName}" data-matric="${stu.matricNumber}" data-centre="${stu.studyCentre}" data-session="${stu.academicSession}" data-semester="${stu.semester}" data-ca="${caVal}">
+                  <td style="color: var(--student-text-muted); font-weight: 700;">${idx + 1}</td>
+                  <td>
+                    <strong style="color: var(--student-navy); display: block;">${stu.studentName}</strong>
+                    <span style="font-size: 0.75rem; color: var(--student-text-muted);">${stu.programme}</span>
+                  </td>
+                  <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${stu.matricNumber}</td>
+                  <td style="text-align: center; font-weight: 700; color: #15803D;" class="cell-exam-ca">
+                    ${caVal}/30
                   </td>
                   <td style="text-align: center;">
                     <input 
@@ -819,6 +1065,9 @@ document.addEventListener("DOMContentLoaded", () => {
                   <td style="text-align: center;" class="cell-grade">
                     ${initialTotal !== "" ? `<span class="grade-letter-pill ${initialGrade}">${initialGrade}</span>` : "—"}
                   </td>
+                  <td style="text-align: center; font-weight: 700; font-size: 0.84rem; color: var(--student-navy);" class="cell-gp">
+                    ${initialGp}
+                  </td>
                   <td style="font-size: 0.8125rem; color: var(--student-text-muted);" class="cell-remarks">
                     ${initialRemarks}
                   </td>
@@ -833,59 +1082,285 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     `;
 
-    // Attach dynamic calculation listeners
-    const table = document.getElementById("grade-entry-table");
+    // Attach dynamic examination calculation listeners
+    const table = document.getElementById("exam-entry-table");
     if (!table) return;
 
     table.querySelectorAll("tbody tr").forEach((row) => {
-      const caInput = row.querySelector(".input-ca");
       const examInput = row.querySelector(".input-exam");
       const totalCell = row.querySelector(".cell-total");
       const gradeCell = row.querySelector(".cell-grade");
+      const gpCell = row.querySelector(".cell-gp");
       const remarksCell = row.querySelector(".cell-remarks");
+      const caVal = parseInt(row.getAttribute("data-ca"), 10) || 0;
 
-      const recalcRow = () => {
-        let ca = parseInt(caInput.value, 10);
+      const recalcExamRow = () => {
         let exam = parseInt(examInput.value, 10);
-
-        if (isNaN(ca) && isNaN(exam)) {
+        if (isNaN(exam)) {
           totalCell.textContent = "—";
           gradeCell.innerHTML = "—";
+          gpCell.textContent = "—";
           remarksCell.textContent = "Pending Entry";
           return;
         }
 
-        if (ca > 30) { ca = 30; caInput.value = 30; }
-        if (ca < 0) { ca = 0; caInput.value = 0; }
         if (exam > 70) { exam = 70; examInput.value = 70; }
         if (exam < 0) { exam = 0; examInput.value = 0; }
 
-        const safeCa = isNaN(ca) ? 0 : ca;
         const safeExam = isNaN(exam) ? 0 : exam;
-        const total = safeCa + safeExam;
+        const total = Math.min(100, caVal + safeExam);
 
-        const { grade, remarks } = getLetterAndRemarks(total);
+        const { grade, gp, remarks } = getLetterAndRemarks(total);
         totalCell.textContent = `${total}%`;
         gradeCell.innerHTML = `<span class="grade-letter-pill ${grade}">${grade}</span>`;
+        gpCell.textContent = gp;
         remarksCell.textContent = remarks;
       };
 
-      if (caInput) caInput.addEventListener("input", recalcRow);
-      if (examInput) examInput.addEventListener("input", recalcRow);
+      if (examInput) examInput.addEventListener("input", recalcExamRow);
     });
+  };
+
+  // -------------------------------------------------------------------------
+  // 6C. RENDER ASSESSMENT ACTIVITIES & CBT MANAGER VIEW
+  // -------------------------------------------------------------------------
+  const renderActivitiesView = (myAllocations, allAssessments) => {
+    if (!courseActivitiesList) return;
+    const selectedCourseCode = (gradebookCourseSelect?.value || "").trim().toUpperCase();
+
+    if (!selectedCourseCode) {
+      courseActivitiesList.innerHTML = `
+        <div class="student-empty-box">
+          <div class="student-empty-icon">🖥️</div>
+          <div class="student-empty-text">Select a Course Offering Above</div>
+          <div class="student-empty-sub">Choose an assigned course to view or create CBT tests, assignments, and practicals.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const filtered = (allAssessments || []).filter(
+      (a) => (a.courseCode || "").trim().toUpperCase() === selectedCourseCode
+    );
+
+    if (filtered.length === 0) {
+      courseActivitiesList.innerHTML = `
+        <div class="student-empty-box">
+          <div class="student-empty-icon">📝</div>
+          <div class="student-empty-text">No Assessment Activities for ${selectedCourseCode}</div>
+          <div class="student-empty-sub">
+            Click "+ Create Assessment Activity" to configure CBT tests (max 10m), assignments (max 5m), attendance rubrics (max 5m), or practicals (max 10m).
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    courseActivitiesList.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1.25rem;">
+        ${filtered.map((item) => {
+          const typeIcons = {
+            cbt: "🖥️ CBT TEST",
+            attendance: "📋 ATTENDANCE",
+            assignment: "✍️ ASSIGNMENT",
+            practical: "🔬 PRACTICAL"
+          };
+          const badgeClass = item.type === "cbt" ? "badge-blue" : item.type === "practical" ? "badge-purple" : "badge-green";
+
+          return `
+            <div class="course-offering-card" style="border-top: 3px solid var(--student-blue);">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                  <span class="faculty-badge ${badgeClass}">${typeIcons[item.type] || item.type.toUpperCase()}</span>
+                  <span style="font-weight: 800; font-size: 0.8125rem; color: var(--student-navy);">${item.maxScore} Marks Max</span>
+                </div>
+                <h4 style="font-size: 1rem; font-weight: 700; color: var(--student-navy); margin-bottom: 0.4rem;">${item.title}</h4>
+                <p style="font-size: 0.8125rem; color: var(--student-text-muted); line-height: 1.4; margin-bottom: 0.75rem;">
+                  ${item.description || "No additional instructions provided."}
+                </p>
+                <div style="font-size: 0.75rem; color: var(--student-text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
+                  ${item.durationMinutes ? `<div>⏱️ <strong>Duration:</strong> ${item.durationMinutes} Minutes</div>` : ""}
+                  ${item.dueDate ? `<div>📅 <strong>Deadline/Date:</strong> ${item.dueDate}</div>` : ""}
+                  <div>🗓️ <strong>Created:</strong> ${formatDateOnly(item.createdAt)}</div>
+                </div>
+              </div>
+              <div style="padding-top: 0.75rem; border-top: 1px solid var(--student-border-subtle); display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                <button type="button" class="btn btn-outline-blue btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;" onclick="window.switchGradeSubTab('ca')">
+                  Score in CA Sheet →
+                </button>
+                <button type="button" class="btn btn-sm" style="background:#FEE2E2; color:#B91C1C; border:1px solid #FECACA; font-size: 0.75rem; padding: 0.25rem 0.6rem;" onclick="window.deleteAssessmentActivity('${item.id}')">
+                  Delete
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  };
+
+  window.switchGradeSubTab = switchGradeSubTab;
+
+  window.deleteAssessmentActivity = async (asmtId) => {
+    if (!confirm("Are you sure you want to delete this assessment activity?")) return;
+    try {
+      await deleteCourseAssessment(asmtId);
+      showGradebookAlert("Assessment activity deleted successfully.", "success");
+    } catch (err) {
+      showGradebookAlert(`Delete failed: ${err.message}`, "error");
+    }
+  };
+
+  const renderGradeBook = (myAllocations, enrolledStudents, allResults) => {
+    if (activeGradeSubTab === "ca") {
+      renderCAView(myAllocations, enrolledStudents, allResults);
+    } else if (activeGradeSubTab === "exam") {
+      renderExamView(myAllocations, enrolledStudents, allResults);
+    } else if (activeGradeSubTab === "activities") {
+      renderActivitiesView(myAllocations, allAssessmentsState);
+    }
   };
 
   if (gradebookCourseSelect) {
     gradebookCourseSelect.addEventListener("change", () => {
-      renderGradeBook(
-        allAllocationsState.filter(isMyAllocation),
-        compileEnrolledStudents(allAllocationsState.filter(isMyAllocation), allRegistrationsState),
-        allResultsState
-      );
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const enrolledStudents = compileEnrolledStudents(myAllocations, allRegistrationsState);
+      renderGradeBook(myAllocations, enrolledStudents, allResultsState);
     });
   }
 
-  // Grade Book Batch Save Action
+  // -------------------------------------------------------------------------
+  // 6D. SAVE & PUBLISH CONTINUOUS ASSESSMENT (CA)
+  // -------------------------------------------------------------------------
+  const handleSaveCA = async (publishToStudents) => {
+    const selectedCourseCode = gradebookCourseSelect?.value;
+    if (!selectedCourseCode) {
+      showGradebookAlert("Please select an assigned course first.", "error");
+      return;
+    }
+
+    const table = document.getElementById("ca-entry-table");
+    if (!table) return;
+
+    const rows = table.querySelectorAll("tbody tr");
+    const myAllocations = allAllocationsState.filter(isMyAllocation);
+    const courseObj = myAllocations.find((a) => a.courseCode === selectedCourseCode);
+
+    const caEntriesToSave = [];
+
+    rows.forEach((row) => {
+      const cbtIn = row.querySelector(".input-ca-cbt");
+      const attIn = row.querySelector(".input-ca-att");
+      const assIn = row.querySelector(".input-ca-ass");
+      const practIn = row.querySelector(".input-ca-pract");
+
+      const cbtVal = cbtIn ? cbtIn.value.trim() : "";
+      const attVal = attIn ? attIn.value.trim() : "";
+      const assVal = assIn ? assIn.value.trim() : "";
+      const practVal = practIn ? practIn.value.trim() : "";
+
+      // Only process if at least one field has an entry or if publishing
+      if (cbtVal !== "" || attVal !== "" || assVal !== "" || practVal !== "" || publishToStudents) {
+        const studentName = row.getAttribute("data-student-name");
+        const matricNumber = row.getAttribute("data-matric");
+        const studyCentre = row.getAttribute("data-centre");
+        const sessionVal = row.getAttribute("data-session") || "2026/2027";
+        const semesterVal = row.getAttribute("data-semester") || "First Semester";
+
+        caEntriesToSave.push({
+          studentName,
+          matricNumber,
+          courseCode: selectedCourseCode,
+          courseTitle: courseObj?.courseTitle || "Theological Study",
+          creditUnits: courseObj?.creditUnits || 3,
+          studyCentre,
+          academicSession: sessionVal,
+          semester: semesterVal,
+          cbtScore: cbtVal !== "" ? parseInt(cbtVal, 10) : 0,
+          attendanceScore: attVal !== "" ? parseInt(attVal, 10) : 0,
+          assignmentScore: assVal !== "" ? parseInt(assVal, 10) : 0,
+          practicalScore: practVal !== "" ? parseInt(practVal, 10) : 0,
+          caPublished: publishToStudents,
+          caStatus: publishToStudents ? "published" : "draft",
+          lecturerStaffId: staffId,
+          lecturerName: fullName
+        });
+      }
+    });
+
+    if (caEntriesToSave.length === 0) {
+      showGradebookAlert("No Continuous Assessment marks have been entered. Enter marks before saving.", "error");
+      return;
+    }
+
+    if (publishToStudents) {
+      if (!confirm(`Publish Continuous Assessment marks directly to all ${caEntriesToSave.length} enrolled student(s) in ${selectedCourseCode}?\n\nEnrolled students will immediately be able to view their CBT, Attendance, Assignment, Practical, and Total CA marks in their Student Portal.`)) {
+        return;
+      }
+    }
+
+    const btn = publishToStudents ? btnPublishCaStudents : btnSaveCaDraft;
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span>Saving CA...</span>`;
+
+    try {
+      for (const entry of caEntriesToSave) {
+        await saveLecturerGradeRecord(entry);
+      }
+
+      if (publishToStudents) {
+        await publishCourseCAResults(selectedCourseCode, {
+          session: "2026/2027",
+          semester: "First Semester",
+          studyCentre: "all",
+          lecturerStaffId: staffId,
+          lecturerName: fullName
+        });
+
+        showGradebookAlert(
+          `✓ Success: Continuous Assessment (CA) scores published directly to ${caEntriesToSave.length} enrolled students for ${selectedCourseCode}. Enrolled students can now view their scores immediately.`,
+          "success"
+        );
+      } else {
+        showGradebookAlert(
+          `✓ Draft CA scores saved for ${caEntriesToSave.length} students in ${selectedCourseCode}. You can continue editing or publish when ready.`,
+          "success"
+        );
+      }
+    } catch (err) {
+      showGradebookAlert(`Failed to save CA scores: ${err.message}`, "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  };
+
+  if (btnSaveCaDraft) btnSaveCaDraft.addEventListener("click", () => handleSaveCA(false));
+  if (btnPublishCaStudents) btnPublishCaStudents.addEventListener("click", () => handleSaveCA(true));
+
+  if (btnUnpublishCa) {
+    btnUnpublishCa.addEventListener("click", async () => {
+      const selectedCourseCode = gradebookCourseSelect?.value;
+      if (!selectedCourseCode) return;
+      if (!confirm(`Withdraw CA publication for ${selectedCourseCode}? Scores will revert to draft and become hidden from student view.`)) return;
+
+      try {
+        await unpublishCourseCAResults(selectedCourseCode, {
+          session: "2026/2027",
+          semester: "First Semester",
+          studyCentre: "all"
+        });
+        showGradebookAlert(`Continuous Assessment for ${selectedCourseCode} reverted to draft status.`, "success");
+      } catch (err) {
+        showGradebookAlert(`Failed to unpublish CA: ${err.message}`, "error");
+      }
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // 6E. SAVE & SUBMIT FINAL EXAMINATION (70 MARKS)
+  // -------------------------------------------------------------------------
   const handleSaveGrades = async (targetStatus) => {
     const selectedCourseCode = gradebookCourseSelect?.value;
     if (!selectedCourseCode) {
@@ -893,7 +1368,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const table = document.getElementById("grade-entry-table");
+    const table = document.getElementById("exam-entry-table");
     if (!table) return;
 
     const rows = table.querySelectorAll("tbody tr");
@@ -903,15 +1378,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const gradeEntriesToSave = [];
 
     rows.forEach((row) => {
-      const caInput = row.querySelector(".input-ca");
       const examInput = row.querySelector(".input-exam");
-      if (!caInput || !examInput) return;
+      if (!examInput) return;
 
-      const caVal = caInput.value.trim();
       const examVal = examInput.value.trim();
+      const caVal = parseInt(row.getAttribute("data-ca"), 10) || 0;
 
-      // Only save if at least one score is provided
-      if (caVal !== "" || examVal !== "") {
+      // Only save if exam mark is provided or if submitted
+      if (examVal !== "" || targetStatus === "submitted") {
         const studentName = row.getAttribute("data-student-name");
         const matricNumber = row.getAttribute("data-matric");
         const studyCentre = row.getAttribute("data-centre");
@@ -923,11 +1397,12 @@ document.addEventListener("DOMContentLoaded", () => {
           matricNumber,
           courseCode: selectedCourseCode,
           courseTitle: courseObj?.courseTitle || "Theological Study",
+          creditUnits: courseObj?.creditUnits || 3,
           studyCentre,
           academicSession: sessionVal,
           semester: semesterVal,
-          caScore: parseInt(caVal, 10) || 0,
-          examScore: parseInt(examVal, 10) || 0,
+          caScore: caVal,
+          examScore: examVal !== "" ? parseInt(examVal, 10) : 0,
           status: targetStatus,
           lecturerStaffId: staffId,
           lecturerName: fullName
@@ -936,11 +1411,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     if (gradeEntriesToSave.length === 0) {
-      showGradebookAlert("No marks have been entered yet. Enter CA or Exam marks for students before saving.", "error");
+      showGradebookAlert("No examination marks have been entered yet. Enter exam marks before saving.", "error");
       return;
     }
 
-    const btn = targetStatus === "submitted" ? btnSubmitRegistry : btnSaveDraft;
+    if (targetStatus === "submitted") {
+      if (!confirm(`Submit final examination results for ${gradeEntriesToSave.length} students in ${selectedCourseCode} to the Academic Registry?\n\nNote: Submitted results will be reviewed and officially approved by the Academic Registry prior to semester publication.`)) {
+        return;
+      }
+    }
+
+    const btn = targetStatus === "submitted" ? btnSubmitGradeRegistry : btnSaveGradeDraft;
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `<span>Saving...</span>`;
@@ -952,13 +1433,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const count = gradeEntriesToSave.length;
       if (targetStatus === "submitted") {
+        await submitCourseGradesToRegistry(selectedCourseCode, {
+          session: "2026/2027",
+          semester: "First Semester",
+          studyCentre: "all",
+          lecturerStaffId: staffId,
+          lecturerName: fullName
+        });
+
         showGradebookAlert(
-          `✓ Successfully submitted grades for ${count} students in ${selectedCourseCode} to the Academic Registry for verification and publishing.`,
+          `✓ Successfully submitted examination results for ${count} students in ${selectedCourseCode} to Academic Registry for verification and approval.`,
           "success"
         );
       } else {
         showGradebookAlert(
-          `✓ Draft scores saved for ${count} students in ${selectedCourseCode}. You can return and complete editing anytime.`,
+          `✓ Draft examination scores saved for ${count} students in ${selectedCourseCode}. You can return and complete editing anytime.`,
           "success"
         );
       }
@@ -969,6 +1458,116 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.innerHTML = originalText;
     }
   };
+
+  if (btnSaveGradeDraft) btnSaveGradeDraft.addEventListener("click", () => handleSaveGrades("draft"));
+  if (btnSubmitGradeRegistry) btnSubmitGradeRegistry.addEventListener("click", () => handleSaveGrades("submitted"));
+
+  if (btnPrintExamBroadsheet) {
+    btnPrintExamBroadsheet.addEventListener("click", () => {
+      window.print();
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // 6F. ASSESSMENT ACTIVITY CREATION MODAL HANDLERS
+  // -------------------------------------------------------------------------
+  const modalCreateAsmt = document.getElementById("modal-create-assessment");
+  const formCreateAsmt = document.getElementById("form-create-assessment");
+  const btnCloseAsmtModal = document.getElementById("btn-close-asmt-modal");
+  const btnCancelAsmtModal = document.getElementById("btn-cancel-asmt-modal");
+  const asmtFormType = document.getElementById("asmt-form-type");
+  const asmtFormMax = document.getElementById("asmt-form-max");
+  const wrapAsmtDuration = document.getElementById("wrap-asmt-duration");
+
+  const openAsmtModal = () => {
+    if (!modalCreateAsmt) return;
+    const currentCourse = gradebookCourseSelect?.value || "";
+    const asmtFormCourse = document.getElementById("asmt-form-course");
+    if (asmtFormCourse && currentCourse) {
+      asmtFormCourse.value = currentCourse;
+    }
+    modalCreateAsmt.style.display = "flex";
+  };
+
+  const closeAsmtModal = () => {
+    if (!modalCreateAsmt) return;
+    modalCreateAsmt.style.display = "none";
+    if (formCreateAsmt) formCreateAsmt.reset();
+  };
+
+  if (btnOpenAsmtModal) btnOpenAsmtModal.addEventListener("click", openAsmtModal);
+  if (btnNewActivityBtn) btnNewActivityBtn.addEventListener("click", openAsmtModal);
+  if (btnCloseAsmtModal) btnCloseAsmtModal.addEventListener("click", closeAsmtModal);
+  if (btnCancelAsmtModal) btnCancelAsmtModal.addEventListener("click", closeAsmtModal);
+
+  if (asmtFormType && asmtFormMax) {
+    asmtFormType.addEventListener("change", () => {
+      const val = asmtFormType.value;
+      if (val === "cbt") {
+        asmtFormMax.value = 10;
+        if (wrapAsmtDuration) wrapAsmtDuration.style.display = "block";
+      } else if (val === "attendance") {
+        asmtFormMax.value = 5;
+        if (wrapAsmtDuration) wrapAsmtDuration.style.display = "none";
+      } else if (val === "assignment") {
+        asmtFormMax.value = 5;
+        if (wrapAsmtDuration) wrapAsmtDuration.style.display = "none";
+      } else if (val === "practical") {
+        asmtFormMax.value = 10;
+        if (wrapAsmtDuration) wrapAsmtDuration.style.display = "none";
+      }
+    });
+  }
+
+  if (formCreateAsmt) {
+    formCreateAsmt.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const courseCode = document.getElementById("asmt-form-course")?.value;
+      const type = document.getElementById("asmt-form-type")?.value || "cbt";
+      const title = document.getElementById("asmt-form-title")?.value.trim();
+      const maxScore = parseInt(document.getElementById("asmt-form-max")?.value, 10) || 10;
+      const durationMinutes = parseInt(document.getElementById("asmt-form-duration")?.value, 10) || 30;
+      const dueDate = document.getElementById("asmt-form-duedate")?.value || "";
+      const description = document.getElementById("asmt-form-desc")?.value.trim() || "";
+
+      if (!courseCode) {
+        alert("Please select a target course offering.");
+        return;
+      }
+      if (!title) {
+        alert("Please provide an assessment title.");
+        return;
+      }
+
+      const btnSubmit = document.getElementById("btn-submit-asmt-form");
+      const origText = btnSubmit.textContent;
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "Creating...";
+
+      try {
+        await createCourseAssessment({
+          courseCode,
+          type,
+          title,
+          maxScore,
+          durationMinutes,
+          dueDate,
+          description,
+          lecturerStaffId: staffId,
+          lecturerName: fullName
+        });
+
+        closeAsmtModal();
+        showGradebookAlert(`✓ Assessment activity "${title}" created successfully for ${courseCode}.`, "success");
+        switchGradeSubTab("activities");
+      } catch (err) {
+        alert(`Failed to create assessment: ${err.message}`);
+      } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = origText;
+      }
+    });
+  }
 
   const showGradebookAlert = (msg, type) => {
     if (!gradebookAlert) return;
@@ -985,9 +1584,6 @@ document.addEventListener("DOMContentLoaded", () => {
     gradebookAlert.textContent = msg;
     gradebookAlert.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
-
-  if (btnSaveDraft) btnSaveDraft.addEventListener("click", () => handleSaveGrades("draft"));
-  if (btnSubmitRegistry) btnSubmitRegistry.addEventListener("click", () => handleSaveGrades("submitted"));
 
   // =========================================================================
   // 7. REAL-TIME ANNOUNCEMENTS & NOTICES
@@ -1285,6 +1881,14 @@ document.addEventListener("DOMContentLoaded", () => {
   subscribeResults((results) => {
     allResultsState = results || [];
     refreshAllViews();
+  });
+
+  subscribeCourseAssessments((asmts) => {
+    allAssessmentsState = asmts || [];
+    const myAllocations = allAllocationsState.filter(isMyAllocation);
+    if (activeGradeSubTab === "activities") {
+      renderActivitiesView(myAllocations, allAssessmentsState);
+    }
   });
 
   subscribeAnnouncements((notices) => {

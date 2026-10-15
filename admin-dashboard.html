@@ -3055,17 +3055,265 @@
           </div>
         </section>
 
-        <!-- SECTION 11: RESULT APPROVAL -->
-        <section class="admin-section" id="section-result-approval" aria-label="Result Approval">
+        <!-- SECTION 11: RESULT APPROVAL & REGISTRY BROADSHEET -->
+        <section class="admin-section" id="section-result-approval" aria-label="Result Approval &amp; Broadsheet">
           <div class="section-heading-wrap">
-            <h2 class="section-main-title">Result Approval &amp; Grading</h2>
-            <p class="section-sub-title">Audit continuous assessment scores and semester examination results.</p>
+            <h2 class="section-main-title">Result Approval &amp; Registry Broadsheet</h2>
+            <p class="section-sub-title">Audit continuous assessment scores (30%), verify final examination results (70%), and officially approve semester grades for student publication.</p>
           </div>
-          <div class="section-placeholder-card">
-            <div class="placeholder-icon">🎖️</div>
-            <h3 class="placeholder-title">Registry Examination Clearance</h3>
-            <p class="placeholder-desc">Verify scores submitted by course tutors prior to publishing results to student portals.</p>
-            <span class="placeholder-tag">Zero Pending Approvals</span>
+
+          <!-- Result Metrics Stat Row -->
+          <div class="stat-cards-grid-courses" style="margin-bottom: 1.5rem;">
+            <!-- 1. Pending Approvals -->
+            <div class="stat-card gold-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Pending Approval</span>
+                <div class="stat-icon-wrap" style="color: #D97706; background: #FEF3C7;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-res-pending">0</div>
+              <span class="stat-foot">Awaiting Registry Clearance</span>
+            </div>
+
+            <!-- 2. Approved & Published -->
+            <div class="stat-card green-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Approved &amp; Published</span>
+                <div class="stat-icon-wrap" style="color: #16A34A; background: #DCFCE7;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-res-approved">0</div>
+              <span class="stat-foot">Live in Student Portals</span>
+            </div>
+
+            <!-- 3. Revision Requested -->
+            <div class="stat-card" style="border-left: 4px solid #EF4444;">
+              <div class="stat-card-header">
+                <span class="stat-label">Revision Requested</span>
+                <div class="stat-icon-wrap" style="color: #DC2626; background: #FEE2E2;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 4v6h6"></path>
+                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-res-revision" style="color: #DC2626;">0</div>
+              <span class="stat-foot">Sent Back to Faculty Tutors</span>
+            </div>
+
+            <!-- 4. Total Graded Candidates -->
+            <div class="stat-card navy-accent">
+              <div class="stat-card-header">
+                <span class="stat-label">Total Results</span>
+                <div class="stat-icon-wrap">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-val" id="stat-res-total">0</div>
+              <span class="stat-foot">Academic Registry Database</span>
+            </div>
+          </div>
+
+          <!-- Result Filters Card -->
+          <div class="course-filter-panel-card" style="margin-bottom: 1.5rem;">
+            <div class="filter-panel-header">
+              <div class="filter-panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <span>Filter Examination &amp; Assessment Broadsheet</span>
+              </div>
+              <button type="button" class="btn-reset-filters" id="btn-reset-res-filters">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+                <span>Reset Filters</span>
+              </button>
+            </div>
+
+            <div class="filter-grid-courses">
+              <!-- 1. Search Field -->
+              <div class="filter-item-search">
+                <label class="filter-label" for="filter-res-search">Search Candidate</label>
+                <div class="table-search-box">
+                  <span class="table-search-icon">🔍</span>
+                  <input type="text" class="table-search-input" id="filter-res-search" placeholder="Filter by student name or matric number...">
+                </div>
+              </div>
+
+              <!-- 2. Course Offering -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-res-course">Course Offering</label>
+                <select class="table-filter-select" id="filter-res-course">
+                  <option value="all">All Course Offerings</option>
+                </select>
+              </div>
+
+              <!-- 3. Approval Status -->
+              <div class="filter-item">
+                <label class="filter-label" for="filter-res-status">Approval Status</label>
+                <select class="table-filter-select" id="filter-res-status">
+                  <option value="all">All Approval Statuses</option>
+                  <option value="submitted" selected>Pending Review (Submitted)</option>
+                  <option value="published">Approved &amp; Published</option>
+                  <option value="rejected">Revision Requested</option>
+                  <option value="draft">Faculty Draft</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="filter-row-secondary">
+              <!-- 4. Academic Session -->
+              <div class="filter-item" style="flex: 1;">
+                <label class="filter-label" for="filter-res-session">Academic Session</label>
+                <select class="table-filter-select" id="filter-res-session">
+                  <option value="all">All Sessions</option>
+                  <option value="2026/2027" selected>2026/2027</option>
+                  <option value="2025/2026">2025/2026</option>
+                </select>
+              </div>
+
+              <!-- 5. Semester -->
+              <div class="filter-item" style="flex: 1;">
+                <label class="filter-label" for="filter-res-semester">Semester</label>
+                <select class="table-filter-select" id="filter-res-semester">
+                  <option value="all">All Semesters</option>
+                  <option value="First Semester" selected>First Semester</option>
+                  <option value="Second Semester">Second Semester</option>
+                  <option value="Third Semester">Third Semester</option>
+                </select>
+              </div>
+
+              <!-- 6. Study Centre -->
+              <div class="filter-item" style="flex: 1.5;">
+                <label class="filter-label" for="filter-res-centre">Study Centre</label>
+                <select class="table-filter-select" id="filter-res-centre">
+                  <option value="all">All Study Centres</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Course Performance & Grade Distribution Banner -->
+          <div class="content-card" style="margin-bottom: 1.5rem; background: #F8FAFC; border: 1px solid var(--admin-border);" id="res-analytics-card">
+            <div style="padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <span style="font-size: 0.72rem; font-weight: 700; color: var(--admin-text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Grade Distribution &amp; Cohort Quality</span>
+                <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.35rem; flex-wrap: wrap;">
+                  <div>
+                    <span style="font-size: 0.75rem; color: var(--admin-text-muted);">Class Average:</span>
+                    <strong style="color: var(--dark-navy); font-size: 1.05rem;" id="res-analytic-avg">0%</strong>
+                  </div>
+                  <div style="height: 20px; width: 1px; background: #CBD5E1;"></div>
+                  <div>
+                    <span style="font-size: 0.75rem; color: var(--admin-text-muted);">Pass Rate:</span>
+                    <strong style="color: #16A34A; font-size: 1.05rem;" id="res-analytic-pass">0%</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Grade letter pills distribution -->
+              <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;" id="res-analytic-grades">
+                <span class="session-strip-badge" style="background:#DCFCE7; color:#166534; border-color:#BBF7D0;">A: <strong id="res-cnt-a">0</strong></span>
+                <span class="session-strip-badge" style="background:#DBEAFE; color:#1E40AF; border-color:#BFDBFE;">B: <strong id="res-cnt-b">0</strong></span>
+                <span class="session-strip-badge" style="background:#FEF3C7; color:#92400E; border-color:#FDE68A;">C: <strong id="res-cnt-c">0</strong></span>
+                <span class="session-strip-badge" style="background:#FFEDD5; color:#9A3412; border-color:#FED7AA;">D: <strong id="res-cnt-d">0</strong></span>
+                <span class="session-strip-badge" style="background:#F3E8FF; color:#6B21A8; border-color:#E9D5FF;">E: <strong id="res-cnt-e">0</strong></span>
+                <span class="session-strip-badge" style="background:#FEE2E2; color:#991B1B; border-color:#FECACA;">F: <strong id="res-cnt-f">0</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Broadsheet Content Card -->
+          <div class="content-card">
+            <div class="table-toolbar" style="flex-wrap: wrap; gap: 0.75rem;">
+              <div class="table-toolbar-left" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <span class="content-card-title">Official Registry Broadsheet</span>
+                <span class="session-strip-badge" id="res-broadsheet-count-pill" style="background: #EFF6FF; color: var(--primary-blue); border-color: #BFDBFE;">0 Candidates</span>
+              </div>
+              <div class="table-toolbar-right" style="display: flex; gap: 0.5rem; flex-wrap: wrap;" class="no-print">
+                <button type="button" class="btn-card-action" id="btn-admin-print-broadsheet" style="font-weight: 700;">
+                  🖨️ Print Senate Broadsheet
+                </button>
+                <button type="button" class="btn-card-action" id="btn-admin-reject-results" style="background: #F59E0B; color: #FFFFFF; border-color: #F59E0B; font-weight: 700;">
+                  ↩ Request Lecturer Revision
+                </button>
+                <button type="button" class="btn-admin-primary" id="btn-admin-approve-results" style="background: #16A34A; border-color: #15803D; font-weight: 700;">
+                  ✓ Approve &amp; Publish to Students
+                </button>
+              </div>
+            </div>
+
+            <!-- Broadsheet Table -->
+            <div class="table-responsive">
+              <table class="admin-table" id="broadsheet-admin-table">
+                <thead>
+                  <tr>
+                    <th style="width: 40px;">#</th>
+                    <th style="min-width: 170px;">Candidate Name</th>
+                    <th style="min-width: 130px;">Matric Number</th>
+                    <th style="min-width: 90px;">Course</th>
+                    <th style="text-align: center; min-width: 60px;">CBT<br><span style="font-size: 0.65rem; font-weight: normal;">/10</span></th>
+                    <th style="text-align: center; min-width: 60px;">Att<br><span style="font-size: 0.65rem; font-weight: normal;">/5</span></th>
+                    <th style="text-align: center; min-width: 60px;">Ass<br><span style="font-size: 0.65rem; font-weight: normal;">/5</span></th>
+                    <th style="text-align: center; min-width: 60px;">Pract<br><span style="font-size: 0.65rem; font-weight: normal;">/10</span></th>
+                    <th style="text-align: center; min-width: 70px; background: #F0FDF4; color: #166534;">Total CA<br><span style="font-size: 0.65rem; font-weight: 800;">/30</span></th>
+                    <th style="text-align: center; min-width: 70px;">Exam<br><span style="font-size: 0.65rem; font-weight: normal;">/70</span></th>
+                    <th style="text-align: center; min-width: 80px; background: #EFF6FF; color: var(--primary-blue);">Final Score<br><span style="font-size: 0.65rem; font-weight: 800;">100%</span></th>
+                    <th style="text-align: center; min-width: 60px;">Grade</th>
+                    <th style="text-align: center; min-width: 50px;">GP</th>
+                    <th style="min-width: 120px;">Study Centre</th>
+                    <th style="min-width: 120px;">Status</th>
+                    <th style="text-align: right; min-width: 130px;" class="no-print">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="broadsheet-table-tbody">
+                  <tr>
+                    <td colspan="16">
+                      <div class="empty-state-box">
+                        <div class="empty-icon">⏳</div>
+                        <div class="empty-state-text">Loading examination results...</div>
+                        <div class="empty-state-sub">Connecting to Firestore results collection.</div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Senate Signature Strip for Printing -->
+            <div id="broadsheet-print-signatures" style="display: none; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 2px dashed #CBD5E1;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem; text-align: center;">
+                <div>
+                  <div style="border-bottom: 1px solid #000; height: 35px; margin-bottom: 0.35rem;"></div>
+                  <strong style="font-size: 0.8125rem; display: block;">Course Examiner / Faculty Lecturer</strong>
+                  <span style="font-size: 0.72rem; color: #64748B;">Name, Signature &amp; Date</span>
+                </div>
+                <div>
+                  <div style="border-bottom: 1px solid #000; height: 35px; margin-bottom: 0.35rem;"></div>
+                  <strong style="font-size: 0.8125rem; display: block;">Dean of Academic Studies</strong>
+                  <span style="font-size: 0.72rem; color: #64748B;">Board of Studies Endorsement</span>
+                </div>
+                <div>
+                  <div style="border-bottom: 1px solid #000; height: 35px; margin-bottom: 0.35rem;"></div>
+                  <strong style="font-size: 0.8125rem; display: block;">Registrar &amp; Secretary to Senate</strong>
+                  <span style="font-size: 0.72rem; color: #64748B;">Official Institutional Seal</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -4852,6 +5100,46 @@
         </button>
         <button type="button" class="btn-admin-primary" id="btn-reg-modal-approve" style="background: #16A34A; border-color: #16A34A;">
           ✓ Approve Registration
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL: RESULT REVISION REQUEST (TO LECTURER)
+       ====================================================================== -->
+  <div class="admin-modal-backdrop" id="modal-result-revision" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="revision-modal-title">
+    <div class="admin-modal-card" style="max-width: 540px;">
+      <div class="admin-modal-header">
+        <div>
+          <h3 class="admin-modal-title" id="revision-modal-title">Request Result Revision</h3>
+          <p class="admin-modal-subtitle">Provide authoritative feedback or specify corrections required by the course examiner.</p>
+        </div>
+        <button type="button" class="btn-admin-modal-close" id="btn-close-revision-modal" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="admin-modal-body" style="padding: 1.25rem;">
+        <div style="background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 6px; padding: 0.85rem; margin-bottom: 1rem; font-size: 0.8125rem; color: #92400E;">
+          <strong>Action:</strong> Returning results will mark the status as <strong>Revision Requested</strong> and send this notice to the assigned lecturer's portal.
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label class="filter-label" style="font-weight: 700;">Target Course Offering</label>
+          <div id="revision-modal-course-name" style="font-weight: 800; color: var(--dark-navy); font-size: 0.95rem; padding: 0.5rem 0.75rem; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
+            All Filtered Courses
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label class="filter-label" for="res-revision-reason" style="font-weight: 700;">Registry Audit Remarks &amp; Correction Directives *</label>
+          <textarea class="form-control-admin" id="res-revision-reason" rows="4" placeholder="Detail score discrepancies, unrecorded Continuous Assessment components, or moderation adjustments..." required></textarea>
+        </div>
+      </div>
+
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-revision-modal">Cancel</button>
+        <button type="button" class="btn-card-action" id="btn-submit-res-revision" style="background: #DC2626; color: #FFFFFF; border-color: #DC2626; font-weight: 700;">
+          Send Revision Request
         </button>
       </div>
     </div>

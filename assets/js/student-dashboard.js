@@ -182,60 +182,243 @@ function renderStudentProfile(profile) {
 /**
  * Connect Student Results from Firestore
  * Filter strictly by student identity (matricNumber or fullName)
+ * Supports:
+ * 1. Official Approved Semester Examination Results (100 Marks: CA 30 + Exam 70)
+ * 2. Lecturer-Published Continuous Assessment (CA) Breakdown (30 Marks: CBT 10, Attendance 5, Assignment 5, Practical 10)
+ * 3. Real-time GPA & Credit Unit computations
  */
 function initStudentResults(studentProfile) {
   const dashResultsTbody = document.getElementById("dash-latest-results-tbody");
   const allResultsTbody = document.getElementById("student-all-results-tbody");
+  const caBreakdownTbody = document.getElementById("student-ca-breakdown-tbody");
 
-  const studentReg = (studentProfile.studentId || studentProfile.admissionNumber || "").toUpperCase();
-  const studentName = (studentProfile.fullName || "").toLowerCase();
+  // GPA Elements
+  const gpaUnitsTotal = document.getElementById("stu-gpa-units-total");
+  const gpaUnitsPassed = document.getElementById("stu-gpa-units-passed");
+  const gpaVal = document.getElementById("stu-gpa-val");
+  const gpaStanding = document.getElementById("stu-academic-standing");
+
+  // Printable Slip Elements
+  const printName = document.getElementById("print-res-name");
+  const printMatric = document.getElementById("print-res-matric");
+  const printProg = document.getElementById("print-res-programme");
+  const printCentre = document.getElementById("print-res-centre");
+
+  if (printName) printName.textContent = studentProfile.fullName || "-";
+  if (printMatric) printMatric.textContent = studentProfile.studentId || studentProfile.admissionNumber || "-";
+  if (printProg) printProg.textContent = studentProfile.programme || "-";
+  if (printCentre) printCentre.textContent = studentProfile.studyCentre || "-";
+
+  // Tab Switcher
+  const btnTabExam = document.getElementById("btn-stu-tab-exam");
+  const btnTabCa = document.getElementById("btn-stu-tab-ca");
+  const paneExam = document.getElementById("stu-pane-exam");
+  const paneCa = document.getElementById("stu-pane-ca");
+
+  if (btnTabExam && btnTabCa) {
+    btnTabExam.onclick = () => {
+      btnTabExam.style.background = "var(--student-blue)";
+      btnTabExam.style.color = "#FFFFFF";
+      btnTabExam.style.border = "none";
+      btnTabCa.style.background = "#FFFFFF";
+      btnTabCa.style.color = "var(--student-navy)";
+      btnTabCa.style.border = "1px solid var(--student-border)";
+      if (paneExam) paneExam.style.display = "block";
+      if (paneCa) paneCa.style.display = "none";
+    };
+
+    btnTabCa.onclick = () => {
+      btnTabCa.style.background = "var(--student-blue)";
+      btnTabCa.style.color = "#FFFFFF";
+      btnTabCa.style.border = "none";
+      btnTabExam.style.background = "#FFFFFF";
+      btnTabExam.style.color = "var(--student-navy)";
+      btnTabExam.style.border = "1px solid var(--student-border)";
+      if (paneExam) paneExam.style.display = "none";
+      if (paneCa) paneCa.style.display = "block";
+    };
+  }
+
+  const studentReg = (studentProfile.studentId || studentProfile.admissionNumber || "").trim().toUpperCase();
+  const studentName = (studentProfile.fullName || "").trim().toLowerCase();
 
   subscribeResults((rawResults) => {
     const list = rawResults || [];
 
-    // Filter only results that are PUBLISHED / APPROVED and belong to THIS student
-    const studentResults = list.filter((r) => {
-      const isApproved = r.status === "approved" || r.status === "published";
-      if (!isApproved) return false;
-
-      const rMatric = (r.matricNumber || "").toUpperCase();
-      const rName = (r.studentName || "").toLowerCase();
-
+    // Filter all records for this specific student
+    const myAllRecords = list.filter((r) => {
+      const rMatric = (r.matricNumber || "").trim().toUpperCase();
+      const rName = (r.studentName || "").trim().toLowerCase();
       return (
         (studentReg && rMatric === studentReg) ||
         (studentName && rName === studentName)
       );
     });
 
-    const renderRow = (res) => `
-      <tr>
-        <td><strong>${res.courseCode || "THEO"}</strong></td>
-        <td>${res.courseTitle || "Theological Study"}</td>
-        <td><strong style="color: var(--student-navy);">${res.score !== undefined ? res.score : "N/A"}%</strong></td>
-        <td><span class="status-pill-badge ${res.grade === "A" ? "badge-green" : res.grade === "B" ? "badge-blue" : "badge-gold"}">${res.grade || "N/A"}</span></td>
-        <td>${res.semester || "First Semester"}</td>
-        <td>${res.academicSession || "2026/2027"}</td>
-      </tr>
-    `;
+    // 1. Official Semester Results (Must be approved / published by Admin)
+    const officialResults = myAllRecords.filter((r) => {
+      return r.status === "approved" || r.status === "published";
+    });
 
-    if (studentResults.length === 0) {
+    // 2. Continuous Assessment (CA) records (Published directly by Lecturer)
+    const publishedCaRecords = myAllRecords.filter((r) => {
+      return r.caPublished === true || r.caStatus === "published";
+    });
+
+    // Compute GPA and Units from official results
+    let totalUnits = 0;
+    let passedUnits = 0;
+    let totalQualityPoints = 0;
+
+    officialResults.forEach((res) => {
+      const units = parseInt(res.creditUnits, 10) || 3;
+      const gp = parseFloat(res.gradePoint !== undefined ? res.gradePoint : (res.gp || 0));
+      totalUnits += units;
+      totalQualityPoints += units * gp;
+      if (gp > 0) passedUnits += units;
+    });
+
+    const calculatedGpa = totalUnits > 0 ? (totalQualityPoints / totalUnits).toFixed(2) : "0.00";
+
+    if (gpaUnitsTotal) gpaUnitsTotal.textContent = totalUnits;
+    if (gpaUnitsPassed) gpaUnitsPassed.textContent = passedUnits;
+    if (gpaVal) gpaVal.textContent = calculatedGpa;
+
+    if (gpaStanding) {
+      const gpaNum = parseFloat(calculatedGpa);
+      if (gpaNum >= 4.5) {
+        gpaStanding.className = "status-pill-badge badge-green";
+        gpaStanding.textContent = "ACADEMIC STANDING: FIRST CLASS HONOURS / DISTINCTION";
+      } else if (gpaNum >= 3.5) {
+        gpaStanding.className = "status-pill-badge badge-green";
+        gpaStanding.textContent = "ACADEMIC STANDING: SECOND CLASS UPPER / EXCELLENT";
+      } else if (gpaNum >= 2.4) {
+        gpaStanding.className = "status-pill-badge badge-blue";
+        gpaStanding.textContent = "ACADEMIC STANDING: GOOD STANDING";
+      } else if (gpaNum > 0) {
+        gpaStanding.className = "status-pill-badge badge-gold";
+        gpaStanding.textContent = "ACADEMIC STANDING: PASS / ACADEMIC ADVISORY";
+      } else {
+        gpaStanding.className = "status-pill-badge badge-blue";
+        gpaStanding.textContent = "ACADEMIC STANDING: IN PROGRESS";
+      }
+    }
+
+    // Render Official Semester Examination Results Table
+    if (officialResults.length === 0) {
       const emptyHtml = `
         <tr>
-          <td colspan="6">
+          <td colspan="9">
             <div class="student-empty-box">
               <div class="student-empty-icon">📋</div>
-              <div class="student-empty-text">No results have been published yet.</div>
-              <div class="student-empty-sub">Verified scores will appear here once published by the Academic Registry.</div>
+              <div class="student-empty-text">No final results have been approved yet.</div>
+              <div class="student-empty-sub">Verified semester scores will appear here once approved by the Academic Registry. Check the CA Breakdown tab to see continuous assessment marks published by lecturers.</div>
             </div>
           </td>
         </tr>
       `;
-      if (dashResultsTbody) dashResultsTbody.innerHTML = emptyHtml;
       if (allResultsTbody) allResultsTbody.innerHTML = emptyHtml;
+      if (dashResultsTbody) {
+        dashResultsTbody.innerHTML = `
+          <tr>
+            <td colspan="6">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📋</div>
+                <div class="student-empty-text">No final results published yet.</div>
+                <div class="student-empty-sub">Approved examination grades will be posted here.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }
     } else {
-      const rowsHtml = studentResults.map(renderRow).join("");
-      if (dashResultsTbody) dashResultsTbody.innerHTML = studentResults.slice(0, 4).map(renderRow).join("");
-      if (allResultsTbody) allResultsTbody.innerHTML = rowsHtml;
+      if (allResultsTbody) {
+        allResultsTbody.innerHTML = officialResults.map((res) => {
+          const ca = res.caScore !== undefined ? res.caScore : 0;
+          const exam = res.examScore !== undefined ? res.examScore : 0;
+          const total = res.score !== undefined ? res.score : (ca + exam);
+          const units = res.creditUnits !== undefined ? res.creditUnits : 3;
+          const grade = res.grade || "—";
+          const gp = res.gradePoint !== undefined ? res.gradePoint : "—";
+          const remarks = res.remarks || (total >= 40 ? "Pass" : "Fail");
+
+          const gradeBadgeClass =
+            grade === "A" ? "badge-green" :
+            grade === "B" ? "badge-blue" :
+            grade === "C" ? "badge-blue" :
+            grade === "D" ? "badge-gold" :
+            grade === "E" ? "badge-gold" : "badge-red";
+
+          return `
+            <tr>
+              <td><strong style="color: var(--student-navy); font-family: monospace;">${res.courseCode || "THEO"}</strong></td>
+              <td>${res.courseTitle || "Theological Study"}</td>
+              <td style="text-align: center; font-weight: 700;">${units}</td>
+              <td style="text-align: center; color: #15803D; font-weight: 700;">${ca}/30</td>
+              <td style="text-align: center; color: var(--student-blue); font-weight: 700;">${exam}/70</td>
+              <td style="text-align: center; font-weight: 800; font-size: 0.95rem; color: var(--student-navy);">${total}%</td>
+              <td style="text-align: center;"><span class="status-pill-badge ${gradeBadgeClass}">${grade}</span></td>
+              <td style="text-align: center; font-weight: 700; color: var(--student-navy);">${gp}</td>
+              <td style="font-size: 0.8125rem; color: var(--student-text-muted);">${remarks}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      if (dashResultsTbody) {
+        dashResultsTbody.innerHTML = officialResults.slice(0, 4).map((res) => `
+          <tr>
+            <td><strong>${res.courseCode || "THEO"}</strong></td>
+            <td>${res.courseTitle || "Theological Study"}</td>
+            <td><strong style="color: var(--student-navy);">${res.score !== undefined ? res.score : "N/A"}%</strong></td>
+            <td><span class="status-pill-badge ${res.grade === "A" ? "badge-green" : res.grade === "B" ? "badge-blue" : "badge-gold"}">${res.grade || "N/A"}</span></td>
+            <td>${res.semester || "First Semester"}</td>
+            <td>${res.academicSession || "2026/2027"}</td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    // Render Continuous Assessment (CA) Breakdown Table
+    if (caBreakdownTbody) {
+      if (publishedCaRecords.length === 0) {
+        caBreakdownTbody.innerHTML = `
+          <tr>
+            <td colspan="9">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📝</div>
+                <div class="student-empty-text">No Continuous Assessment Published Yet</div>
+                <div class="student-empty-sub">When your course lecturers publish Continuous Assessment marks (CBT, Attendance, Assignments, Practicals), they will appear here immediately.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+      } else {
+        caBreakdownTbody.innerHTML = publishedCaRecords.map((res) => {
+          const cbt = res.cbtScore !== undefined ? res.cbtScore : 0;
+          const att = res.attendanceScore !== undefined ? res.attendanceScore : 0;
+          const ass = res.assignmentScore !== undefined ? res.assignmentScore : 0;
+          const prac = res.practicalScore !== undefined ? res.practicalScore : 0;
+          const totalCa = res.caScore !== undefined ? res.caScore : (cbt + att + ass + prac);
+          const lecturer = res.lecturerName || "Course Faculty";
+
+          return `
+            <tr>
+              <td><strong style="color: var(--student-navy); font-family: monospace;">${res.courseCode || "THEO"}</strong></td>
+              <td>${res.courseTitle || "Theological Study"}</td>
+              <td style="font-size: 0.8125rem; color: var(--student-text-muted);">${lecturer}</td>
+              <td style="text-align: center; font-weight: 700; color: var(--student-blue);">${cbt}/10</td>
+              <td style="text-align: center; font-weight: 700; color: var(--student-blue);">${att}/5</td>
+              <td style="text-align: center; font-weight: 700; color: var(--student-blue);">${ass}/5</td>
+              <td style="text-align: center; font-weight: 700; color: var(--student-blue);">${prac}/10</td>
+              <td style="text-align: center; font-weight: 800; font-size: 1rem; color: #15803D;">${totalCa}/30</td>
+              <td style="text-align: center;">
+                <span class="status-pill-badge badge-green">✓ Published by Lecturer</span>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
     }
   });
 }

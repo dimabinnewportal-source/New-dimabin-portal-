@@ -56,7 +56,11 @@ import {
   toggleRegistrationOpenStatus,
   getRegistrationSettings,
   subscribeCourseRegistrations,
-  updateCourseRegistrationStatus
+  updateCourseRegistrationStatus,
+  subscribeResults,
+  approveAndPublishCourseResults,
+  rejectCourseResultsWithFeedback,
+  updateResultStatus
 } from "./firebase-backend.js";
 import { printApplicationForm, downloadApplicationPdf } from "./admission-print-pdf.js";
 
@@ -355,6 +359,9 @@ export function initDashboard() {
 
   // 14. STUDENT DIRECTORY MANAGEMENT CONTROLLER
   initStudentDirectoryManagement();
+
+  // 15. RESULT APPROVAL & REGISTRY BROADSHEET CONTROLLER
+  initResultApproval();
 }
 
 /**
@@ -6230,6 +6237,406 @@ export function initStudentDirectoryManagement() {
   // Expose on namespace
   window.dimabinAdminDashboard = window.dimabinAdminDashboard || {};
   window.dimabinAdminDashboard.openCentreStudentsWorkspace = openCentreStudentsWorkspace;
+}
+
+/**
+ * =========================================================================
+ * 15. RESULT APPROVAL & REGISTRY BROADSHEET SYSTEM CONTROLLER
+ * =========================================================================
+ */
+export function initResultApproval() {
+  const statPending = document.getElementById("stat-res-pending");
+  const statApproved = document.getElementById("stat-res-approved");
+  const statRevision = document.getElementById("stat-res-revision");
+  const statTotal = document.getElementById("stat-res-total");
+
+  const filterSearch = document.getElementById("filter-res-search");
+  const filterCourse = document.getElementById("filter-res-course");
+  const filterStatus = document.getElementById("filter-res-status");
+  const filterSession = document.getElementById("filter-res-session");
+  const filterSemester = document.getElementById("filter-res-semester");
+  const filterCentre = document.getElementById("filter-res-centre");
+  const btnReset = document.getElementById("btn-reset-res-filters");
+
+  const countPill = document.getElementById("res-broadsheet-count-pill");
+  const tbody = document.getElementById("broadsheet-table-tbody");
+  const avgEl = document.getElementById("res-analytic-avg");
+  const passEl = document.getElementById("res-analytic-pass");
+  const cntA = document.getElementById("res-cnt-a");
+  const cntB = document.getElementById("res-cnt-b");
+  const cntC = document.getElementById("res-cnt-c");
+  const cntD = document.getElementById("res-cnt-d");
+  const cntE = document.getElementById("res-cnt-e");
+  const cntF = document.getElementById("res-cnt-f");
+
+  const btnApproveResults = document.getElementById("btn-admin-approve-results");
+  const btnRejectResults = document.getElementById("btn-admin-reject-results");
+  const btnPrintBroadsheet = document.getElementById("btn-admin-print-broadsheet");
+
+  const modalRevision = document.getElementById("modal-result-revision");
+  const btnCloseRevision = document.getElementById("btn-close-revision-modal");
+  const btnCancelRevision = document.getElementById("btn-cancel-revision-modal");
+  const btnSubmitRevision = document.getElementById("btn-submit-res-revision");
+  const revisionCourseName = document.getElementById("revision-modal-course-name");
+  const revisionReason = document.getElementById("res-revision-reason");
+
+  let allResults = [];
+  let allCourses = [];
+  let allCentres = [];
+  let targetRevisionCourse = "all";
+
+  const populateCourseDropdown = () => {
+    if (!filterCourse) return;
+    const currentVal = filterCourse.value;
+    const uniqueCourseCodes = new Set();
+    allResults.forEach((r) => { if (r.courseCode) uniqueCourseCodes.add(r.courseCode.toUpperCase()); });
+    allCourses.forEach((c) => { if (c.courseCode) uniqueCourseCodes.add(c.courseCode.toUpperCase()); });
+
+    const sortedCodes = Array.from(uniqueCourseCodes).sort();
+    filterCourse.innerHTML = `
+      <option value="all">All Course Offerings</option>
+      ${sortedCodes.map((code) => {
+        const found = allCourses.find((c) => c.courseCode && c.courseCode.toUpperCase() === code);
+        const title = found ? found.courseTitle : code;
+        return `<option value="${code}">${code} — ${title}</option>`;
+      }).join("")}
+    `;
+    if (currentVal && sortedCodes.includes(currentVal)) {
+      filterCourse.value = currentVal;
+    }
+  };
+
+  const populateCentresDropdown = () => {
+    if (!filterCentre) return;
+    const currentVal = filterCentre.value;
+    filterCentre.innerHTML = `
+      <option value="all">All Study Centres</option>
+      ${allCentres.map((c) => `<option value="${c.centreName || c.name}">${c.centreName || c.name}</option>`).join("")}
+    `;
+    if (currentVal) filterCentre.value = currentVal;
+  };
+
+  const renderBroadsheet = () => {
+    if (!tbody) return;
+
+    // 1. Metric Stat Totals across all results
+    let pendingCount = 0;
+    let approvedCount = 0;
+    let revisionCount = 0;
+
+    allResults.forEach((r) => {
+      const st = (r.status || "submitted").toLowerCase();
+      if (st === "submitted") pendingCount++;
+      else if (st === "published" || st === "approved") approvedCount++;
+      else if (st === "rejected") revisionCount++;
+    });
+
+    if (statPending) statPending.textContent = pendingCount;
+    if (statApproved) statApproved.textContent = approvedCount;
+    if (statRevision) statRevision.textContent = revisionCount;
+    if (statTotal) statTotal.textContent = allResults.length;
+
+    // 2. Filter Results
+    const q = (filterSearch?.value || "").trim().toLowerCase();
+    const selCourse = filterCourse?.value || "all";
+    const selStatus = filterStatus?.value || "all";
+    const selSession = filterSession?.value || "all";
+    const selSemester = filterSemester?.value || "all";
+    const selCentre = filterCentre?.value || "all";
+
+    const filtered = allResults.filter((r) => {
+      const matchQ =
+        !q ||
+        (r.studentName || "").toLowerCase().includes(q) ||
+        (r.matricNumber || "").toLowerCase().includes(q);
+
+      const matchCourse = selCourse === "all" || (r.courseCode || "").toUpperCase() === selCourse.toUpperCase();
+      const matchStatus = selStatus === "all" || (r.status || "submitted").toLowerCase() === selStatus.toLowerCase();
+      const matchSession = selSession === "all" || r.academicSession === selSession;
+      const matchSemester = selSemester === "all" || r.semester === selSemester;
+      const matchCentre = selCentre === "all" || (r.studyCentre || "").toLowerCase().includes(selCentre.toLowerCase());
+
+      return matchQ && matchCourse && matchStatus && matchSession && matchSemester && matchCentre;
+    });
+
+    if (countPill) countPill.textContent = `${filtered.length} Candidates`;
+
+    // 3. Analytics Calculation for filtered cohort
+    if (filtered.length > 0) {
+      let totalScores = 0;
+      let passCount = 0;
+      let a = 0, b = 0, c = 0, d = 0, e = 0, f = 0;
+
+      filtered.forEach((r) => {
+        const sc = r.score !== undefined ? r.score : 0;
+        totalScores += sc;
+        if (sc >= 40) passCount++;
+        const g = (r.grade || "F").toUpperCase();
+        if (g === "A") a++;
+        else if (g === "B") b++;
+        else if (g === "C") c++;
+        else if (g === "D") d++;
+        else if (g === "E") e++;
+        else f++;
+      });
+
+      const avg = Math.round(totalScores / filtered.length);
+      const passRate = Math.round((passCount / filtered.length) * 100);
+
+      if (avgEl) avgEl.textContent = `${avg}%`;
+      if (passEl) passEl.textContent = `${passRate}%`;
+      if (cntA) cntA.textContent = a;
+      if (cntB) cntB.textContent = b;
+      if (cntC) cntC.textContent = c;
+      if (cntD) cntD.textContent = d;
+      if (cntE) cntE.textContent = e;
+      if (cntF) cntF.textContent = f;
+    } else {
+      if (avgEl) avgEl.textContent = "0%";
+      if (passEl) passEl.textContent = "0%";
+      if (cntA) cntA.textContent = "0";
+      if (cntB) cntB.textContent = "0";
+      if (cntC) cntC.textContent = "0";
+      if (cntD) cntD.textContent = "0";
+      if (cntE) cntE.textContent = "0";
+      if (cntF) cntF.textContent = "0";
+    }
+
+    // 4. Render Table Rows
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="16">
+            <div class="empty-state-box">
+              <div class="empty-icon">🎖️</div>
+              <div class="empty-state-text">No Examination Results Match Filters</div>
+              <div class="empty-state-sub">Adjust filter selections or wait for faculty examiners to submit official score sheets.</div>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map((r, idx) => {
+      const st = (r.status || "submitted").toLowerCase();
+      let statusBadge = `<span class="session-strip-badge" style="background:#FEF3C7; color:#B45309; border-color:#FCD34D;">Pending Review</span>`;
+      if (st === "published" || st === "approved") {
+        statusBadge = `<span class="session-strip-badge" style="background:#DCFCE7; color:#15803D; border-color:#BBF7D0;">Approved &amp; Live</span>`;
+      } else if (st === "rejected") {
+        statusBadge = `<span class="session-strip-badge" style="background:#FEE2E2; color:#B91C1C; border-color:#FCA5A5;">Revision Req.</span>`;
+      } else if (st === "draft") {
+        statusBadge = `<span class="session-strip-badge" style="background:#F1F5F9; color:#475569; border-color:#CBD5E1;">Draft</span>`;
+      }
+
+      const gradeLetter = r.grade || "F";
+      const gp = r.gradePoint !== undefined ? r.gradePoint : "0.0";
+      const gradePill = `<span class="session-strip-badge" style="background: ${gradeLetter === "A" ? "#DCFCE7" : gradeLetter === "B" ? "#DBEAFE" : gradeLetter === "C" ? "#FEF3C7" : "#FEE2E2"}; font-weight:800;">${gradeLetter}</span>`;
+
+      return `
+        <tr>
+          <td style="color: var(--admin-text-muted); font-weight: 700;">${idx + 1}</td>
+          <td>
+            <strong style="color: var(--dark-navy); display: block;">${r.studentName || "Candidate"}</strong>
+            <span style="font-size: 0.72rem; color: var(--admin-text-muted);">${r.studyCentre || "Main Campus"}</span>
+          </td>
+          <td style="font-weight: 700; color: var(--primary-blue); font-family: monospace;">${r.matricNumber}</td>
+          <td><span class="session-strip-badge" style="font-weight: 700;">${r.courseCode}</span></td>
+          <td style="text-align: center;">${r.cbtScore !== undefined ? r.cbtScore : "—"}</td>
+          <td style="text-align: center;">${r.attendanceScore !== undefined ? r.attendanceScore : "—"}</td>
+          <td style="text-align: center;">${r.assignmentScore !== undefined ? r.assignmentScore : "—"}</td>
+          <td style="text-align: center;">${r.practicalScore !== undefined ? r.practicalScore : "—"}</td>
+          <td style="text-align: center; font-weight: 800; background: #F0FDF4; color: #166534;">${r.caScore !== undefined ? r.caScore : 0}</td>
+          <td style="text-align: center; font-weight: 700;">${r.examScore !== undefined ? r.examScore : "—"}</td>
+          <td style="text-align: center; font-weight: 800; font-size: 0.95rem; background: #EFF6FF; color: var(--primary-blue);">${r.score !== undefined ? `${r.score}%` : "—"}</td>
+          <td style="text-align: center;">${gradePill}</td>
+          <td style="text-align: center; font-weight: 700; font-size: 0.8rem;">${gp}</td>
+          <td style="font-size: 0.75rem; color: var(--admin-text-muted);">${r.studyCentre || "All Centres"}</td>
+          <td>${statusBadge}</td>
+          <td style="text-align: right; white-space: nowrap;" class="no-print">
+            <div style="display: inline-flex; gap: 4px; align-items: center;">
+              ${st !== "published" && st !== "approved" ? `
+                <button type="button" class="btn-table-action btn-row-approve-res" data-res-id="${r.id}" style="color: #16A34A;" title="Approve & Publish this record">
+                  ✓ Approve
+                </button>
+              ` : `
+                <span style="font-size: 0.75rem; color: #16A34A; font-weight: 700;">Published</span>
+              `}
+              <button type="button" class="btn-table-action btn-row-reject-res" data-res-id="${r.id}" data-course="${r.courseCode}" style="color: #DC2626;" title="Request revision on this course">
+                ↩ Revise
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // Row action listeners
+    tbody.querySelectorAll(".btn-row-approve-res").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-res-id");
+        btn.disabled = true;
+        try {
+          await updateResultStatus(id, "published");
+          showAdminToast("Result approved and published to student.", "success");
+        } catch (e) {
+          showAdminToast(`Approval error: ${e.message}`, "error");
+        }
+      });
+    });
+
+    tbody.querySelectorAll(".btn-row-reject-res").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const course = btn.getAttribute("data-course");
+        openRevisionModal(course);
+      });
+    });
+  };
+
+  // Event Listeners for Filters
+  if (filterSearch) filterSearch.addEventListener("input", renderBroadsheet);
+  if (filterCourse) filterCourse.addEventListener("change", renderBroadsheet);
+  if (filterStatus) filterStatus.addEventListener("change", renderBroadsheet);
+  if (filterSession) filterSession.addEventListener("change", renderBroadsheet);
+  if (filterSemester) filterSemester.addEventListener("change", renderBroadsheet);
+  if (filterCentre) filterCentre.addEventListener("change", renderBroadsheet);
+
+  if (btnReset) {
+    btnReset.addEventListener("click", () => {
+      if (filterSearch) filterSearch.value = "";
+      if (filterCourse) filterCourse.value = "all";
+      if (filterStatus) filterStatus.value = "all";
+      if (filterSession) filterSession.value = "2026/2027";
+      if (filterSemester) filterSemester.value = "First Semester";
+      if (filterCentre) filterCentre.value = "all";
+      renderBroadsheet();
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Batch Approve & Publish Action
+  // -------------------------------------------------------------------------
+  if (btnApproveResults) {
+    btnApproveResults.addEventListener("click", async () => {
+      const selCourse = filterCourse?.value || "all";
+      const selSession = filterSession?.value || "2026/2027";
+      const selSemester = filterSemester?.value || "First Semester";
+      const selCentre = filterCentre?.value || "all";
+
+      const targetDesc = selCourse === "all" ? "all filtered course score sheets" : `results for ${selCourse}`;
+      if (!confirm(`Officially APPROVE and PUBLISH ${targetDesc} (${selSemester}, ${selSession}) to student portals?\n\nOnce published, students will immediately be able to view their official semester marks, letter grades, and GPA.`)) {
+        return;
+      }
+
+      const origText = btnApproveResults.textContent;
+      btnApproveResults.disabled = true;
+      btnApproveResults.textContent = "Publishing...";
+
+      try {
+        const res = await approveAndPublishCourseResults(selCourse === "all" ? "" : selCourse, {
+          session: selSession === "all" ? "" : selSession,
+          semester: selSemester === "all" ? "" : selSemester,
+          studyCentre: selCentre === "all" ? "" : selCentre,
+          reviewerId: ADMIN_CONFIG.ADMIN_ID
+        });
+
+        showAdminToast(`✓ Success: ${res.count} examination result(s) officially approved and published to students!`, "success");
+      } catch (err) {
+        showAdminToast(`Approval failed: ${err.message}`, "error");
+      } finally {
+        btnApproveResults.disabled = false;
+        btnApproveResults.textContent = origText;
+      }
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Revision Modal Handlers
+  // -------------------------------------------------------------------------
+  const openRevisionModal = (courseCode) => {
+    targetRevisionCourse = courseCode || filterCourse?.value || "all";
+    if (revisionCourseName) {
+      revisionCourseName.textContent = targetRevisionCourse === "all" ? "All Filtered Courses" : targetRevisionCourse;
+    }
+    if (revisionReason) revisionReason.value = "";
+    if (modalRevision) modalRevision.style.display = "flex";
+  };
+
+  const closeRevisionModal = () => {
+    if (modalRevision) modalRevision.style.display = "none";
+  };
+
+  if (btnRejectResults) btnRejectResults.addEventListener("click", () => openRevisionModal(filterCourse?.value));
+  if (btnCloseRevision) btnCloseRevision.addEventListener("click", closeRevisionModal);
+  if (btnCancelRevision) btnCancelRevision.addEventListener("click", closeRevisionModal);
+
+  if (btnSubmitRevision) {
+    btnSubmitRevision.addEventListener("click", async () => {
+      const reason = (revisionReason?.value || "").trim();
+      if (!reason) {
+        alert("Please enter a directive or reason for revision.");
+        return;
+      }
+
+      const selSession = filterSession?.value || "2026/2027";
+      const selSemester = filterSemester?.value || "First Semester";
+      const selCentre = filterCentre?.value || "all";
+
+      btnSubmitRevision.disabled = true;
+      btnSubmitRevision.textContent = "Sending...";
+
+      try {
+        await rejectCourseResultsWithFeedback(targetRevisionCourse === "all" ? "" : targetRevisionCourse, {
+          session: selSession === "all" ? "" : selSession,
+          semester: selSemester === "all" ? "" : selSemester,
+          studyCentre: selCentre === "all" ? "" : selCentre,
+          reason,
+          reviewerId: ADMIN_CONFIG.ADMIN_ID
+        });
+
+        closeRevisionModal();
+        showAdminToast(`Revision request sent to faculty lecturer with registry remarks.`, "info");
+      } catch (err) {
+        alert(`Failed to send revision: ${err.message}`);
+      } finally {
+        btnSubmitRevision.disabled = false;
+        btnSubmitRevision.textContent = "Send Revision Request";
+      }
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Print Senate Broadsheet Handler
+  // -------------------------------------------------------------------------
+  if (btnPrintBroadsheet) {
+    btnPrintBroadsheet.addEventListener("click", () => {
+      const sigBlock = document.getElementById("broadsheet-print-signatures");
+      if (sigBlock) sigBlock.style.display = "block";
+      window.print();
+      setTimeout(() => {
+        if (sigBlock) sigBlock.style.display = "none";
+      }, 1000);
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Subscriptions to Live Firestore Data
+  // -------------------------------------------------------------------------
+  subscribeResults((results) => {
+    allResults = results || [];
+    populateCourseDropdown();
+    renderBroadsheet();
+  });
+
+  subscribeCourses((courses) => {
+    allCourses = courses || [];
+    populateCourseDropdown();
+  });
+
+  subscribeStudyCentres((centres) => {
+    allCentres = centres || [];
+    populateCentresDropdown();
+  });
 }
 
 // Auto-run on DOM ready

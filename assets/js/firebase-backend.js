@@ -61,6 +61,7 @@ export const COLLECTIONS = Object.freeze({
   STUDY_CENTRES: "studyCentres",
   STUDY_CENTRES_LEGACY: "study_centres",
   RESULTS: "results",
+  ASSESSMENTS: "course_assessments",
   ANNOUNCEMENTS: "announcements",
   NOTIFICATIONS: "notifications",
   PUBLIC_NOTIFICATIONS: "public_notifications",
@@ -3557,22 +3558,53 @@ export async function updateResultStatus(resultId, newStatus) {
 
 /**
  * Save or submit an individual course grade record for a student
- * Allows lecturers to save drafts or submit official Continuous Assessment & Exam marks
+ * Supports granular Continuous Assessment (CBT max 10, Attendance max 5, Assignment max 5, Practical max 10 => CA max 30)
+ * and Final Examination (max 70) => Total max 100
  */
 export async function saveLecturerGradeRecord(gradeData) {
-  const caScore = Math.max(0, Math.min(30, parseInt(gradeData.caScore, 10) || 0));
-  const examScore = Math.max(0, Math.min(70, parseInt(gradeData.examScore, 10) || 0));
-  const totalScore = caScore + examScore;
+  // Continuous Assessment Granular breakdown
+  const cbtScore = gradeData.cbtScore !== undefined && gradeData.cbtScore !== "" 
+    ? Math.max(0, Math.min(10, parseInt(gradeData.cbtScore, 10) || 0)) 
+    : undefined;
+  const attendanceScore = gradeData.attendanceScore !== undefined && gradeData.attendanceScore !== "" 
+    ? Math.max(0, Math.min(5, parseInt(gradeData.attendanceScore, 10) || 0)) 
+    : undefined;
+  const assignmentScore = gradeData.assignmentScore !== undefined && gradeData.assignmentScore !== "" 
+    ? Math.max(0, Math.min(5, parseInt(gradeData.assignmentScore, 10) || 0)) 
+    : undefined;
+  const practicalScore = gradeData.practicalScore !== undefined && gradeData.practicalScore !== "" 
+    ? Math.max(0, Math.min(10, parseInt(gradeData.practicalScore, 10) || 0)) 
+    : undefined;
 
+  // Compute or preserve total CA score (max 30)
+  let caScore;
+  if (cbtScore !== undefined || attendanceScore !== undefined || assignmentScore !== undefined || practicalScore !== undefined) {
+    caScore = (cbtScore || 0) + (attendanceScore || 0) + (assignmentScore || 0) + (practicalScore || 0);
+  } else if (gradeData.caScore !== undefined && gradeData.caScore !== "") {
+    caScore = parseInt(gradeData.caScore, 10) || 0;
+  } else {
+    caScore = 0;
+  }
+  caScore = Math.max(0, Math.min(30, caScore));
+
+  // Examination Score (max 70)
+  const hasExamVal = gradeData.examScore !== undefined && gradeData.examScore !== "";
+  const examScore = hasExamVal ? Math.max(0, Math.min(70, parseInt(gradeData.examScore, 10) || 0)) : undefined;
+
+  // Total Course Score
+  const totalScore = caScore + (examScore !== undefined ? examScore : 0);
+
+  // Letter Grade, GP & Remarks
   let grade = "F";
+  let gradePoint = 0.0;
   let remarks = "Fail";
-  if (totalScore >= 70) { grade = "A"; remarks = "Distinction / Excellent"; }
-  else if (totalScore >= 60) { grade = "B"; remarks = "Very Good"; }
-  else if (totalScore >= 50) { grade = "C"; remarks = "Good"; }
-  else if (totalScore >= 45) { grade = "D"; remarks = "Fair"; }
-  else if (totalScore >= 40) { grade = "E"; remarks = "Pass"; }
+  if (totalScore >= 70) { grade = "A"; gradePoint = 5.0; remarks = "Distinction / Excellent"; }
+  else if (totalScore >= 60) { grade = "B"; gradePoint = 4.0; remarks = "Very Good"; }
+  else if (totalScore >= 50) { grade = "C"; gradePoint = 3.0; remarks = "Good"; }
+  else if (totalScore >= 45) { grade = "D"; gradePoint = 2.0; remarks = "Fair"; }
+  else if (totalScore >= 40) { grade = "E"; gradePoint = 1.0; remarks = "Pass"; }
 
-  const status = (gradeData.status || "draft").toLowerCase(); // "draft" or "submitted"
+  const status = (gradeData.status || "draft").toLowerCase(); // draft | submitted | approved | published | rejected
   const matricNumber = (gradeData.matricNumber || "").trim().toUpperCase();
   const courseCode = (gradeData.courseCode || "").trim().toUpperCase();
   const session = gradeData.academicSession || "2026/2027";
@@ -3588,23 +3620,41 @@ export async function saveLecturerGradeRecord(gradeData) {
   );
 
   const nowIso = new Date().toISOString();
+  const caPublished = gradeData.caPublished !== undefined 
+    ? Boolean(gradeData.caPublished) 
+    : (existing ? Boolean(existing.caPublished) : false);
+
   const recordPayload = {
-    studentName: (gradeData.studentName || "").trim(),
+    studentName: (gradeData.studentName || (existing ? existing.studentName : "")).trim(),
     matricNumber,
     courseCode,
-    courseTitle: (gradeData.courseTitle || "").trim(),
-    studyCentre: gradeData.studyCentre || "",
+    courseTitle: (gradeData.courseTitle || (existing ? existing.courseTitle : "Theological Study")).trim(),
+    creditUnits: parseInt(gradeData.creditUnits, 10) || (existing ? existing.creditUnits : 3) || 3,
+    studyCentre: gradeData.studyCentre || (existing ? existing.studyCentre : "") || "",
     academicSession: session,
     semester,
+    // CA Granular
+    cbtScore: cbtScore !== undefined ? cbtScore : (existing?.cbtScore !== undefined ? existing.cbtScore : 0),
+    attendanceScore: attendanceScore !== undefined ? attendanceScore : (existing?.attendanceScore !== undefined ? existing.attendanceScore : 0),
+    assignmentScore: assignmentScore !== undefined ? assignmentScore : (existing?.assignmentScore !== undefined ? existing.assignmentScore : 0),
+    practicalScore: practicalScore !== undefined ? practicalScore : (existing?.practicalScore !== undefined ? existing.practicalScore : 0),
     caScore,
-    examScore,
+    caStatus: caPublished ? "published" : (gradeData.caStatus || (existing?.caStatus || "draft")),
+    caPublished,
+    caPublishedAt: caPublished ? (existing?.caPublishedAt || nowIso) : null,
+    // Final Exam
+    examScore: examScore !== undefined ? examScore : (existing?.examScore !== undefined ? existing.examScore : 0),
     score: totalScore,
     grade,
+    gradePoint,
     remarks,
+    // Overall Registry Approval Workflow Status
     status,
-    lecturerStaffId: gradeData.lecturerStaffId || "",
-    lecturerName: gradeData.lecturerName || "",
-    submittedBy: gradeData.lecturerName || gradeData.lecturerStaffId || "Faculty Lecturer",
+    lecturerStaffId: gradeData.lecturerStaffId || (existing ? existing.lecturerStaffId : ""),
+    lecturerName: gradeData.lecturerName || (existing ? existing.lecturerName : ""),
+    submittedBy: gradeData.lecturerName || gradeData.lecturerStaffId || (existing ? existing.submittedBy : "Faculty Lecturer"),
+    submittedAt: status === "submitted" ? (existing?.submittedAt || nowIso) : (existing?.submittedAt || null),
+    reviewNotes: gradeData.reviewNotes !== undefined ? gradeData.reviewNotes : (existing?.reviewNotes || ""),
     updatedAt: nowIso
   };
 
@@ -3634,13 +3684,382 @@ export async function saveLecturerGradeRecord(gradeData) {
   }
 
   await logActivity({
-    action: status === "submitted" ? "grade_submitted_registry" : "grade_draft_saved",
-    description: `Faculty instructor ${gradeData.lecturerName || gradeData.lecturerStaffId} saved ${status} grade for ${recordPayload.studentName} (${matricNumber}) in ${courseCode}: ${totalScore}% (${grade}).`,
+    action: status === "submitted" ? "grade_submitted_registry" : (caPublished ? "ca_published_students" : "grade_draft_saved"),
+    description: `Faculty instructor ${gradeData.lecturerName || gradeData.lecturerStaffId} saved ${status} grade for ${recordPayload.studentName} (${matricNumber}) in ${courseCode}: CA=${caScore}/30, Exam=${recordPayload.examScore}/70, Total=${totalScore}% (${grade}).`,
     targetCollection: COLLECTIONS.RESULTS,
     targetDocumentId: resultId
   });
 
   return { success: true, id: resultId, ...recordPayload };
+}
+
+/**
+ * Publish Continuous Assessment (CA) scores to students directly
+ * No Admin approval required for CA publishing!
+ */
+export async function publishCourseCAResults(courseCode, { session = "2026/2027", semester = "First Semester", studyCentre = "all", lecturerStaffId = "", lecturerName = "" } = {}) {
+  const normCourse = (courseCode || "").trim().toUpperCase();
+  const existingResults = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const nowIso = new Date().toISOString();
+
+  const matching = existingResults.filter((r) => {
+    const matchCourse = (r.courseCode || "").trim().toUpperCase() === normCourse;
+    const matchSession = !session || r.academicSession === session;
+    const matchSem = !semester || r.semester === semester;
+    const matchCentre = !studyCentre || studyCentre === "all" || (r.studyCentre || "").toLowerCase().includes(studyCentre.toLowerCase());
+    return matchCourse && matchSession && matchSem && matchCentre;
+  });
+
+  if (matching.length === 0) {
+    throw new Error(`No continuous assessment records found for ${normCourse} in ${semester} (${session}).`);
+  }
+
+  for (const res of matching) {
+    const updatePayload = {
+      caStatus: "published",
+      caPublished: true,
+      caPublishedAt: nowIso,
+      updatedAt: nowIso
+    };
+    upsertCachedItem(COLLECTIONS.RESULTS, { id: res.id, ...updatePayload });
+    try {
+      const docRef = doc(db, COLLECTIONS.RESULTS, res.id);
+      await updateDoc(docRef, { ...updatePayload, updatedAt: serverTimestamp() });
+    } catch (err) {
+      console.warn(`[DIMABIN Results] Publish CA note: ${err.message}`);
+    }
+  }
+
+  // Create private portal notification for enrolled students
+  try {
+    const notifPayload = {
+      title: `CA Scores Published: ${normCourse}`,
+      message: `Continuous Assessment (CA) marks (out of 30) for ${normCourse} have been published by faculty lecturer ${lecturerName || lecturerStaffId || "your instructor"}. Check your student portal under My Results / CA Breakdown to review your scores.`,
+      audience: "student",
+      priority: "normal",
+      status: "published",
+      createdAt: nowIso
+    };
+    await addDoc(collection(db, COLLECTIONS.PORTAL_NOTIFICATIONS), {
+      ...notifPayload,
+      createdAt: serverTimestamp()
+    });
+  } catch (_) {}
+
+  await logActivity({
+    action: "ca_published",
+    description: `Published Continuous Assessment (CA) marks for ${matching.length} student(s) in course ${normCourse} (${semester}, ${session}) by ${lecturerName || lecturerStaffId}.`,
+    targetCollection: COLLECTIONS.RESULTS
+  });
+
+  return { success: true, count: matching.length, courseCode: normCourse };
+}
+
+/**
+ * Unpublish Continuous Assessment (revert to draft)
+ */
+export async function unpublishCourseCAResults(courseCode, { session = "2026/2027", semester = "First Semester", studyCentre = "all" } = {}) {
+  const normCourse = (courseCode || "").trim().toUpperCase();
+  const existingResults = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const nowIso = new Date().toISOString();
+
+  const matching = existingResults.filter((r) => {
+    const matchCourse = (r.courseCode || "").trim().toUpperCase() === normCourse;
+    const matchSession = !session || r.academicSession === session;
+    const matchSem = !semester || r.semester === semester;
+    const matchCentre = !studyCentre || studyCentre === "all" || (r.studyCentre || "").toLowerCase().includes(studyCentre.toLowerCase());
+    return matchCourse && matchSession && matchSem && matchCentre;
+  });
+
+  for (const res of matching) {
+    const updatePayload = {
+      caStatus: "draft",
+      caPublished: false,
+      updatedAt: nowIso
+    };
+    upsertCachedItem(COLLECTIONS.RESULTS, { id: res.id, ...updatePayload });
+    try {
+      const docRef = doc(db, COLLECTIONS.RESULTS, res.id);
+      await updateDoc(docRef, { ...updatePayload, updatedAt: serverTimestamp() });
+    } catch (err) {
+      console.warn(`[DIMABIN Results] Unpublish CA note: ${err.message}`);
+    }
+  }
+
+  await logActivity({
+    action: "ca_unpublished",
+    description: `Withdrew CA publication for ${matching.length} student(s) in course ${normCourse} back to draft status.`,
+    targetCollection: COLLECTIONS.RESULTS
+  });
+
+  return { success: true, count: matching.length };
+}
+
+/**
+ * Submit entire course grade sheet to Academic Registry for examination review
+ */
+export async function submitCourseGradesToRegistry(courseCode, { session = "2026/2027", semester = "First Semester", studyCentre = "all", lecturerStaffId = "", lecturerName = "" } = {}) {
+  const normCourse = (courseCode || "").trim().toUpperCase();
+  const existingResults = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const nowIso = new Date().toISOString();
+
+  const matching = existingResults.filter((r) => {
+    const matchCourse = (r.courseCode || "").trim().toUpperCase() === normCourse;
+    const matchSession = !session || r.academicSession === session;
+    const matchSem = !semester || r.semester === semester;
+    const matchCentre = !studyCentre || studyCentre === "all" || (r.studyCentre || "").toLowerCase().includes(studyCentre.toLowerCase());
+    return matchCourse && matchSession && matchSem && matchCentre;
+  });
+
+  if (matching.length === 0) {
+    throw new Error(`No grade entries found to submit for ${normCourse}. Enter marks for enrolled students first.`);
+  }
+
+  for (const res of matching) {
+    const updatePayload = {
+      status: "submitted",
+      submittedAt: nowIso,
+      submittedBy: lecturerName || lecturerStaffId || "Faculty Lecturer",
+      updatedAt: nowIso
+    };
+    upsertCachedItem(COLLECTIONS.RESULTS, { id: res.id, ...updatePayload });
+    try {
+      const docRef = doc(db, COLLECTIONS.RESULTS, res.id);
+      await updateDoc(docRef, { ...updatePayload, updatedAt: serverTimestamp() });
+    } catch (err) {
+      console.warn(`[DIMABIN Results] Submit registry note: ${err.message}`);
+    }
+  }
+
+  await logActivity({
+    action: "course_grades_submitted_registry",
+    description: `Submitted official semester examination score sheet for ${normCourse} (${matching.length} students) to Academic Registry for clearance and approval.`,
+    targetCollection: COLLECTIONS.RESULTS
+  });
+
+  return { success: true, count: matching.length, courseCode: normCourse };
+}
+
+/**
+ * Admin: Approve & Publish final semester results to students
+ */
+export async function approveAndPublishCourseResults(courseCode, { session = "2026/2027", semester = "First Semester", studyCentre = "all", reviewerId = ADMIN_CREDENTIALS.ADMIN_ID } = {}) {
+  const normCourse = (courseCode || "").trim().toUpperCase();
+  const existingResults = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const nowIso = new Date().toISOString();
+
+  const matching = existingResults.filter((r) => {
+    const matchCourse = !normCourse || (r.courseCode || "").trim().toUpperCase() === normCourse;
+    const matchSession = !session || r.academicSession === session;
+    const matchSem = !semester || r.semester === semester;
+    const matchCentre = !studyCentre || studyCentre === "all" || (r.studyCentre || "").toLowerCase().includes(studyCentre.toLowerCase());
+    return matchCourse && matchSession && matchSem && matchCentre;
+  });
+
+  if (matching.length === 0) {
+    throw new Error(`No submitted results found for clearance.`);
+  }
+
+  for (const res of matching) {
+    const updatePayload = {
+      status: "published", // "approved" and published
+      reviewedAt: nowIso,
+      reviewedBy: reviewerId,
+      publishedAt: nowIso,
+      reviewNotes: "",
+      updatedAt: nowIso
+    };
+    upsertCachedItem(COLLECTIONS.RESULTS, { id: res.id, ...updatePayload });
+    try {
+      const docRef = doc(db, COLLECTIONS.RESULTS, res.id);
+      await updateDoc(docRef, { ...updatePayload, updatedAt: serverTimestamp() });
+    } catch (err) {
+      console.warn(`[DIMABIN Results] Approve note: ${err.message}`);
+    }
+  }
+
+  // Send Portal Notification to students
+  try {
+    const notifPayload = {
+      title: `Official Results Approved: ${normCourse || "Semester Examinations"}`,
+      message: `Official semester results for ${normCourse || "your courses"} (${semester}, ${session}) have been reviewed and approved by the Academic Registry. You can now view your official grades, grade points, and semester GPA in your student portal.`,
+      audience: "student",
+      priority: "urgent",
+      status: "published",
+      createdAt: nowIso
+    };
+    await addDoc(collection(db, COLLECTIONS.PORTAL_NOTIFICATIONS), {
+      ...notifPayload,
+      createdAt: serverTimestamp()
+    });
+  } catch (_) {}
+
+  await logActivity({
+    action: "results_approved_published",
+    description: `Academic Registry officially approved and published examination results for ${normCourse || "multiple courses"} (${matching.length} records) for ${semester} (${session}).`,
+    targetCollection: COLLECTIONS.RESULTS
+  });
+
+  return { success: true, count: matching.length, courseCode: normCourse };
+}
+
+/**
+ * Admin: Reject course results / Request lecturer revision
+ */
+export async function rejectCourseResultsWithFeedback(courseCode, { session = "2026/2027", semester = "First Semester", studyCentre = "all", reason = "Score discrepancies detected", reviewerId = ADMIN_CREDENTIALS.ADMIN_ID } = {}) {
+  const normCourse = (courseCode || "").trim().toUpperCase();
+  const existingResults = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const nowIso = new Date().toISOString();
+
+  const matching = existingResults.filter((r) => {
+    const matchCourse = !normCourse || (r.courseCode || "").trim().toUpperCase() === normCourse;
+    const matchSession = !session || r.academicSession === session;
+    const matchSem = !semester || r.semester === semester;
+    const matchCentre = !studyCentre || studyCentre === "all" || (r.studyCentre || "").toLowerCase().includes(studyCentre.toLowerCase());
+    return matchCourse && matchSession && matchSem && matchCentre;
+  });
+
+  for (const res of matching) {
+    const updatePayload = {
+      status: "rejected",
+      reviewedAt: nowIso,
+      reviewedBy: reviewerId,
+      reviewNotes: reason.trim(),
+      updatedAt: nowIso
+    };
+    upsertCachedItem(COLLECTIONS.RESULTS, { id: res.id, ...updatePayload });
+    try {
+      const docRef = doc(db, COLLECTIONS.RESULTS, res.id);
+      await updateDoc(docRef, { ...updatePayload, updatedAt: serverTimestamp() });
+    } catch (err) {
+      console.warn(`[DIMABIN Results] Reject note: ${err.message}`);
+    }
+  }
+
+  await logActivity({
+    action: "results_rejected_revision_requested",
+    description: `Academic Registry requested revision on ${normCourse} results. Reason: ${reason}.`,
+    targetCollection: COLLECTIONS.RESULTS
+  });
+
+  return { success: true, count: matching.length, courseCode: normCourse };
+}
+
+/**
+ * =========================================================================
+ * 9B. ASSESSMENT ACTIVITIES (CBT, Attendance, Assignments, Practicals)
+ * =========================================================================
+ */
+export function subscribeCourseAssessments(callback) {
+  if (typeof callback !== "function") return () => {};
+
+  callback(getCachedCollection(COLLECTIONS.ASSESSMENTS));
+
+  const localListener = (e) => {
+    if (e.detail) callback(e.detail);
+  };
+  window.addEventListener(`dimabin:db:${COLLECTIONS.ASSESSMENTS}`, localListener);
+
+  let unsubscribe = () => {};
+  try {
+    const collRef = collection(db, COLLECTIONS.ASSESSMENTS);
+    unsubscribe = onSnapshot(
+      collRef,
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setCachedCollection(COLLECTIONS.ASSESSMENTS, list);
+        callback(list);
+      },
+      (err) => {
+        console.warn("[DIMABIN Assessments] onSnapshot note:", err.message);
+        callback(getCachedCollection(COLLECTIONS.ASSESSMENTS));
+      }
+    );
+  } catch (err) {
+    console.warn("[DIMABIN Assessments] init note:", err.message);
+  }
+
+  return () => {
+    try { unsubscribe(); } catch (_) {}
+    window.removeEventListener(`dimabin:db:${COLLECTIONS.ASSESSMENTS}`, localListener);
+  };
+}
+
+export async function createCourseAssessment(assessmentData) {
+  const normCourse = (assessmentData.courseCode || "").trim().toUpperCase();
+  if (!normCourse) throw new Error("Course Code is required for assessment.");
+
+  const type = (assessmentData.type || "cbt").toLowerCase(); // cbt | attendance | assignment | practical
+  const maxScore = type === "cbt" ? 10 : type === "attendance" ? 5 : type === "assignment" ? 5 : 10;
+
+  const nowIso = new Date().toISOString();
+  const localId = `asmt_${type}_${normCourse.replace(/[^A-Z0-9]/g, "_")}_${Date.now()}`;
+
+  const record = {
+    id: localId,
+    courseCode: normCourse,
+    courseTitle: (assessmentData.courseTitle || "").trim(),
+    academicSession: assessmentData.academicSession || "2026/2027",
+    semester: assessmentData.semester || "First Semester",
+    studyCentre: assessmentData.studyCentre || "all",
+    type,
+    title: (assessmentData.title || `${normCourse} Assessment`).trim(),
+    maxScore: parseInt(assessmentData.maxScore, 10) || maxScore,
+    description: (assessmentData.description || "").trim(),
+    durationMinutes: parseInt(assessmentData.durationMinutes, 10) || (type === "cbt" ? 30 : 0),
+    dueDate: assessmentData.dueDate || "",
+    status: assessmentData.status || "active",
+    lecturerStaffId: assessmentData.lecturerStaffId || "",
+    lecturerName: assessmentData.lecturerName || "",
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.ASSESSMENTS, record);
+
+  let savedId = localId;
+  try {
+    const docRef = await addDoc(collection(db, COLLECTIONS.ASSESSMENTS), {
+      ...record,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    savedId = docRef.id;
+    removeCachedItem(COLLECTIONS.ASSESSMENTS, localId);
+    upsertCachedItem(COLLECTIONS.ASSESSMENTS, { ...record, id: savedId });
+  } catch (err) {
+    console.warn(`[DIMABIN Assessments] Add note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "assessment_created",
+    description: `Created ${type.toUpperCase()} assessment "${record.title}" for ${normCourse} (Max: ${record.maxScore} marks).`,
+    targetCollection: COLLECTIONS.ASSESSMENTS,
+    targetDocumentId: savedId
+  });
+
+  return { success: true, id: savedId, ...record };
+}
+
+export async function deleteCourseAssessment(assessmentId) {
+  if (!assessmentId) return;
+  removeCachedItem(COLLECTIONS.ASSESSMENTS, assessmentId);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.ASSESSMENTS, assessmentId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn(`[DIMABIN Assessments] Delete note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "assessment_deleted",
+    description: `Deleted assessment activity ID ${assessmentId}.`,
+    targetCollection: COLLECTIONS.ASSESSMENTS,
+    targetDocumentId: assessmentId
+  });
+
+  return { success: true, assessmentId };
 }
 
 /**

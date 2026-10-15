@@ -877,37 +877,150 @@
         <!-- ================================================================
              SECTION 7: MY RESULTS
              ================================================================ -->
+        <!-- ================================================================
+             SECTION 7: MY RESULTS & CONTINUOUS ASSESSMENT
+             ================================================================ -->
         <section class="student-section" id="section-results" aria-label="My Results">
           <div class="student-content-card">
-            <div class="student-card-header">
-              <h3 class="student-card-title">My Academic Results Ledger</h3>
-            </div>
-            <div class="student-card-body">
-              <div class="student-table-wrap">
-                <table class="student-table">
-                  <thead>
-                    <tr>
-                      <th>Course Code</th>
-                      <th>Course Title</th>
-                      <th>Score</th>
-                      <th>Grade</th>
-                      <th>Semester</th>
-                      <th>Session</th>
-                    </tr>
-                  </thead>
-                  <tbody id="student-all-results-tbody">
-                    <tr>
-                      <td colspan="6">
-                        <div class="student-empty-box">
-                          <div class="student-empty-icon">📋</div>
-                          <div class="student-empty-text">No results have been published yet.</div>
-                          <div class="student-empty-sub">Verified registry scores will appear once confirmed by the Academic Registry.</div>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div class="student-card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+              <div>
+                <h3 class="student-card-title">Academic Results &amp; Continuous Assessment</h3>
+                <p style="font-size: 0.8125rem; color: var(--student-text-muted); margin: 0.2rem 0 0 0;">
+                  Official semester examinations (70%) and lecturer-published Continuous Assessments (30%).
+                </p>
               </div>
+              <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center;">
+                <button type="button" class="student-card-action-btn" id="btn-print-student-result-slip" onclick="window.print()" style="font-weight: 700; padding: 0.5rem 1rem;">
+                  🖨️ Print Statement of Results
+                </button>
+              </div>
+            </div>
+
+            <!-- Result Sub-Tabs -->
+            <div style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--student-border); padding: 0.75rem 1.25rem 0.25rem; background: #F8FAFC; flex-wrap: wrap;" class="no-print">
+              <button type="button" class="asmt-tab-btn active" id="btn-stu-tab-exam" style="padding: 0.55rem 1rem; border-radius: var(--student-radius-sm); font-size: 0.84rem; font-weight: 700; cursor: pointer; border: none; background: var(--student-blue); color: #FFFFFF;">
+                🎓 Official Semester Examination Results (100 Marks)
+              </button>
+              <button type="button" class="asmt-tab-btn" id="btn-stu-tab-ca" style="padding: 0.55rem 1rem; border-radius: var(--student-radius-sm); font-size: 0.84rem; font-weight: 700; cursor: pointer; border: 1px solid var(--student-border); background: #FFFFFF; color: var(--student-navy);">
+                📝 Continuous Assessment (CA) Breakdown (30 Marks)
+              </button>
+            </div>
+
+            <div class="student-card-body">
+
+              <!-- PANE 1: OFFICIAL SEMESTER EXAMINATION RESULTS (100%) -->
+              <div id="stu-pane-exam">
+                <!-- Academic Performance Summary Strip -->
+                <div style="background: #F8FAFC; border: 1px solid var(--student-border); border-radius: var(--student-radius-sm); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                  <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;">
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase; display: block;">Registered Units</span>
+                      <strong style="font-size: 1.15rem; color: var(--student-navy);" id="stu-gpa-units-total">0</strong>
+                    </div>
+                    <div style="height: 24px; width: 1px; background: #CBD5E1;"></div>
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase; display: block;">Units Passed</span>
+                      <strong style="font-size: 1.15rem; color: #16A34A;" id="stu-gpa-units-passed">0</strong>
+                    </div>
+                    <div style="height: 24px; width: 1px; background: #CBD5E1;"></div>
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase; display: block;">Semester GPA</span>
+                      <strong style="font-size: 1.2rem; color: var(--student-blue);" id="stu-gpa-val">0.00</strong>
+                      <span style="font-size: 0.75rem; color: var(--student-text-muted);">/ 5.00</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span class="status-pill-badge badge-green" id="stu-academic-standing">ACADEMIC STANDING: GOOD</span>
+                  </div>
+                </div>
+
+                <!-- Printable Statement Header (Visible only when printing) -->
+                <div class="print-only" style="display: none; margin-bottom: 1.5rem; border-bottom: 2px solid #122452; padding-bottom: 1rem;">
+                  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                    <img src="assets/images/dimabin-logo.png" alt="DIMABIN" width="55" height="55" style="object-fit: contain;">
+                    <div>
+                      <h2 style="font-size: 1.25rem; font-weight: 800; color: #122452; margin: 0;">DIVINE MANDATE BIBLE INSTITUTE (DIMABIN)</h2>
+                      <span style="font-size: 0.8125rem; font-weight: 700; color: #1F3C82;">OFFICIAL STATEMENT OF SEMESTER RESULTS</span>
+                    </div>
+                  </div>
+                  <div style="font-size: 0.8125rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem;">
+                    <div>Student Name: <strong id="print-res-name">-</strong></div>
+                    <div>Matric Number: <strong id="print-res-matric">-</strong></div>
+                    <div>Programme: <strong id="print-res-programme">-</strong></div>
+                    <div>Study Centre: <strong id="print-res-centre">-</strong></div>
+                  </div>
+                </div>
+
+                <div class="student-table-wrap">
+                  <table class="student-table">
+                    <thead>
+                      <tr>
+                        <th>Course Code</th>
+                        <th>Course Title</th>
+                        <th style="text-align: center;">Units</th>
+                        <th style="text-align: center;">CA (30)</th>
+                        <th style="text-align: center;">Exam (70)</th>
+                        <th style="text-align: center;">Total (100%)</th>
+                        <th style="text-align: center;">Grade</th>
+                        <th style="text-align: center;">GP</th>
+                        <th>Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody id="student-all-results-tbody">
+                      <tr>
+                        <td colspan="9">
+                          <div class="student-empty-box">
+                            <div class="student-empty-icon">📋</div>
+                            <div class="student-empty-text">No final results have been approved yet.</div>
+                            <div class="student-empty-sub">Verified semester scores will appear here once approved by the Academic Registry.</div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- PANE 2: CONTINUOUS ASSESSMENT (CA — 30 MARKS) BREAKDOWN -->
+              <div id="stu-pane-ca" style="display: none;">
+                <div class="student-info-alert" style="margin-bottom: 1.25rem; background: #EFF6FF; border: 1px solid #BFDBFE;">
+                  <strong style="color: var(--student-blue);">Continuous Assessment (CA) Breakdown:</strong>
+                  <div style="font-size: 0.8125rem; color: var(--student-navy); margin-top: 0.25rem;">
+                    Continuous Assessment is worth <strong>30 Marks</strong> distributed across CBT (10), Attendance (5), Assignments (5), and Practicals (10). CA results are published directly by your course lecturers.
+                  </div>
+                </div>
+
+                <div class="student-table-wrap">
+                  <table class="student-table">
+                    <thead>
+                      <tr>
+                        <th>Course Code</th>
+                        <th>Course Title</th>
+                        <th>Lecturer</th>
+                        <th style="text-align: center;">CBT (/10)</th>
+                        <th style="text-align: center;">Attendance (/5)</th>
+                        <th style="text-align: center;">Assignment (/5)</th>
+                        <th style="text-align: center;">Practical (/10)</th>
+                        <th style="text-align: center; font-weight: 800; color: #15803D;">Total CA (/30)</th>
+                        <th style="text-align: center;">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="student-ca-breakdown-tbody">
+                      <tr>
+                        <td colspan="9">
+                          <div class="student-empty-box">
+                            <div class="student-empty-icon">📝</div>
+                            <div class="student-empty-text">No Continuous Assessment Published</div>
+                            <div class="student-empty-sub">When your course lecturers publish Continuous Assessment marks, they will appear here.</div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           </div>
         </section>
