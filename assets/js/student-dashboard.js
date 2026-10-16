@@ -27,7 +27,12 @@ import {
   subscribeCourses,
   subscribeCourseAllocations,
   subscribeCourseRegistrations,
-  submitStudentCourseRegistration
+  submitStudentCourseRegistration,
+  subscribeCbtAssessments,
+  subscribeCbtSubmissions,
+  startCbtAttempt,
+  saveCbtProgress,
+  submitCbtAttempt
 } from "./firebase-backend.js";
 
 let activeStudentProfile = null;
@@ -949,6 +954,1098 @@ function initStudentCourseRegistration(studentProfile, userUid) {
 }
 
 /**
+ * =============================================================================
+ * STUDENT COMPUTER-BASED TEST (CBT) EXAMINATION ENGINE CONTROLLER
+ * =============================================================================
+ */
+export function initStudentCbt(studentProfile, uid) {
+  if (!studentProfile) return;
+
+  const studentName = studentProfile.fullName || studentProfile.name || "Student Candidate";
+  const matricNumber = (studentProfile.matricNumber || studentProfile.admissionNumber || studentProfile.studentId || "").trim().toUpperCase();
+  const studyCentre = studentProfile.studyCentre || "Main Campus";
+  const programme = studentProfile.programme || "Diploma in Theology";
+
+  // DOM Elements
+  const countActiveEl = document.getElementById("stu-cbt-count-active");
+  const countUpcomingEl = document.getElementById("stu-cbt-count-upcoming");
+  const countCompletedEl = document.getElementById("stu-cbt-count-completed");
+  const avgScoreEl = document.getElementById("stu-cbt-avg-score");
+  const cardsContainer = document.getElementById("stu-cbt-cards-container");
+  const searchInput = document.getElementById("stu-cbt-search");
+  const courseFilter = document.getElementById("stu-cbt-course-filter");
+  const typeFilter = document.getElementById("stu-cbt-type-filter");
+  const statusTabs = document.querySelectorAll(".stu-cbt-tab-btn");
+
+  // Briefing Modal Elements
+  const modalBriefing = document.getElementById("modal-stu-cbt-briefing");
+  const briefingTitle = document.getElementById("briefing-test-title");
+  const briefingTypePill = document.getElementById("briefing-type-pill");
+  const briefingCourseMeta = document.getElementById("briefing-course-meta");
+  const briefingDuration = document.getElementById("briefing-duration");
+  const briefingQCount = document.getElementById("briefing-questions-count");
+  const briefingTotalMarks = document.getElementById("briefing-total-marks");
+  const briefingAttempts = document.getElementById("briefing-allowed-attempts");
+  const briefingHonorCheck = document.getElementById("cbt-briefing-honor-check");
+  const btnLaunchExam = document.getElementById("btn-launch-cbt-exam");
+  const btnCloseBriefing = document.getElementById("btn-close-briefing");
+  const btnCancelBriefing = document.getElementById("btn-cancel-briefing");
+
+  // Runner Overlay Elements
+  const runnerOverlay = document.getElementById("modal-stu-cbt-runner");
+  const runnerCourseBadge = document.getElementById("runner-course-badge");
+  const runnerTitle = document.getElementById("runner-assessment-title");
+  const timerBox = document.getElementById("stu-exam-timer-box");
+  const timerDisplay = document.getElementById("stu-exam-timer-display");
+  const candidateNameBadge = document.getElementById("runner-candidate-name");
+  const candidateMatricBadge = document.getElementById("runner-candidate-matric");
+  const cheatAlertBanner = document.getElementById("stu-exam-cheat-alert");
+  const cheatViolationCountEl = document.getElementById("cheat-violation-count");
+
+  // Question Runner Elements
+  const qNumBadge = document.getElementById("runner-q-num-badge");
+  const qTypeBadge = document.getElementById("runner-q-type-badge");
+  const qMarksBadge = document.getElementById("runner-q-marks-badge");
+  const saveIndicator = document.getElementById("runner-save-indicator");
+  const questionTextEl = document.getElementById("stu-exam-question-text");
+  const optionsContainer = document.getElementById("stu-exam-options-container");
+  const prevQBtn = document.getElementById("btn-exam-prev-q");
+  const nextQBtn = document.getElementById("btn-exam-next-q");
+  const clearQBtn = document.getElementById("btn-exam-clear-q");
+  const flagQBtn = document.getElementById("btn-exam-flag-q");
+  const finishExamBtn = document.getElementById("btn-finish-cbt-exam");
+  const sidebarSubmitBtn = document.getElementById("btn-sidebar-submit-cbt");
+
+  // Palette Elements
+  const paletteGrid = document.getElementById("stu-exam-palette-grid");
+  const paletteCountAnswered = document.getElementById("palette-count-answered");
+  const paletteCountUnanswered = document.getElementById("palette-count-unanswered");
+  const paletteCountFlagged = document.getElementById("palette-count-flagged");
+
+  // Confirm Submit Modal
+  const modalConfirm = document.getElementById("modal-stu-cbt-confirm-submit");
+  const confirmSummaryText = document.getElementById("submit-confirm-summary-text");
+  const confirmUnansweredWarn = document.getElementById("submit-unanswered-warning");
+  const btnBackToExam = document.getElementById("btn-back-to-exam");
+  const btnFinalConfirm = document.getElementById("btn-final-confirm-submit");
+
+  // Receipt Modal
+  const modalReceipt = document.getElementById("modal-stu-cbt-receipt");
+  const receiptCandidateName = document.getElementById("receipt-candidate-name");
+  const receiptMatric = document.getElementById("receipt-matric-number");
+  const receiptCourse = document.getElementById("receipt-course-code");
+  const receiptTimestamp = document.getElementById("receipt-timestamp");
+  const receiptAttemptId = document.getElementById("receipt-attempt-id");
+  const receiptScoreContainer = document.getElementById("receipt-score-container");
+  const receiptTotalScore = document.getElementById("receipt-total-score");
+  const receiptPercentage = document.getElementById("receipt-percentage-badge");
+  const receiptGrade = document.getElementById("receipt-grade-badge");
+  const receiptPassFail = document.getElementById("receipt-passfail-badge");
+  const receiptTheoryNotice = document.getElementById("receipt-theory-notice");
+  const btnCloseReceipt = document.getElementById("btn-close-cbt-receipt");
+
+  // Review Modal
+  const modalReview = document.getElementById("modal-stu-cbt-review");
+  const reviewTestType = document.getElementById("review-test-type");
+  const reviewTestTitle = document.getElementById("review-test-title");
+  const reviewTestMeta = document.getElementById("review-test-meta");
+  const reviewScore = document.getElementById("review-summary-score");
+  const reviewPercent = document.getElementById("review-summary-percent");
+  const reviewGrade = document.getElementById("review-summary-grade");
+  const reviewMarkingStatus = document.getElementById("review-marking-status");
+  const reviewFeedbackBox = document.getElementById("review-feedback-box");
+  const reviewFeedbackText = document.getElementById("review-feedback-text");
+  const reviewQuestionsList = document.getElementById("review-questions-list");
+  const btnCloseReview = document.getElementById("btn-close-review");
+  const btnDoneReview = document.getElementById("btn-done-review");
+
+  // State Variables
+  let allAssessments = [];
+  let allSubmissions = [];
+  let activeFilterTab = "available";
+  let activeBriefingAssessment = null;
+
+  // Active Runner State
+  let currentAttempt = null;
+  let activeExam = null;
+  let activeQuestions = [];
+  let currentQIndex = 0;
+  let currentAnswers = {};
+  let flaggedQuestionSet = new Set();
+  let timerIntervalId = null;
+  let integrityViolations = 0;
+  let isSubmitting = false;
+
+  // 1. Status Filter Tabs
+  statusTabs.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const filter = btn.getAttribute("data-filter");
+      if (!filter) return;
+      activeFilterTab = filter;
+      statusTabs.forEach((b) => {
+        const isMatch = b === btn;
+        b.classList.toggle("btn-primary", isMatch);
+        b.classList.toggle("btn-outline-blue", !isMatch);
+        b.classList.toggle("active", isMatch);
+      });
+      renderAssessmentsView();
+    });
+  });
+
+  if (searchInput) searchInput.addEventListener("input", renderAssessmentsView);
+  if (courseFilter) courseFilter.addEventListener("change", renderAssessmentsView);
+  if (typeFilter) typeFilter.addEventListener("change", renderAssessmentsView);
+
+  // 2. Render Assessments Grid & Stat Counts
+  function renderAssessmentsView() {
+    if (!cardsContainer) return;
+
+    const myMatric = matricNumber;
+    const now = new Date();
+
+    // Student's own submissions
+    const mySubmissions = allSubmissions.filter(
+      (s) => (s.matricNumber || "").trim().toUpperCase() === myMatric
+    );
+
+    // Active in-progress submission if any
+    const activeInProgressSubmission = mySubmissions.find((s) => s.status === "in_progress");
+
+    // Filter assessments applicable to this student
+    const cohortAssessments = allAssessments.filter((a) => {
+      const matchCentre = !a.studyCentre || a.studyCentre === "all" || a.studyCentre.toLowerCase() === studyCentre.toLowerCase();
+      return matchCentre;
+    });
+
+    // Populate course select filter options dynamically
+    if (courseFilter && courseFilter.options.length <= 1) {
+      const uniqueCourses = Array.from(new Set(cohortAssessments.map((a) => a.courseCode).filter(Boolean)));
+      uniqueCourses.forEach((code) => {
+        const opt = document.createElement("option");
+        opt.value = code;
+        opt.textContent = code;
+        courseFilter.appendChild(opt);
+      });
+    }
+
+    // Counts
+    let activeCount = 0;
+    let upcomingCount = 0;
+    let completedCount = 0;
+    let totalScoreSum = 0;
+    let maxScoreSum = 0;
+
+    cohortAssessments.forEach((a) => {
+      const sub = mySubmissions.find((s) => s.assessmentId === a.id);
+      const isCompleted = sub && sub.status !== "in_progress";
+      const start = a.startDate ? new Date(a.startDate) : now;
+      const end = a.closingDate ? new Date(a.closingDate) : null;
+      const isPast = end && end < now;
+      const isFuture = start > now;
+
+      if (isCompleted) {
+        completedCount++;
+        totalScoreSum += sub.totalScore || 0;
+        maxScoreSum += sub.maxMarks || 30;
+      } else if (!isPast && !isFuture && (a.status === "open" || a.status === "scheduled")) {
+        activeCount++;
+      } else if (isFuture) {
+        upcomingCount++;
+      }
+    });
+
+    if (countActiveEl) countActiveEl.textContent = activeCount;
+    if (countUpcomingEl) countUpcomingEl.textContent = upcomingCount;
+    if (countCompletedEl) countCompletedEl.textContent = completedCount;
+    if (avgScoreEl) {
+      if (maxScoreSum > 0) {
+        const pct = Math.round((totalScoreSum / maxScoreSum) * 100);
+        avgScoreEl.textContent = `${pct}%`;
+      } else {
+        avgScoreEl.textContent = "—";
+      }
+    }
+
+    // Apply Filter Tab, Search & Dropdown criteria
+    const qSearch = (searchInput?.value || "").toLowerCase().trim();
+    const selCourse = courseFilter?.value || "all";
+    const selType = typeFilter?.value || "all";
+
+    const filtered = cohortAssessments.filter((a) => {
+      // Search
+      if (qSearch) {
+        const matchTitle = (a.title || "").toLowerCase().includes(qSearch);
+        const matchCourse = (a.courseCode || "").toLowerCase().includes(qSearch);
+        const matchTopic = (a.topic || "").toLowerCase().includes(qSearch);
+        if (!matchTitle && !matchCourse && !matchTopic) return false;
+      }
+
+      // Course dropdown
+      if (selCourse !== "all" && a.courseCode !== selCourse) return false;
+
+      // Type dropdown
+      if (selType !== "all" && (a.type || "test").toLowerCase() !== selType.toLowerCase()) return false;
+
+      const sub = mySubmissions.find((s) => s.assessmentId === a.id);
+      const isCompleted = sub && sub.status !== "in_progress";
+      const start = a.startDate ? new Date(a.startDate) : now;
+      const end = a.closingDate ? new Date(a.closingDate) : null;
+      const isPast = end && end < now;
+      const isFuture = start > now;
+
+      if (activeFilterTab === "available") {
+        return !isCompleted && !isPast && !isFuture && (a.status === "open" || a.status === "scheduled");
+      }
+      if (activeFilterTab === "upcoming") {
+        return !isCompleted && (isFuture || a.status === "scheduled");
+      }
+      if (activeFilterTab === "completed") {
+        return isCompleted;
+      }
+      return true; // "all"
+    });
+
+    if (filtered.length === 0) {
+      cardsContainer.innerHTML = `
+        <div class="student-empty-box" style="grid-column: 1 / -1; padding: 3rem 1.5rem;">
+          <div class="student-empty-icon">🖥️</div>
+          <div class="student-empty-text">No assessments found for this filter.</div>
+          <div class="student-empty-sub">
+            Tests and examinations for your registered courses and study centre cohort will be listed here when opened by faculty instructors.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    cardsContainer.innerHTML = filtered
+      .map((a) => {
+        const sub = mySubmissions.find((s) => s.assessmentId === a.id);
+        const isInProgress = sub && sub.status === "in_progress";
+        const isCompleted = sub && sub.status !== "in_progress";
+        const start = a.startDate ? new Date(a.startDate) : now;
+        const end = a.closingDate ? new Date(a.closingDate) : null;
+        const isPast = end && end < now;
+        const isFuture = start > now;
+
+        const isExam = (a.type || "").toLowerCase() === "exam";
+        const typeBadge = isExam
+          ? `<span class="cbt-pill-type cbt-pill-exam">SEMESTER EXAM (70 MARKS)</span>`
+          : `<span class="cbt-pill-type cbt-pill-test">CA TEST (10 MARKS)</span>`;
+
+        let cardBorderClass = "active-open";
+        let actionBtnHtml = "";
+
+        if (isInProgress) {
+          cardBorderClass = "active-open";
+          actionBtnHtml = `
+            <button type="button" class="btn btn-primary btn-resume-test" data-id="${a.id}" style="width: 100%; font-weight: 800; background: #2563EB; border-color: #1D4ED8;">
+              ⏱️ Resume Assessment in Progress
+            </button>
+          `;
+        } else if (isCompleted) {
+          cardBorderClass = "closed-done";
+          actionBtnHtml = `
+            <button type="button" class="btn btn-outline-blue btn-review-result" data-sub-id="${sub.id}" data-id="${a.id}" style="width: 100%; font-weight: 700;">
+              📑 View Score &amp; Evaluation
+            </button>
+          `;
+        } else if (isFuture) {
+          cardBorderClass = "scheduled-future";
+          actionBtnHtml = `
+            <button type="button" class="btn btn-outline-blue" disabled style="width: 100%; font-weight: 700; opacity: 0.65; cursor: not-allowed;">
+              ⏳ Scheduled · Opens ${formatDateOnly(a.startDate)}
+            </button>
+          `;
+        } else if (isPast) {
+          cardBorderClass = "closed-done";
+          actionBtnHtml = `
+            <button type="button" class="btn btn-outline-blue" disabled style="width: 100%; font-weight: 700; opacity: 0.65; cursor: not-allowed;">
+              🔒 Deadline Concluded
+            </button>
+          `;
+        } else {
+          // Open & ready
+          cardBorderClass = "active-open";
+          actionBtnHtml = `
+            <button type="button" class="btn btn-primary btn-start-test" data-id="${a.id}" style="width: 100%; font-weight: 800; background: #16A34A; border-color: #15803D;">
+              🚀 Start Assessment
+            </button>
+          `;
+        }
+
+        const scoreSummaryHtml = isCompleted
+          ? `<div style="margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; background: #EFF6FF; border-radius: 6px; padding: 0.5rem 0.75rem;">
+               <span style="font-size: 0.75rem; color: var(--student-blue); font-weight: 700;">Your Achieved Mark:</span>
+               <strong style="color: var(--student-navy); font-size: 0.95rem;">${sub.totalScore || 0} / ${sub.maxMarks || a.totalMarks || 30} (${sub.percentage || 0}%) · Grade ${sub.grade || "F"}</strong>
+             </div>`
+          : "";
+
+        return `
+          <div class="cbt-assessment-card ${cardBorderClass}">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; gap: 0.5rem;">
+                <span class="status-pill-badge badge-blue" style="font-weight: 800;">${a.courseCode}</span>
+                ${typeBadge}
+              </div>
+
+              <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--student-navy); margin-bottom: 0.35rem; line-height: 1.35;">
+                ${a.title}
+              </h4>
+              <p style="font-size: 0.8125rem; color: var(--student-text-muted); margin-bottom: 0.75rem; line-height: 1.4;">
+                ${a.topic || a.courseTitle || "Theological Curriculum Assessment"}
+              </p>
+
+              <div class="cbt-meta-row">
+                <div class="cbt-meta-item">
+                  <span style="color: var(--student-text-muted);">Duration:</span>
+                  <strong>${a.durationMinutes || 30} Minutes</strong>
+                </div>
+                <div class="cbt-meta-item">
+                  <span style="color: var(--student-text-muted);">Questions:</span>
+                  <strong>${(a.questions || []).length} Items</strong>
+                </div>
+                <div class="cbt-meta-item">
+                  <span style="color: var(--student-text-muted);">Maximum Score:</span>
+                  <strong>${a.totalMarks || 10} Marks</strong>
+                </div>
+                <div class="cbt-meta-item">
+                  <span style="color: var(--student-text-muted);">Closing Date:</span>
+                  <strong>${a.closingDate ? formatDateOnly(a.closingDate) : "Open"}</strong>
+                </div>
+              </div>
+
+              ${scoreSummaryHtml}
+            </div>
+
+            <div style="margin-top: 1.25rem;">
+              ${actionBtnHtml}
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    // Attach Start / Resume triggers
+    cardsContainer.querySelectorAll(".btn-start-test, .btn-resume-test").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const testId = btn.getAttribute("data-id");
+        openPreTestBriefing(testId);
+      });
+    });
+
+    // Attach Review triggers
+    cardsContainer.querySelectorAll(".btn-review-result").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const subId = btn.getAttribute("data-sub-id");
+        const testId = btn.getAttribute("data-id");
+        openTestReviewModal(subId, testId);
+      });
+    });
+  }
+
+  // 3. Pre-Test Briefing Modal
+  function openPreTestBriefing(testId) {
+    const test = allAssessments.find((a) => a.id === testId);
+    if (!test) return;
+
+    activeBriefingAssessment = test;
+    if (briefingTitle) briefingTitle.textContent = test.title;
+    if (briefingTypePill) {
+      briefingTypePill.textContent = (test.type || "test").toUpperCase() === "EXAM" ? "SEMESTER EXAMINATION" : "CONTINUOUS ASSESSMENT";
+    }
+    if (briefingCourseMeta) {
+      briefingCourseMeta.textContent = `${test.courseCode} · ${test.courseTitle || "Divine Mandate Bible Institute"}`;
+    }
+    if (briefingDuration) briefingDuration.textContent = `${test.durationMinutes || 30} Mins`;
+    if (briefingQCount) briefingQCount.textContent = `${(test.questions || []).length} Questions`;
+    if (briefingTotalMarks) briefingTotalMarks.textContent = `${test.totalMarks || 10} Marks`;
+    if (briefingAttempts) briefingAttempts.textContent = `${test.allowedAttempts || 1} Attempt Allowed`;
+
+    if (briefingHonorCheck) briefingHonorCheck.checked = false;
+    if (btnLaunchExam) btnLaunchExam.disabled = true;
+
+    if (modalBriefing) modalBriefing.style.display = "flex";
+  }
+
+  if (briefingHonorCheck && btnLaunchExam) {
+    briefingHonorCheck.addEventListener("change", () => {
+      btnLaunchExam.disabled = !briefingHonorCheck.checked;
+    });
+  }
+
+  const closeBriefingModal = () => {
+    if (modalBriefing) modalBriefing.style.display = "none";
+    activeBriefingAssessment = null;
+  };
+
+  if (btnCloseBriefing) btnCloseBriefing.addEventListener("click", closeBriefingModal);
+  if (btnCancelBriefing) btnCancelBriefing.addEventListener("click", closeBriefingModal);
+
+  // 4. Launch CBT Examination Runner
+  if (btnLaunchExam) {
+    btnLaunchExam.addEventListener("click", async () => {
+      if (!activeBriefingAssessment) return;
+      const test = activeBriefingAssessment;
+
+      btnLaunchExam.disabled = true;
+      btnLaunchExam.textContent = "Verifying Credentials & Launching...";
+
+      try {
+        const result = await startCbtAttempt(
+          {
+            studentId: uid,
+            studentName,
+            matricNumber,
+            studyCentre,
+            programme
+          },
+          test.id
+        );
+
+        closeBriefingModal();
+        startExamRunnerSession(result.attempt, result.assessment);
+      } catch (err) {
+        alert(`Assessment Launch Error: ${err.message}`);
+        console.error("[DIMABIN CBT Launch]", err);
+      } finally {
+        if (btnLaunchExam) {
+          btnLaunchExam.disabled = false;
+          btnLaunchExam.textContent = "🚀 I am Ready — Launch Assessment";
+        }
+      }
+    });
+  }
+
+  // 5. Active Exam Session Controller
+  function startExamRunnerSession(attempt, assessment) {
+    currentAttempt = attempt;
+    activeExam = assessment;
+    activeQuestions = assessment.questions || [];
+
+    if (activeQuestions.length === 0) {
+      alert("Error: This assessment contains no questions. Please notify your course lecturer.");
+      return;
+    }
+
+    currentQIndex = 0;
+    currentAnswers = { ...(attempt.answers || {}) };
+    flaggedQuestionSet = new Set();
+    integrityViolations = 0;
+    isSubmitting = false;
+
+    // Load any locally cached draft answers
+    try {
+      const localDraft = localStorage.getItem(`dimabin_cbt_answers_${attempt.id}`);
+      if (localDraft) {
+        const parsed = JSON.parse(localDraft);
+        currentAnswers = { ...currentAnswers, ...parsed };
+      }
+    } catch (_) {}
+
+    // Populate runner header
+    if (runnerCourseBadge) runnerCourseBadge.textContent = `${assessment.courseCode} · ${assessment.courseTitle || ""}`;
+    if (runnerTitle) runnerTitle.textContent = assessment.title;
+    if (candidateNameBadge) candidateNameBadge.textContent = studentName;
+    if (candidateMatricBadge) candidateMatricBadge.textContent = matricNumber;
+
+    if (cheatAlertBanner) cheatAlertBanner.style.display = "none";
+
+    // Open runner modal
+    if (runnerOverlay) {
+      runnerOverlay.classList.add("active");
+      document.body.style.overflow = "hidden";
+    }
+
+    // Initialize Timer
+    initExamCountdown(attempt.expiresAt);
+
+    // Initialize Anti-Cheat Listeners
+    initAntiCheatMonitor();
+
+    // Render palette and first question
+    renderPaletteGrid();
+    renderCurrentQuestion();
+  }
+
+  // Countdown Timer
+  function initExamCountdown(expiresAtIso) {
+    if (timerIntervalId) clearInterval(timerIntervalId);
+
+    const expiryTime = new Date(expiresAtIso).getTime();
+
+    const updateTimerTick = () => {
+      const now = Date.now();
+      const remainingMs = expiryTime - now;
+
+      if (remainingMs <= 0) {
+        clearInterval(timerIntervalId);
+        if (timerDisplay) timerDisplay.textContent = "00:00";
+        if (timerBox) {
+          timerBox.classList.remove("timer-warning");
+          timerBox.classList.add("timer-critical");
+        }
+        alert("⏱️ Time has expired! Concluding assessment and submitting your responses to the registry.");
+        executeFinalSubmit();
+        return;
+      }
+
+      const totalSec = Math.floor(remainingMs / 1000);
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      const formatted = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+
+      if (timerDisplay) timerDisplay.textContent = formatted;
+
+      if (timerBox) {
+        if (mins < 1) {
+          timerBox.classList.remove("timer-warning");
+          timerBox.classList.add("timer-critical");
+        } else if (mins < 5) {
+          timerBox.classList.add("timer-warning");
+          timerBox.classList.remove("timer-critical");
+        } else {
+          timerBox.classList.remove("timer-warning");
+          timerBox.classList.remove("timer-critical");
+        }
+      }
+    };
+
+    updateTimerTick();
+    timerIntervalId = setInterval(updateTimerTick, 1000);
+  }
+
+  // Anti-Cheat Window / Tab Monitoring
+  function initAntiCheatMonitor() {
+    const handleIntegrityIncident = () => {
+      if (!runnerOverlay || !runnerOverlay.classList.contains("active") || isSubmitting) return;
+
+      integrityViolations++;
+      if (cheatViolationCountEl) cheatViolationCountEl.textContent = integrityViolations;
+      if (cheatAlertBanner) cheatAlertBanner.style.display = "block";
+
+      // Save violation count
+      saveCbtProgress(currentAttempt.id, {
+        _integrityViolations: integrityViolations,
+        _lastViolationAt: new Date().toISOString()
+      });
+    };
+
+    window.addEventListener("blur", handleIntegrityIncident);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) handleIntegrityIncident();
+    });
+  }
+
+  // Render Current Question View
+  function renderCurrentQuestion() {
+    const q = activeQuestions[currentQIndex];
+    if (!q) return;
+
+    if (qNumBadge) qNumBadge.textContent = `Question ${currentQIndex + 1} of ${activeQuestions.length}`;
+    if (qTypeBadge) {
+      const typeLabels = {
+        mcq: "Multiple Choice",
+        yes_no: "Yes / No",
+        true_false: "True / False",
+        short_answer: "Short Answer",
+        theory: "Theory / Essay"
+      };
+      qTypeBadge.textContent = typeLabels[q.type] || "Question";
+    }
+    if (qMarksBadge) qMarksBadge.textContent = `${q.marks || 2} Marks`;
+
+    if (questionTextEl) questionTextEl.textContent = q.questionText || "Question text unavailable.";
+
+    if (flagQBtn) {
+      const isFlagged = flaggedQuestionSet.has(q.id);
+      flagQBtn.textContent = isFlagged ? "🚩 Flagged" : "🏳️ Flag for Review";
+      flagQBtn.style.background = isFlagged ? "#FEF3C7" : "transparent";
+      flagQBtn.style.color = isFlagged ? "#B45309" : "";
+    }
+
+    // Render Options / Inputs based on Type
+    renderQuestionOptions(q);
+
+    // Update Navigation Buttons
+    if (prevQBtn) prevQBtn.disabled = currentQIndex === 0;
+    if (nextQBtn) nextQBtn.textContent = currentQIndex === activeQuestions.length - 1 ? "Review Palette →" : "Next →";
+
+    updatePaletteState();
+  }
+
+  // Render Option Inputs
+  function renderQuestionOptions(q) {
+    if (!optionsContainer) return;
+    optionsContainer.innerHTML = "";
+
+    const userVal = currentAnswers[q.id];
+
+    if (q.type === "mcq") {
+      const opts = q.options || [];
+      optionsContainer.innerHTML = opts
+        .map((opt) => {
+          const isChecked = userVal === opt.id;
+          return `
+            <label class="cbt-option-item ${isChecked ? "selected" : ""}" data-opt-id="${opt.id}">
+              <input type="radio" name="cbt_q_${q.id}" class="cbt-option-radio" value="${opt.id}" ${isChecked ? "checked" : ""}>
+              <span style="font-size: 0.95rem; line-height: 1.45;">${opt.text}</span>
+            </label>
+          `;
+        })
+        .join("");
+
+      optionsContainer.querySelectorAll(".cbt-option-item").forEach((item) => {
+        item.addEventListener("click", () => {
+          const optId = item.getAttribute("data-opt-id");
+          recordAnswer(q.id, optId);
+          optionsContainer.querySelectorAll(".cbt-option-item").forEach((el) => el.classList.remove("selected"));
+          item.classList.add("selected");
+          const radio = item.querySelector("input[type='radio']");
+          if (radio) radio.checked = true;
+        });
+      });
+    } else if (q.type === "true_false" || q.type === "yes_no") {
+      const isTF = q.type === "true_false";
+      const val1 = isTF ? "opt_true" : "opt_yes";
+      const val2 = isTF ? "opt_false" : "opt_no";
+      const label1 = isTF ? "True" : "Yes";
+      const label2 = isTF ? "False" : "No";
+
+      optionsContainer.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 450px;">
+          <button type="button" class="btn ${userVal === val1 ? "btn-primary" : "btn-outline-blue"} btn-binary-choice" data-val="${val1}" style="font-weight: 800; padding: 1rem; font-size: 1.1rem;">
+            ${label1}
+          </button>
+          <button type="button" class="btn ${userVal === val2 ? "btn-primary" : "btn-outline-blue"} btn-binary-choice" data-val="${val2}" style="font-weight: 800; padding: 1rem; font-size: 1.1rem;">
+            ${label2}
+          </button>
+        </div>
+      `;
+
+      optionsContainer.querySelectorAll(".btn-binary-choice").forEach((b) => {
+        b.addEventListener("click", () => {
+          const chosen = b.getAttribute("data-val");
+          recordAnswer(q.id, chosen);
+          optionsContainer.querySelectorAll(".btn-binary-choice").forEach((btnEl) => {
+            btnEl.classList.remove("btn-primary");
+            btnEl.classList.add("btn-outline-blue");
+          });
+          b.classList.remove("btn-outline-blue");
+          b.classList.add("btn-primary");
+        });
+      });
+    } else if (q.type === "short_answer") {
+      optionsContainer.innerHTML = `
+        <div style="max-width: 600px;">
+          <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--student-navy); margin-bottom: 0.5rem;">
+            Your Answer (Word or Short Phrase):
+          </label>
+          <input type="text" class="student-form-input" id="cbt-short-input" value="${userVal || ""}" placeholder="Enter concise answer..." style="width: 100%; font-size: 1rem; padding: 0.75rem 1rem;">
+        </div>
+      `;
+
+      const input = document.getElementById("cbt-short-input");
+      if (input) {
+        input.addEventListener("input", () => {
+          recordAnswer(q.id, input.value.trim());
+        });
+      }
+    } else if (q.type === "theory") {
+      optionsContainer.innerHTML = `
+        <div>
+          <label style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--student-navy); margin-bottom: 0.5rem;">
+            Exegesis / Theological Response:
+          </label>
+          <textarea class="student-form-input" id="cbt-theory-input" rows="8" placeholder="Type your structured theological response here..." style="width: 100%; font-size: 0.95rem; line-height: 1.5; padding: 0.85rem 1rem;">${userVal || ""}</textarea>
+          <div style="display: flex; justify-content: flex-end; font-size: 0.75rem; color: var(--student-text-muted); margin-top: 0.35rem;" id="cbt-theory-word-count">
+            Words: ${(userVal || "").split(/\s+/).filter(Boolean).length}
+          </div>
+        </div>
+      `;
+
+      const textarea = document.getElementById("cbt-theory-input");
+      const wordCountEl = document.getElementById("cbt-theory-word-count");
+      if (textarea) {
+        textarea.addEventListener("input", () => {
+          recordAnswer(q.id, textarea.value);
+          const words = textarea.value.split(/\s+/).filter(Boolean).length;
+          if (wordCountEl) wordCountEl.textContent = `Words: ${words}`;
+        });
+      }
+    }
+  }
+
+  // Record Answer & Trigger Auto-Save
+  let saveDebounceTimer = null;
+  function recordAnswer(questionId, val) {
+    if (!val || String(val).trim() === "") {
+      delete currentAnswers[questionId];
+    } else {
+      currentAnswers[questionId] = val;
+    }
+
+    if (saveIndicator) {
+      saveIndicator.innerHTML = `<span>⏳</span><span>Saving...</span>`;
+      saveIndicator.style.color = "#D97706";
+    }
+
+    // Cache locally immediately
+    try {
+      localStorage.setItem(`dimabin_cbt_answers_${currentAttempt.id}`, JSON.stringify(currentAnswers));
+    } catch (_) {}
+
+    // Debounced sync to Firestore
+    clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(async () => {
+      try {
+        await saveCbtProgress(currentAttempt.id, currentAnswers);
+        if (saveIndicator) {
+          saveIndicator.innerHTML = `<span>💾</span><span>Saved</span>`;
+          saveIndicator.style.color = "#16A34A";
+        }
+      } catch (_) {}
+    }, 600);
+
+    updatePaletteState();
+  }
+
+  // Clear Answer
+  if (clearQBtn) {
+    clearQBtn.addEventListener("click", () => {
+      const q = activeQuestions[currentQIndex];
+      if (!q) return;
+      delete currentAnswers[q.id];
+      recordAnswer(q.id, "");
+      renderCurrentQuestion();
+    });
+  }
+
+  // Flag Question Toggle
+  if (flagQBtn) {
+    flagQBtn.addEventListener("click", () => {
+      const q = activeQuestions[currentQIndex];
+      if (!q) return;
+      if (flaggedQuestionSet.has(q.id)) {
+        flaggedQuestionSet.delete(q.id);
+      } else {
+        flaggedQuestionSet.add(q.id);
+      }
+      renderCurrentQuestion();
+    });
+  }
+
+  // Previous & Next Buttons
+  if (prevQBtn) {
+    prevQBtn.addEventListener("click", () => {
+      if (currentQIndex > 0) {
+        currentQIndex--;
+        renderCurrentQuestion();
+      }
+    });
+  }
+
+  if (nextQBtn) {
+    nextQBtn.addEventListener("click", () => {
+      if (currentQIndex < activeQuestions.length - 1) {
+        currentQIndex++;
+        renderCurrentQuestion();
+      } else {
+        // At last question, prompt submit review
+        promptSubmitConfirmation();
+      }
+    });
+  }
+
+  // Render Question Palette Grid
+  function renderPaletteGrid() {
+    if (!paletteGrid) return;
+    paletteGrid.innerHTML = activeQuestions
+      .map((q, idx) => `
+        <button type="button" class="cbt-palette-btn" data-idx="${idx}" id="pal-btn-${idx}">
+          ${idx + 1}
+        </button>
+      `)
+      .join("");
+
+    paletteGrid.querySelectorAll(".cbt-palette-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = parseInt(btn.getAttribute("data-idx"), 10);
+        if (!isNaN(idx)) {
+          currentQIndex = idx;
+          renderCurrentQuestion();
+        }
+      });
+    });
+
+    updatePaletteState();
+  }
+
+  // Update Palette Styling & Summary Counts
+  function updatePaletteState() {
+    let answered = 0;
+    let flagged = 0;
+
+    activeQuestions.forEach((q, idx) => {
+      const btn = document.getElementById(`pal-btn-${idx}`);
+      if (!btn) return;
+
+      const isCurrent = idx === currentQIndex;
+      const hasAnswer = currentAnswers[q.id] !== undefined && String(currentAnswers[q.id]).trim() !== "";
+      const isFlagged = flaggedQuestionSet.has(q.id);
+
+      if (hasAnswer) answered++;
+      if (isFlagged) flagged++;
+
+      btn.className = "cbt-palette-btn";
+      if (isCurrent) btn.classList.add("current");
+      if (hasAnswer) btn.classList.add("answered");
+      if (isFlagged) btn.classList.add("flagged");
+    });
+
+    const unanswered = activeQuestions.length - answered;
+    if (paletteCountAnswered) paletteCountAnswered.textContent = answered;
+    if (paletteCountUnanswered) paletteCountUnanswered.textContent = unanswered;
+    if (paletteCountFlagged) paletteCountFlagged.textContent = flagged;
+  }
+
+  // 6. Submit Confirmation Dialog
+  const promptSubmitConfirmation = () => {
+    let answered = 0;
+    activeQuestions.forEach((q) => {
+      if (currentAnswers[q.id] !== undefined && String(currentAnswers[q.id]).trim() !== "") {
+        answered++;
+      }
+    });
+    const unanswered = activeQuestions.length - answered;
+
+    if (confirmSummaryText) {
+      confirmSummaryText.textContent = `You have answered ${answered} of ${activeQuestions.length} questions (${unanswered} unanswered).`;
+    }
+
+    if (confirmUnansweredWarn) {
+      confirmUnansweredWarn.style.display = unanswered > 0 ? "block" : "none";
+    }
+
+    if (modalConfirm) modalConfirm.style.display = "flex";
+  };
+
+  if (finishExamBtn) finishExamBtn.addEventListener("click", promptSubmitConfirmation);
+  if (sidebarSubmitBtn) sidebarSubmitBtn.addEventListener("click", promptSubmitConfirmation);
+
+  if (btnBackToExam) {
+    btnBackToExam.addEventListener("click", () => {
+      if (modalConfirm) modalConfirm.style.display = "none";
+    });
+  }
+
+  if (btnFinalConfirm) {
+    btnFinalConfirm.addEventListener("click", () => {
+      if (modalConfirm) modalConfirm.style.display = "none";
+      executeFinalSubmit();
+    });
+  }
+
+  // Execute Submission
+  async function executeFinalSubmit() {
+    if (isSubmitting || !currentAttempt) return;
+    isSubmitting = true;
+
+    // Stop timer
+    if (timerIntervalId) clearInterval(timerIntervalId);
+
+    try {
+      const res = await submitCbtAttempt(currentAttempt.id, currentAnswers);
+
+      // Clean local storage cache
+      try {
+        localStorage.removeItem(`dimabin_cbt_answers_${currentAttempt.id}`);
+      } catch (_) {}
+
+      // Close Runner Overlay
+      if (runnerOverlay) {
+        runnerOverlay.classList.remove("active");
+        document.body.style.overflow = "";
+      }
+
+      // Open Receipt Modal
+      openSubmissionReceipt(res.attempt || currentAttempt, activeExam);
+    } catch (err) {
+      alert(`Submission Note: ${err.message}`);
+      console.error("[DIMABIN CBT Submit]", err);
+    } finally {
+      isSubmitting = false;
+      renderAssessmentsView();
+    }
+  }
+
+  // 7. Submission Receipt Modal
+  function openSubmissionReceipt(attempt, assessment) {
+    if (receiptCandidateName) receiptCandidateName.textContent = studentName;
+    if (receiptMatric) receiptMatric.textContent = matricNumber;
+    if (receiptCourse) receiptCourse.textContent = `${assessment?.courseCode || attempt.courseCode || ""} · ${assessment?.title || attempt.assessmentTitle || ""}`;
+    if (receiptTimestamp) receiptTimestamp.textContent = new Date().toLocaleString();
+    if (receiptAttemptId) receiptAttemptId.textContent = attempt.id;
+
+    const hasTheory = assessment?.hasTheory;
+    const isReleased = attempt.resultsReleased || assessment?.resultVisibility === "immediate";
+
+    if (isReleased) {
+      if (receiptScoreContainer) receiptScoreContainer.style.display = "block";
+      if (receiptTotalScore) receiptTotalScore.textContent = `${attempt.totalScore || 0} / ${attempt.maxMarks || 30}`;
+      if (receiptPercentage) receiptPercentage.textContent = `${attempt.percentage || 0}%`;
+      if (receiptGrade) receiptGrade.textContent = `Grade ${attempt.grade || "F"}`;
+      if (receiptPassFail) {
+        const passed = (attempt.percentage || 0) >= 40;
+        receiptPassFail.textContent = passed ? "PASSED" : "FAILED";
+        receiptPassFail.className = `status-pill-badge ${passed ? "badge-green" : "badge-red"}`;
+      }
+      if (receiptTheoryNotice) {
+        receiptTheoryNotice.style.display = hasTheory ? "block" : "none";
+      }
+    } else {
+      if (receiptScoreContainer) {
+        receiptScoreContainer.innerHTML = `
+          <div style="font-size: 0.95rem; font-weight: 700; color: var(--student-navy); margin-bottom: 0.35rem;">
+            Assessment Received for Academic Evaluation
+          </div>
+          <p style="font-size: 0.8125rem; color: var(--student-text-muted); margin: 0;">
+            Objective marking is logged. Results will be published to your student portal upon faculty instructor evaluation and grading sign-off.
+          </p>
+        `;
+      }
+    }
+
+    if (modalReceipt) modalReceipt.style.display = "flex";
+  }
+
+  if (btnCloseReceipt) {
+    btnCloseReceipt.addEventListener("click", () => {
+      if (modalReceipt) modalReceipt.style.display = "none";
+      renderAssessmentsView();
+    });
+  }
+
+  // 8. Result Review Modal (Detailed Question by Question)
+  function openTestReviewModal(submissionId, assessmentId) {
+    const sub = allSubmissions.find((s) => s.id === submissionId);
+    const assessment = allAssessments.find((a) => a.id === assessmentId);
+    if (!sub || !assessment) return;
+
+    if (reviewTestType) reviewTestType.textContent = (assessment.type || "test").toUpperCase() === "EXAM" ? "SEMESTER EXAMINATION" : "CONTINUOUS ASSESSMENT";
+    if (reviewTestTitle) reviewTestTitle.textContent = `${assessment.title} — Detailed Evaluation`;
+    if (reviewTestMeta) reviewTestMeta.textContent = `${assessment.courseCode} · ${assessment.courseTitle || ""}`;
+
+    if (reviewScore) reviewScore.textContent = `${sub.totalScore || 0} / ${sub.maxMarks || 30}`;
+    if (reviewPercent) reviewPercent.textContent = `${sub.percentage || 0}%`;
+    if (reviewGrade) reviewGrade.textContent = `Grade ${sub.grade || "F"}`;
+    if (reviewMarkingStatus) {
+      const isGraded = sub.markingStatus === "fully_graded";
+      reviewMarkingStatus.textContent = isGraded ? "Fully Graded" : "Pending Manual Evaluation";
+      reviewMarkingStatus.className = `status-pill-badge ${isGraded ? "badge-green" : "badge-gold"}`;
+    }
+
+    if (sub.lecturerFeedback && reviewFeedbackBox && reviewFeedbackText) {
+      reviewFeedbackBox.style.display = "block";
+      reviewFeedbackText.textContent = sub.lecturerFeedback;
+    } else if (reviewFeedbackBox) {
+      reviewFeedbackBox.style.display = "none";
+    }
+
+    // Render questions review
+    if (reviewQuestionsList) {
+      const questions = assessment.questions || [];
+      const answers = sub.answers || {};
+      const qGrading = sub.questionGrading || {};
+
+      reviewQuestionsList.innerHTML = questions
+        .map((q, idx) => {
+          const userAns = answers[q.id];
+          const gradeInfo = qGrading[q.id] || {};
+          const isCorrect = gradeInfo.isCorrect;
+          const score = gradeInfo.score !== undefined ? gradeInfo.score : (isCorrect ? q.marks : 0);
+
+          let ansDisplay = "—";
+          let correctDisplay = "";
+
+          if (q.type === "mcq") {
+            const chosenOpt = (q.options || []).find((o) => o.id === userAns);
+            ansDisplay = chosenOpt ? chosenOpt.text : `<span style="color:#DC2626;">No answer selected</span>`;
+            const correctOpt = (q.options || []).find((o) => o.id === q.correctOptionId);
+            correctDisplay = correctOpt ? correctOpt.text : "";
+          } else if (q.type === "true_false" || q.type === "yes_no") {
+            ansDisplay = userAns === "opt_true" || userAns === "opt_yes" ? (q.type === "true_false" ? "True" : "Yes") : (q.type === "true_false" ? "False" : "No");
+            correctDisplay = q.correctOptionId === "opt_true" || q.correctOptionId === "opt_yes" ? (q.type === "true_false" ? "True" : "Yes") : (q.type === "true_false" ? "False" : "No");
+          } else {
+            ansDisplay = userAns || `<span style="color:#DC2626;">No answer submitted</span>`;
+            correctDisplay = q.expectedAnswer || "";
+          }
+
+          const badgeColor = isCorrect ? "#DCFCE7; color: #166534; border: 1px solid #86EFAC;" : "#FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;";
+          const badgeText = isCorrect ? "✓ Correct" : (q.type === "theory" ? "Theory Evaluated" : "✕ Incorrect");
+
+          return `
+            <div style="background: #F8FAFC; border: 1px solid var(--student-border); border-radius: var(--student-radius-sm); padding: 1.25rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                <strong style="color: var(--student-navy); font-size: 0.95rem;">Question ${idx + 1} (${q.marks} Marks)</strong>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; background: ${badgeColor};">
+                    ${badgeText}
+                  </span>
+                  <strong style="font-size: 0.9rem; color: var(--student-blue);">${score} / ${q.marks}</strong>
+                </div>
+              </div>
+
+              <p style="font-size: 0.9rem; color: var(--student-text-main); margin-bottom: 0.75rem; font-weight: 600; line-height: 1.45;">
+                ${q.questionText}
+              </p>
+
+              <div style="font-size: 0.84rem; margin-bottom: 0.5rem;">
+                <span style="color: var(--student-text-muted); font-weight: 700;">Your Response:</span>
+                <div style="margin-top: 0.2rem; color: var(--student-navy); font-weight: 600;">${ansDisplay}</div>
+              </div>
+
+              ${correctDisplay ? `
+                <div style="font-size: 0.84rem; color: #166534; margin-bottom: 0.5rem;">
+                  <span style="font-weight: 700;">Correct Institutional Answer:</span>
+                  <div style="margin-top: 0.2rem; font-weight: 600;">${correctDisplay}</div>
+                </div>
+              ` : ""}
+
+              ${q.explanation ? `
+                <div style="font-size: 0.8125rem; color: var(--student-text-muted); background: #FFFFFF; border-left: 3px solid var(--student-blue); padding: 0.5rem 0.75rem; border-radius: 4px; margin-top: 0.5rem;">
+                  <strong>Theological Context:</strong> ${q.explanation}
+                </div>
+              ` : ""}
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    if (modalReview) modalReview.style.display = "flex";
+  }
+
+  const closeReviewModal = () => {
+    if (modalReview) modalReview.style.display = "none";
+  };
+
+  if (btnCloseReview) btnCloseReview.addEventListener("click", closeReviewModal);
+  if (btnDoneReview) btnDoneReview.addEventListener("click", closeReviewModal);
+
+  // 9. Subscribe to Real-Time CBT Data
+  subscribeCbtAssessments((asmts) => {
+    allAssessments = asmts || [];
+    renderAssessmentsView();
+  });
+
+  subscribeCbtSubmissions((subs) => {
+    allSubmissions = subs || [];
+    renderAssessmentsView();
+  });
+}
+
+/**
  * Access Control Initialization
  */
 export async function initStudentDashboard() {
@@ -964,6 +2061,7 @@ export async function initStudentDashboard() {
   if (localSession) {
     renderStudentProfile(localSession);
     initStudentCourseRegistration(localSession, localSession.uid || localSession.id);
+    initStudentCbt(localSession, localSession.uid || localSession.id);
   }
 
   // 2. Listen to real Firebase Authentication
@@ -991,6 +2089,7 @@ export async function initStudentDashboard() {
       initStudentResults(profile);
       initStudentNotifications();
       initStudentCourseRegistration(profile, user.uid);
+      initStudentCbt(profile, user.uid);
     } catch (err) {
       console.error("[DIMABIN Student Dashboard] Profile initialization error:", err);
     }

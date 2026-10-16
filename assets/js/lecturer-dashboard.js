@@ -28,6 +28,22 @@ import {
   subscribeCourseAssessments,
   createCourseAssessment,
   deleteCourseAssessment,
+  subscribeCbtQuestions,
+  createCbtQuestion,
+  updateCbtQuestion,
+  deleteCbtQuestion,
+  duplicateCbtQuestion,
+  subscribeCbtAssessments,
+  createCbtAssessment,
+  updateCbtAssessment,
+  deleteCbtAssessment,
+  publishCbtAssessment,
+  closeCbtAssessment,
+  extendCbtDeadline,
+  updateCbtResultVisibility,
+  subscribeCbtSubmissions,
+  gradeCbtSubmission,
+  exportCbtResultsCsv,
   changeLecturerPassword,
   updateLecturerSelfProfile,
   sendLecturerPasswordReset,
@@ -170,6 +186,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "my-courses": "Assigned Courses",
     "my-students": "Enrolled Students Roster",
     assessments: "Grading & Assessments",
+    cbt: "CBT Management & Examination Engine",
     announcements: "Academic Notices & Circulars",
     profile: "Faculty Profile",
     settings: "Account & Security Settings",
@@ -273,6 +290,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let allAnnouncementsState = [];
   let allCentresState = [];
   let allAssessmentsState = [];
+  let allCbtQuestionsState = [];
+  let allCbtAssessmentsState = [];
+  let allCbtSubmissionsState = [];
 
   // Match course allocations for this lecturer
   const isMyAllocation = (alloc) => {
@@ -1860,10 +1880,1562 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } finally {
         btn.disabled = false;
-        btn.textContent = "Save Profile Details";
+        btn.textContent = "Save Changes";
       }
     });
   }
+  // 10. COMPUTER-BASED TEST (CBT) ENGINE CONTROLLER
+  // =========================================================================
+  const initCbtEngineController = () => {
+    const cbtAlertBanner = document.getElementById("cbt-alert-banner");
+    const subnavButtons = document.querySelectorAll(".cbt-subnav-btn");
+    const tabPanes = {
+      dashboard: document.getElementById("cbt-pane-dashboard"),
+      questions: document.getElementById("cbt-pane-questions"),
+      create: document.getElementById("cbt-pane-create"),
+      scheduled: document.getElementById("cbt-pane-scheduled"),
+      live: document.getElementById("cbt-pane-live"),
+      completed: document.getElementById("cbt-pane-completed"),
+      submissions: document.getElementById("cbt-pane-submissions"),
+      results: document.getElementById("cbt-pane-results"),
+      settings: document.getElementById("cbt-pane-settings")
+    };
+
+    let activeCbtTab = "dashboard";
+    let selectedPickerQuestionIds = new Set();
+    let currentGradingSubmission = null;
+
+    const showCbtAlert = (msg, type = "info") => {
+      if (!cbtAlertBanner) return;
+      cbtAlertBanner.style.display = "block";
+      if (type === "success") {
+        cbtAlertBanner.style.background = "#DCFCE7";
+        cbtAlertBanner.style.color = "#15803D";
+        cbtAlertBanner.style.border = "1px solid #BBF7D0";
+      } else if (type === "error") {
+        cbtAlertBanner.style.background = "#FEE2E2";
+        cbtAlertBanner.style.color = "#B91C1C";
+        cbtAlertBanner.style.border = "1px solid #FCA5A5";
+      } else {
+        cbtAlertBanner.style.background = "#EFF6FF";
+        cbtAlertBanner.style.color = "var(--student-blue)";
+        cbtAlertBanner.style.border = "1px solid #BFDBFE";
+      }
+      cbtAlertBanner.textContent = msg;
+      cbtAlertBanner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      setTimeout(() => {
+        if (cbtAlertBanner) cbtAlertBanner.style.display = "none";
+      }, 7000);
+    };
+
+    const switchCbtTab = (tabName) => {
+      activeCbtTab = tabName;
+      subnavButtons.forEach((btn) => {
+        const isMatch = btn.getAttribute("data-cbt-tab") === tabName;
+        btn.classList.toggle("active", isMatch);
+      });
+
+      Object.entries(tabPanes).forEach(([key, pane]) => {
+        if (pane) pane.style.display = key === tabName ? "block" : "none";
+      });
+
+      refreshCbtViews();
+    };
+
+    window.cbtSwitchTab = switchCbtTab;
+
+    subnavButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-cbt-tab");
+        if (tab) switchCbtTab(tab);
+      });
+    });
+
+    const quickCreateBtn = document.getElementById("btn-quick-create-test");
+    const quickAddQBtn = document.getElementById("btn-quick-add-question");
+    if (quickCreateBtn) quickCreateBtn.addEventListener("click", () => switchCbtTab("create"));
+    if (quickAddQBtn) quickAddQBtn.addEventListener("click", () => {
+      switchCbtTab("questions");
+      openQuestionModal();
+    });
+
+    // Populate Course Select dropdowns across CBT tabs
+    const refreshCbtCourseSelects = (myAllocations) => {
+      const selects = [
+        document.getElementById("qbank-filter-course"),
+        document.getElementById("cbt-form-course"),
+        document.getElementById("filter-scheduled-course"),
+        document.getElementById("filter-completed-course"),
+        document.getElementById("results-filter-course"),
+        document.getElementById("cbt-q-course")
+      ];
+
+      selects.forEach((sel) => {
+        if (!sel) return;
+        const currentVal = sel.value;
+        const isFilter = sel.id.includes("filter");
+        const defaultOption = isFilter ? `<option value="all">All Assigned Courses</option>` : `<option value="">-- Choose Assigned Course --</option>`;
+
+        sel.innerHTML = `
+          ${defaultOption}
+          ${myAllocations.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle}</option>`).join("")}
+        `;
+
+        if (currentVal && myAllocations.some((a) => a.courseCode === currentVal)) {
+          sel.value = currentVal;
+        }
+      });
+    };
+
+    // -----------------------------------------------------------------------
+    // 10A. DASHBOARD TAB
+    // -----------------------------------------------------------------------
+    const renderCbtDashboard = () => {
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
+
+      // Filter data relevant to this lecturer
+      const myQuestions = (allCbtQuestionsState || []).filter(
+        (q) => myCourseCodes.has((q.courseCode || "").toUpperCase()) || q.lecturerStaffId === staffId
+      );
+      const myAssessments = (allCbtAssessmentsState || []).filter(
+        (a) => myCourseCodes.has((a.courseCode || "").toUpperCase()) || a.lecturerStaffId === staffId
+      );
+      const myAssessmentIds = new Set(myAssessments.map((a) => a.id));
+
+      const mySubmissions = (allCbtSubmissionsState || []).filter(
+        (s) => myAssessmentIds.has(s.assessmentId) || myCourseCodes.has((s.courseCode || "").toUpperCase())
+      );
+
+      const enrolledStudents = compileEnrolledStudents(myAllocations, allRegistrationsState);
+      const totalExpected = enrolledStudents.length;
+
+      const now = new Date();
+      let countScheduled = 0;
+      let countActive = 0;
+      let countCompleted = 0;
+
+      myAssessments.forEach((a) => {
+        const start = new Date(a.startDate || now);
+        const end = a.closingDate ? new Date(a.closingDate) : null;
+        if (a.status === "closed" || (end && end < now)) {
+          countCompleted++;
+        } else if (a.status === "scheduled" || start > now) {
+          countScheduled++;
+        } else {
+          countActive++;
+        }
+      });
+
+      const uniqueParticipatedMatrics = new Set(mySubmissions.map((s) => (s.matricNumber || "").toUpperCase()));
+      const completedSubmissions = mySubmissions.filter((s) => s.status === "submitted" || s.status === "graded");
+      const pendingMarking = mySubmissions.filter((s) => s.markingStatus === "pending_manual");
+      const publishedResults = mySubmissions.filter((s) => s.resultsReleased === true);
+
+      // DOM updates
+      const setEl = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+      };
+
+      setEl("stat-cbt-total-questions", myQuestions.length);
+      setEl("stat-cbt-total-tests", myAssessments.length);
+      setEl("stat-cbt-scheduled", countScheduled);
+      setEl("stat-cbt-active", countActive);
+      setEl("stat-cbt-completed", countCompleted);
+      setEl("stat-cbt-expected-students", totalExpected);
+      setEl("stat-cbt-completed-attempts", completedSubmissions.length);
+      setEl("stat-cbt-unparticipated", Math.max(0, totalExpected - uniqueParticipatedMatrics.size));
+      setEl("stat-cbt-pending-marking", pendingMarking.length);
+      setEl("stat-cbt-published-results", publishedResults.length);
+
+      // Badge pill indicators on sub-tabs
+      setEl("cbt-badge-scheduled", countScheduled);
+      setEl("cbt-badge-live", countActive);
+      setEl("cbt-badge-completed", countCompleted);
+      setEl("cbt-badge-pending-marking", pendingMarking.length);
+
+      // Dashboard Preview Cards
+      const dashUpcoming = document.getElementById("cbt-dash-upcoming-list");
+      if (dashUpcoming) {
+        const upcomingList = myAssessments.filter((a) => a.status === "scheduled" || new Date(a.startDate) > now);
+        if (upcomingList.length === 0) {
+          dashUpcoming.innerHTML = `<p style="font-size: 0.8125rem; color: var(--student-text-muted);">No upcoming assessments scheduled.</p>`;
+        } else {
+          dashUpcoming.innerHTML = upcomingList.slice(0, 3).map((a) => `
+            <div style="padding: 0.65rem 0; border-bottom: 1px solid var(--student-border-subtle); display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--student-navy); font-size: 0.875rem; display: block;">${a.title}</strong>
+                <span style="font-size: 0.75rem; color: var(--student-text-muted);">${a.courseCode} · ${a.durationMinutes} mins · ${a.totalMarks} marks</span>
+              </div>
+              <span class="status-pill-badge badge-blue" style="font-size: 0.68rem;">Starts ${formatDateOnly(a.startDate)}</span>
+            </div>
+          `).join("");
+        }
+      }
+
+      const dashActive = document.getElementById("cbt-dash-active-list");
+      if (dashActive) {
+        const activeList = myAssessments.filter((a) => {
+          const start = new Date(a.startDate || now);
+          const end = a.closingDate ? new Date(a.closingDate) : null;
+          return a.status === "open" || (start <= now && (!end || end >= now) && a.status !== "closed");
+        });
+
+        if (activeList.length === 0) {
+          dashActive.innerHTML = `<p style="font-size: 0.8125rem; color: var(--student-text-muted);">No assessments currently active.</p>`;
+        } else {
+          dashActive.innerHTML = activeList.slice(0, 3).map((a) => {
+            const subsForThis = mySubmissions.filter((s) => s.assessmentId === a.id);
+            return `
+              <div style="padding: 0.65rem 0; border-bottom: 1px solid var(--student-border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong style="color: var(--student-navy); font-size: 0.875rem; display: block;">${a.title}</strong>
+                  <span style="font-size: 0.75rem; color: #16A34A; font-weight: 700;">🟢 Live Session (${subsForThis.length} submitted)</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-navy" onclick="window.cbtSwitchTab('live')" style="font-size: 0.72rem; padding: 2px 8px;">Monitor</button>
+              </div>
+            `;
+          }).join("");
+        }
+      }
+
+      const dashSubmissions = document.getElementById("cbt-dash-submissions-list");
+      if (dashSubmissions) {
+        if (completedSubmissions.length === 0) {
+          dashSubmissions.innerHTML = `<p style="font-size: 0.8125rem; color: var(--student-text-muted);">No student submissions received yet.</p>`;
+        } else {
+          dashSubmissions.innerHTML = completedSubmissions.slice(0, 3).map((s) => `
+            <div style="padding: 0.65rem 0; border-bottom: 1px solid var(--student-border-subtle); display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--student-navy); font-size: 0.875rem; display: block;">${s.studentName}</strong>
+                <span style="font-size: 0.75rem; color: var(--student-text-muted);">${s.matricNumber} · ${s.courseCode} · ${s.totalScore}/${s.maxMarks}</span>
+              </div>
+              <span class="status-pill-badge ${s.markingStatus === 'pending_manual' ? 'badge-gold' : 'badge-green'}" style="font-size: 0.68rem;">
+                ${s.markingStatus === 'pending_manual' ? 'Pending Theory' : 'Graded'}
+              </span>
+            </div>
+          `).join("");
+        }
+      }
+    };
+
+    // -----------------------------------------------------------------------
+    // 10B. QUESTION BANK TAB
+    // -----------------------------------------------------------------------
+    const renderQuestionBank = () => {
+      const qbankContainer = document.getElementById("qbank-container");
+      if (!qbankContainer) return;
+
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
+
+      const qSearch = (document.getElementById("qbank-search")?.value || "").trim().toLowerCase();
+      const qCourse = (document.getElementById("qbank-filter-course")?.value || "all").toUpperCase();
+      const qType = document.getElementById("qbank-filter-type")?.value || "all";
+      const qDiff = document.getElementById("qbank-filter-difficulty")?.value || "all";
+
+      let filtered = (allCbtQuestionsState || []).filter((q) => {
+        const matchesCourse = qCourse === "ALL" || (q.courseCode || "").toUpperCase() === qCourse;
+        const matchesType = qType === "all" || q.type === qType;
+        const matchesDiff = qDiff === "all" || q.difficulty === qDiff;
+        const matchesSearch = !qSearch ||
+          (q.questionText || "").toLowerCase().includes(qSearch) ||
+          (q.topic || "").toLowerCase().includes(qSearch) ||
+          (q.courseCode || "").toLowerCase().includes(qSearch);
+        return matchesCourse && matchesType && matchesDiff && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        qbankContainer.innerHTML = `
+          <div class="student-empty-box" style="padding: 2.5rem 1rem;">
+            <div class="student-empty-icon">📚</div>
+            <div class="student-empty-text">No Questions Match Filter Criteria</div>
+            <div class="student-empty-sub">Adjust your search or click "+ New Question" to add questions to your question bank.</div>
+          </div>
+        `;
+        return;
+      }
+
+      const typeLabels = {
+        mcq: `<span class="cbt-badge-type badge-mcq">Multiple Choice</span>`,
+        yes_no: `<span class="cbt-badge-type badge-yesno">Yes / No</span>`,
+        true_false: `<span class="cbt-badge-type badge-tf">True / False</span>`,
+        short_answer: `<span class="cbt-badge-type badge-short">Short Answer</span>`,
+        theory: `<span class="cbt-badge-type badge-theory">Theory / Essay</span>`
+      };
+
+      qbankContainer.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          ${filtered.map((q, idx) => {
+            let optionsPreview = "";
+            if (q.type === "mcq" && Array.isArray(q.options)) {
+              optionsPreview = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; margin: 0.5rem 0; font-size: 0.8125rem;">
+                  ${q.options.map((opt) => `
+                    <div style="padding: 0.35rem 0.6rem; border-radius: var(--student-radius-sm); border: 1px solid ${opt.id === q.correctOptionId ? '#86EFAC' : 'var(--student-border)'}; background: ${opt.id === q.correctOptionId ? '#F0FDF4' : '#FFFFFF'};">
+                      ${opt.id === q.correctOptionId ? '✓ ' : '• '}<strong>${opt.id.toUpperCase().replace('OPT_', '')}:</strong> ${opt.text}
+                    </div>
+                  `).join("")}
+                </div>
+              `;
+            } else if (q.type === "yes_no" || q.type === "true_false") {
+              optionsPreview = `
+                <div style="font-size: 0.8125rem; color: #166534; font-weight: 700; margin: 0.35rem 0;">
+                  Correct Answer: ${q.correctOptionId === "opt_yes" || q.correctOptionId === "opt_true" ? "True / Yes" : "False / No"}
+                </div>
+              `;
+            } else if (q.type === "short_answer") {
+              optionsPreview = `
+                <div style="font-size: 0.8125rem; color: var(--student-navy); margin: 0.35rem 0;">
+                  <strong>Expected Answer:</strong> "${q.expectedAnswer || "Not configured"}" (${q.matchingRule === "manual" ? "Manual Evaluation Required" : "Auto-Marking Match Enabled"})
+                </div>
+              `;
+            } else if (q.type === "theory") {
+              optionsPreview = `
+                <div style="font-size: 0.8125rem; color: #991B1B; margin: 0.35rem 0; background: #FEF2F2; padding: 0.45rem 0.75rem; border-radius: var(--student-radius-sm);">
+                  <strong>Marking Guide:</strong> ${q.markingGuide || "Comprehensive theological analysis evaluated manually by lecturer."}
+                </div>
+              `;
+            }
+
+            return `
+              <div class="cbt-item-card" style="border-left: 4px solid var(--student-blue);">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                      <span style="font-weight: 800; font-size: 0.8125rem; color: var(--student-text-muted);">#${idx + 1}</span>
+                      <span class="status-pill-badge badge-blue" style="font-weight: 700;">${q.courseCode}</span>
+                      <span style="font-size: 0.8125rem; color: var(--student-text-muted); font-weight: 600;">${q.topic || "General"}</span>
+                      ${typeLabels[q.type] || q.type}
+                      <span class="status-pill-badge" style="background:#F1F5F9; color:#475569; font-size: 0.68rem; text-transform: uppercase;">${q.difficulty || "Intermediate"}</span>
+                    </div>
+                    <div style="font-size: 0.875rem; font-weight: 800; color: #15803D; background: #DCFCE7; padding: 0.2rem 0.6rem; border-radius: var(--student-radius-sm);">
+                      ${q.marks} Marks
+                    </div>
+                  </div>
+
+                  <p style="font-size: 0.9375rem; font-weight: 600; color: var(--student-navy); line-height: 1.5; margin: 0.5rem 0;">
+                    ${q.questionText}
+                  </p>
+
+                  ${optionsPreview}
+
+                  ${q.explanation ? `
+                    <div style="font-size: 0.75rem; color: var(--student-text-muted); margin-top: 0.35rem;">
+                      💡 <em>${q.explanation}</em>
+                    </div>
+                  ` : ""}
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--student-border-subtle); padding-top: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                  <span style="font-size: 0.72rem; color: var(--student-text-muted);">
+                    Created: ${formatDateOnly(q.createdAt)} · Lecturer: ${q.lecturerName || "Faculty"}
+                  </span>
+                  <div style="display: flex; gap: 0.4rem;">
+                    <button type="button" class="btn btn-outline-blue btn-sm" onclick="window.cbtEditQuestion('${q.id}')" style="font-size: 0.75rem; padding: 2px 8px;">
+                      ✏️ Edit
+                    </button>
+                    <button type="button" class="btn btn-outline-navy btn-sm" onclick="window.cbtDuplicateQuestion('${q.id}')" style="font-size: 0.75rem; padding: 2px 8px;">
+                      📑 Duplicate
+                    </button>
+                    <button type="button" class="btn btn-sm" style="background:#FEE2E2; color:#B91C1C; border:1px solid #FECACA; font-size: 0.75rem; padding: 2px 8px;" onclick="window.cbtDeleteQuestion('${q.id}')">
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    };
+
+    // Attach listeners to question bank filters
+    const qSearchIn = document.getElementById("qbank-search");
+    const qCourseFilter = document.getElementById("qbank-filter-course");
+    const qTypeFilter = document.getElementById("qbank-filter-type");
+    const qDiffFilter = document.getElementById("qbank-filter-difficulty");
+    if (qSearchIn) qSearchIn.addEventListener("input", renderQuestionBank);
+    if (qCourseFilter) qCourseFilter.addEventListener("change", renderQuestionBank);
+    if (qTypeFilter) qTypeFilter.addEventListener("change", renderQuestionBank);
+    if (qDiffFilter) qDiffFilter.addEventListener("change", renderQuestionBank);
+
+    // -----------------------------------------------------------------------
+    // 10C. CREATE & EDIT QUESTION MODAL
+    // -----------------------------------------------------------------------
+    const modalQ = document.getElementById("modal-cbt-question");
+    const formQ = document.getElementById("form-cbt-question");
+    const qTypeSelect = document.getElementById("cbt-q-type");
+    const qOptionsContainer = document.getElementById("cbt-q-options-container");
+
+    const renderDynamicOptions = (type, existingData = null) => {
+      if (!qOptionsContainer) return;
+
+      if (type === "mcq") {
+        const opts = existingData?.options || [
+          { id: "opt_a", text: "" },
+          { id: "opt_b", text: "" },
+          { id: "opt_c", text: "" },
+          { id: "opt_d", text: "" }
+        ];
+        const correctId = existingData?.correctOptionId || "opt_a";
+
+        qOptionsContainer.innerHTML = `
+          <label class="student-form-label" style="margin-bottom: 0.5rem; display: block;">
+            Answer Options (Select the correct option):
+          </label>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${opts.map((opt, i) => `
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="radio" name="mcq_correct" value="${opt.id}" ${opt.id === correctId ? "checked" : ""} required>
+                <strong style="width: 25px; color: var(--student-navy);">${String.fromCharCode(65 + i)}:</strong>
+                <input type="text" class="student-form-input mcq-option-text" data-opt-id="${opt.id}" value="${opt.text || ""}" placeholder="Option ${String.fromCharCode(65 + i)} text..." required style="flex: 1;">
+              </div>
+            `).join("")}
+          </div>
+        `;
+      } else if (type === "yes_no") {
+        const correctId = existingData?.correctOptionId || "opt_yes";
+        qOptionsContainer.innerHTML = `
+          <label class="student-form-label" style="margin-bottom: 0.5rem; display: block;">Correct Answer:</label>
+          <div style="display: flex; gap: 1.5rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="radio" name="yn_correct" value="opt_yes" ${correctId === "opt_yes" ? "checked" : ""}>
+              <strong>Yes</strong>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="radio" name="yn_correct" value="opt_no" ${correctId === "opt_no" ? "checked" : ""}>
+              <strong>No</strong>
+            </label>
+          </div>
+        `;
+      } else if (type === "true_false") {
+        const correctId = existingData?.correctOptionId || "opt_true";
+        qOptionsContainer.innerHTML = `
+          <label class="student-form-label" style="margin-bottom: 0.5rem; display: block;">Correct Answer:</label>
+          <div style="display: flex; gap: 1.5rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="radio" name="tf_correct" value="opt_true" ${correctId === "opt_true" ? "checked" : ""}>
+              <strong>True</strong>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="radio" name="tf_correct" value="opt_false" ${correctId === "opt_false" ? "checked" : ""}>
+              <strong>False</strong>
+            </label>
+          </div>
+        `;
+      } else if (type === "short_answer") {
+        const expected = existingData?.expectedAnswer || "";
+        const rule = existingData?.matchingRule || "exact_or_contains";
+        qOptionsContainer.innerHTML = `
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+            <div>
+              <label class="student-form-label" for="cbt-q-expected-ans">Expected Answer / Key Terms *</label>
+              <input type="text" class="student-form-input" id="cbt-q-expected-ans" value="${expected}" placeholder="e.g. Athanasius" required>
+            </div>
+            <div>
+              <label class="student-form-label" for="cbt-q-rule">Evaluation Rule</label>
+              <select class="student-form-select" id="cbt-q-rule">
+                <option value="exact_or_contains" ${rule === "exact_or_contains" ? "selected" : ""}>Contains Keyword (Auto)</option>
+                <option value="exact" ${rule === "exact" ? "selected" : ""}>Exact Match (Auto)</option>
+                <option value="manual" ${rule === "manual" ? "selected" : ""}>Lecturer Manual Review</option>
+              </select>
+            </div>
+          </div>
+        `;
+      } else if (type === "theory") {
+        qOptionsContainer.innerHTML = `
+          <div style="font-size: 0.8125rem; color: #991B1B; background: #FEF2F2; border: 1px solid #FECACA; padding: 0.75rem; border-radius: var(--student-radius-sm);">
+            <strong>Theory / Essay Question Policy:</strong> Candidates will provide written paragraph responses. This question will require manual evaluation and score awarding by the lecturer before final results can be approved.
+          </div>
+        `;
+      }
+    };
+
+    if (qTypeSelect) {
+      qTypeSelect.addEventListener("change", () => {
+        renderDynamicOptions(qTypeSelect.value);
+      });
+    }
+
+    const openQuestionModal = (existingQuestion = null) => {
+      if (!modalQ || !formQ) return;
+      formQ.reset();
+
+      const modalTitle = document.getElementById("modal-cbt-q-title");
+      const qIdInput = document.getElementById("cbt-q-id");
+      const qCourse = document.getElementById("cbt-q-course");
+      const qTopic = document.getElementById("cbt-q-topic");
+      const qType = document.getElementById("cbt-q-type");
+      const qDiff = document.getElementById("cbt-q-difficulty");
+      const qMarks = document.getElementById("cbt-q-marks");
+      const qText = document.getElementById("cbt-q-text");
+      const qGuide = document.getElementById("cbt-q-marking-guide");
+      const qExpl = document.getElementById("cbt-q-explanation");
+
+      if (existingQuestion) {
+        if (modalTitle) modalTitle.textContent = "✏️ Edit Question in Question Bank";
+        if (qIdInput) qIdInput.value = existingQuestion.id;
+        if (qCourse) qCourse.value = existingQuestion.courseCode;
+        if (qTopic) qTopic.value = existingQuestion.topic || "";
+        if (qType) qType.value = existingQuestion.type || "mcq";
+        if (qDiff) qDiff.value = existingQuestion.difficulty || "intermediate";
+        if (qMarks) qMarks.value = existingQuestion.marks || 2;
+        if (qText) qText.value = existingQuestion.questionText || "";
+        if (qGuide) qGuide.value = existingQuestion.markingGuide || "";
+        if (qExpl) qExpl.value = existingQuestion.explanation || "";
+        renderDynamicOptions(existingQuestion.type || "mcq", existingQuestion);
+      } else {
+        if (modalTitle) modalTitle.textContent = "📚 Add Question to Question Bank";
+        if (qIdInput) qIdInput.value = "";
+        const selCourse = document.getElementById("qbank-filter-course")?.value;
+        if (qCourse && selCourse && selCourse !== "all") qCourse.value = selCourse;
+        renderDynamicOptions(qType?.value || "mcq");
+      }
+
+      modalQ.style.display = "flex";
+    };
+
+    const closeQuestionModal = () => {
+      if (modalQ) modalQ.style.display = "none";
+    };
+
+    const btnOpenAddQ = document.getElementById("btn-open-add-q-modal");
+    const btnCloseQ = document.getElementById("btn-close-cbt-q-modal");
+    const btnCancelQ = document.getElementById("btn-cancel-cbt-q-modal");
+    if (btnOpenAddQ) btnOpenAddQ.addEventListener("click", () => openQuestionModal());
+    if (btnCloseQ) btnCloseQ.addEventListener("click", closeQuestionModal);
+    if (btnCancelQ) btnCancelQ.addEventListener("click", closeQuestionModal);
+
+    window.cbtEditQuestion = (qId) => {
+      const q = (allCbtQuestionsState || []).find((item) => item.id === qId);
+      if (q) openQuestionModal(q);
+    };
+
+    window.cbtDuplicateQuestion = async (qId) => {
+      try {
+        await duplicateCbtQuestion(qId);
+        showCbtAlert("Question duplicated as draft successfully.", "success");
+      } catch (err) {
+        showCbtAlert(`Duplicate error: ${err.message}`, "error");
+      }
+    };
+
+    window.cbtDeleteQuestion = async (qId) => {
+      if (!confirm("Are you sure you want to permanently delete this question from your Question Bank?")) return;
+      try {
+        await deleteCbtQuestion(qId);
+        showCbtAlert("Question deleted from question bank.", "success");
+      } catch (err) {
+        showCbtAlert(`Delete error: ${err.message}`, "error");
+      }
+    };
+
+    if (formQ) {
+      formQ.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const qId = document.getElementById("cbt-q-id")?.value;
+        const courseCode = document.getElementById("cbt-q-course")?.value;
+        const topic = document.getElementById("cbt-q-topic")?.value;
+        const type = document.getElementById("cbt-q-type")?.value || "mcq";
+        const difficulty = document.getElementById("cbt-q-difficulty")?.value || "intermediate";
+        const marks = parseInt(document.getElementById("cbt-q-marks")?.value, 10) || 2;
+        const questionText = document.getElementById("cbt-q-text")?.value;
+        const markingGuide = document.getElementById("cbt-q-marking-guide")?.value || "";
+        const explanation = document.getElementById("cbt-q-explanation")?.value || "";
+
+        let options = [];
+        let correctOptionId = "";
+        let expectedAnswer = "";
+        let matchingRule = "exact_or_contains";
+
+        if (type === "mcq") {
+          const optInputs = formQ.querySelectorAll(".mcq-option-text");
+          const selectedRadio = formQ.querySelector("input[name='mcq_correct']:checked");
+          if (!selectedRadio) {
+            alert("Please select the correct MCQ option radio.");
+            return;
+          }
+          correctOptionId = selectedRadio.value;
+          optInputs.forEach((input) => {
+            options.push({
+              id: input.getAttribute("data-opt-id"),
+              text: input.value.trim()
+            });
+          });
+        } else if (type === "yes_no") {
+          const selectedRadio = formQ.querySelector("input[name='yn_correct']:checked");
+          correctOptionId = selectedRadio?.value || "opt_yes";
+          options = [{ id: "opt_yes", text: "Yes" }, { id: "opt_no", text: "No" }];
+        } else if (type === "true_false") {
+          const selectedRadio = formQ.querySelector("input[name='tf_correct']:checked");
+          correctOptionId = selectedRadio?.value || "opt_true";
+          options = [{ id: "opt_true", text: "True" }, { id: "opt_false", text: "False" }];
+        } else if (type === "short_answer") {
+          expectedAnswer = (document.getElementById("cbt-q-expected-ans")?.value || "").trim();
+          matchingRule = document.getElementById("cbt-q-rule")?.value || "exact_or_contains";
+        }
+
+        const myAllocations = allAllocationsState.filter(isMyAllocation);
+        const courseObj = myAllocations.find((a) => a.courseCode === courseCode);
+
+        const payload = {
+          courseCode,
+          courseTitle: courseObj?.courseTitle || "Theological Study",
+          topic,
+          type,
+          difficulty,
+          marks,
+          questionText,
+          options,
+          correctOptionId,
+          expectedAnswer,
+          matchingRule,
+          markingGuide,
+          explanation,
+          lecturerStaffId: staffId,
+          lecturerName: fullName,
+          status: "published"
+        };
+
+        const submitBtn = document.getElementById("btn-submit-cbt-q-form");
+        const origText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Saving...";
+
+        try {
+          if (qId) {
+            await updateCbtQuestion(qId, payload);
+            showCbtAlert("Question updated successfully.", "success");
+          } else {
+            await createCbtQuestion(payload);
+            showCbtAlert("Question saved to Question Bank successfully.", "success");
+          }
+          closeQuestionModal();
+          renderQuestionBank();
+        } catch (err) {
+          alert(`Failed to save question: ${err.message}`);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = origText;
+        }
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 10D. CREATE TEST OR EXAMINATION & QUESTION PICKER
+    // -----------------------------------------------------------------------
+    const modalPicker = document.getElementById("modal-cbt-picker");
+    const pickerList = document.getElementById("picker-questions-list");
+    const btnOpenPicker = document.getElementById("btn-open-q-picker");
+    const btnClosePicker = document.getElementById("btn-close-cbt-picker");
+    const btnCancelPicker = document.getElementById("btn-cancel-picker");
+    const btnConfirmPicker = document.getElementById("btn-confirm-picker");
+    const pickerSearchIn = document.getElementById("picker-search");
+    const pickerTypeFilter = document.getElementById("picker-filter-type");
+    const btnPickerSelectAll = document.getElementById("btn-picker-select-all");
+
+    const updateMarksValidationStrip = () => {
+      const selectedQuestions = (allCbtQuestionsState || []).filter((q) => selectedPickerQuestionIds.has(q.id));
+      const count = selectedQuestions.length;
+      const sumMarks = selectedQuestions.reduce((acc, q) => acc + (parseInt(q.marks, 10) || 0), 0);
+      const totalRequired = parseInt(document.getElementById("cbt-form-total-marks")?.value, 10) || 10;
+
+      const qCountEl = document.getElementById("cbt-summary-q-count");
+      const marksSumEl = document.getElementById("cbt-summary-marks-sum");
+      const validationStatusEl = document.getElementById("cbt-validation-status");
+      const selectedCountBadge = document.getElementById("cbt-selected-count");
+
+      if (qCountEl) qCountEl.textContent = `${count} Questions`;
+      if (marksSumEl) marksSumEl.textContent = `${sumMarks} Marks`;
+      if (selectedCountBadge) selectedCountBadge.textContent = count;
+
+      if (validationStatusEl) {
+        if (count === 0) {
+          validationStatusEl.innerHTML = `<span class="status-pill-badge badge-gold">Awaiting Question Selection</span>`;
+        } else if (sumMarks === totalRequired) {
+          validationStatusEl.innerHTML = `<span class="status-pill-badge badge-green">✓ Marks Validated (${sumMarks}/${totalRequired})</span>`;
+        } else {
+          validationStatusEl.innerHTML = `<span class="status-pill-badge badge-red">⚠️ Mismatch: ${sumMarks} vs ${totalRequired} Target</span>`;
+        }
+      }
+
+      // Render Selected Questions Preview
+      const previewContainer = document.getElementById("cbt-selected-questions-preview");
+      if (previewContainer) {
+        if (count === 0) {
+          previewContainer.innerHTML = `
+            <div class="student-empty-box" style="padding: 1.5rem;">
+              <div class="student-empty-icon">📖</div>
+              <div class="student-empty-text">No questions selected yet.</div>
+              <div class="student-empty-sub">Click "Select Questions from Bank" above to pick questions for this assessment.</div>
+            </div>
+          `;
+        } else {
+          previewContainer.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto;">
+              ${selectedQuestions.map((q, idx) => `
+                <div style="background: #FFFFFF; border: 1px solid var(--student-border); border-radius: var(--student-radius-sm); padding: 0.6rem 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+                  <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <strong style="color: var(--student-navy); font-size: 0.84rem;">${idx + 1}.</strong>
+                    <span style="font-size: 0.84rem; color: var(--student-navy); font-weight: 600;">${q.questionText.substring(0, 80)}${q.questionText.length > 80 ? "..." : ""}</span>
+                  </div>
+                  <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <span class="status-pill-badge badge-blue" style="font-size: 0.68rem;">${q.type.toUpperCase()}</span>
+                    <strong style="color: #16A34A; font-size: 0.84rem;">${q.marks}m</strong>
+                    <button type="button" class="btn btn-sm" style="color: #DC2626; background: none; border: none; font-size: 1rem; cursor: pointer;" onclick="window.cbtRemoveSelectedQuestion('${q.id}')">&times;</button>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          `;
+        }
+      }
+    };
+
+    window.cbtRemoveSelectedQuestion = (qId) => {
+      selectedPickerQuestionIds.delete(qId);
+      updateMarksValidationStrip();
+    };
+
+    const renderPickerQuestionsList = () => {
+      if (!pickerList) return;
+      const targetCourse = (document.getElementById("cbt-form-course")?.value || "").toUpperCase();
+      const pSearch = (pickerSearchIn?.value || "").trim().toLowerCase();
+      const pType = pickerTypeFilter?.value || "all";
+
+      let eligible = (allCbtQuestionsState || []).filter((q) => {
+        const matchesCourse = !targetCourse || (q.courseCode || "").toUpperCase() === targetCourse;
+        const matchesType = pType === "all" || q.type === pType;
+        const matchesSearch = !pSearch || (q.questionText || "").toLowerCase().includes(pSearch);
+        return matchesCourse && matchesType && matchesSearch;
+      });
+
+      if (eligible.length === 0) {
+        pickerList.innerHTML = `<p style="padding: 1.5rem; text-align: center; color: var(--student-text-muted);">No questions found for ${targetCourse || "selected criteria"}. Add questions to Question Bank first.</p>`;
+        return;
+      }
+
+      pickerList.innerHTML = eligible.map((q) => {
+        const isChecked = selectedPickerQuestionIds.has(q.id);
+        return `
+          <label style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.6rem; border-bottom: 1px solid var(--student-border-subtle); cursor: pointer; background: ${isChecked ? '#EFF6FF' : 'transparent'};">
+            <input type="checkbox" class="picker-q-checkbox" data-q-id="${q.id}" data-marks="${q.marks}" ${isChecked ? 'checked' : ''} style="margin-top: 3px;">
+            <div style="flex: 1;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+                <div style="display: flex; gap: 0.4rem; align-items: center;">
+                  <span class="status-pill-badge badge-blue" style="font-size: 0.65rem;">${q.courseCode}</span>
+                  <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 600;">${q.type.toUpperCase()}</span>
+                </div>
+                <strong style="color: #16A34A; font-size: 0.8125rem;">${q.marks} Marks</strong>
+              </div>
+              <p style="font-size: 0.84rem; color: var(--student-navy); margin: 0; line-height: 1.4;">${q.questionText}</p>
+            </div>
+          </label>
+        `;
+      }).join("");
+
+      // Wire checkboxes
+      pickerList.querySelectorAll(".picker-q-checkbox").forEach((cb) => {
+        cb.addEventListener("change", () => {
+          const qId = cb.getAttribute("data-q-id");
+          if (cb.checked) selectedPickerQuestionIds.add(qId);
+          else selectedPickerQuestionIds.delete(qId);
+
+          // Update picker footer
+          const selectedQuestions = (allCbtQuestionsState || []).filter((q) => selectedPickerQuestionIds.has(q.id));
+          const totalMarks = selectedQuestions.reduce((acc, q) => acc + (parseInt(q.marks, 10) || 0), 0);
+          document.getElementById("picker-total-selected").textContent = `${selectedQuestions.length} Questions`;
+          document.getElementById("picker-total-marks").textContent = `${totalMarks} Marks`;
+        });
+      });
+    };
+
+    if (btnOpenPicker) {
+      btnOpenPicker.addEventListener("click", () => {
+        const course = document.getElementById("cbt-form-course")?.value;
+        if (!course) {
+          alert("Please select a course offering first in the assessment form.");
+          return;
+        }
+        renderPickerQuestionsList();
+        modalPicker.style.display = "flex";
+      });
+    }
+
+    if (btnClosePicker) btnClosePicker.addEventListener("click", () => modalPicker.style.display = "none");
+    if (btnCancelPicker) btnCancelPicker.addEventListener("click", () => modalPicker.style.display = "none");
+    if (btnConfirmPicker) {
+      btnConfirmPicker.addEventListener("click", () => {
+        modalPicker.style.display = "none";
+        updateMarksValidationStrip();
+      });
+    }
+    if (pickerSearchIn) pickerSearchIn.addEventListener("input", renderPickerQuestionsList);
+    if (pickerTypeFilter) pickerTypeFilter.addEventListener("change", renderPickerQuestionsList);
+
+    if (btnPickerSelectAll) {
+      btnPickerSelectAll.addEventListener("click", () => {
+        if (!pickerList) return;
+        pickerList.querySelectorAll(".picker-q-checkbox").forEach((cb) => {
+          cb.checked = true;
+          selectedPickerQuestionIds.add(cb.getAttribute("data-q-id"));
+        });
+        const selectedQuestions = (allCbtQuestionsState || []).filter((q) => selectedPickerQuestionIds.has(q.id));
+        const totalMarks = selectedQuestions.reduce((acc, q) => acc + (parseInt(q.marks, 10) || 0), 0);
+        document.getElementById("picker-total-selected").textContent = `${selectedQuestions.length} Questions`;
+        document.getElementById("picker-total-marks").textContent = `${totalMarks} Marks`;
+      });
+    }
+
+    const formCreateCbt = document.getElementById("form-create-cbt");
+    const totalMarksInput = document.getElementById("cbt-form-total-marks");
+    if (totalMarksInput) totalMarksInput.addEventListener("input", updateMarksValidationStrip);
+
+    const handleSaveAssessment = async (isPublish) => {
+      const title = document.getElementById("cbt-form-title")?.value.trim();
+      const type = document.getElementById("cbt-form-type")?.value || "test";
+      const courseCode = document.getElementById("cbt-form-course")?.value;
+      const topic = document.getElementById("cbt-form-topic")?.value.trim() || "Continuous Assessment";
+      const studyCentre = document.getElementById("cbt-form-centre")?.value || "all";
+      const instructions = document.getElementById("cbt-form-instructions")?.value.trim() || "";
+      const startDate = document.getElementById("cbt-form-start")?.value;
+      const closingDate = document.getElementById("cbt-form-closing")?.value;
+      const durationMinutes = parseInt(document.getElementById("cbt-form-duration")?.value, 10) || 30;
+      const totalMarks = parseInt(document.getElementById("cbt-form-total-marks")?.value, 10) || 10;
+      const passMark = parseInt(document.getElementById("cbt-form-pass-mark")?.value, 10) || 4;
+      const allowedAttempts = parseInt(document.getElementById("cbt-form-attempts")?.value, 10) || 1;
+      const visibility = document.getElementById("cbt-form-visibility")?.value || "after_marking";
+
+      const shuffleQuestions = document.getElementById("cbt-form-shuffle-q")?.checked !== false;
+      const shuffleOptions = document.getElementById("cbt-form-shuffle-opt")?.checked !== false;
+      const allowNavigation = document.getElementById("cbt-form-allow-nav")?.checked !== false;
+      const allowUnanswered = document.getElementById("cbt-form-allow-unanswered")?.checked !== false;
+
+      if (!title || !courseCode || !startDate || !closingDate) {
+        alert("Please complete all required fields (Title, Course, Start Date, and Closing Date).");
+        return;
+      }
+
+      const selectedQuestions = (allCbtQuestionsState || []).filter((q) => selectedPickerQuestionIds.has(q.id));
+      if (selectedQuestions.length === 0) {
+        alert("Please select at least one question from the Question Bank.");
+        return;
+      }
+
+      const sumMarks = selectedQuestions.reduce((acc, q) => acc + (parseInt(q.marks, 10) || 0), 0);
+      if (sumMarks !== totalMarks) {
+        alert(`Assessment Total Marks (${totalMarks}) does not match the sum of selected question marks (${sumMarks}). Please adjust total marks or question selection.`);
+        return;
+      }
+
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const courseObj = myAllocations.find((a) => a.courseCode === courseCode);
+
+      const payload = {
+        title,
+        type,
+        courseCode,
+        courseTitle: courseObj?.courseTitle || "Theological Study",
+        topic,
+        academicSession: "2026/2027",
+        semester: "First Semester",
+        studyCentre,
+        instructions,
+        startDate: new Date(startDate).toISOString(),
+        closingDate: new Date(closingDate).toISOString(),
+        durationMinutes,
+        totalMarks,
+        passMark,
+        allowedAttempts,
+        resultVisibility: visibility,
+        shuffleQuestions,
+        shuffleOptions,
+        allowNavigation,
+        allowUnanswered,
+        questions: selectedQuestions,
+        status: isPublish ? "open" : "draft",
+        lecturerStaffId: staffId,
+        lecturerName: fullName
+      };
+
+      try {
+        await createCbtAssessment(payload);
+        showCbtAlert(`✓ Assessment "${title}" ${isPublish ? "scheduled/published" : "saved as draft"} successfully!`, "success");
+        if (formCreateCbt) formCreateCbt.reset();
+        selectedPickerQuestionIds.clear();
+        updateMarksValidationStrip();
+        switchCbtTab(isPublish ? "scheduled" : "dashboard");
+      } catch (err) {
+        alert(`Error creating assessment: ${err.message}`);
+      }
+    };
+
+    if (formCreateCbt) {
+      formCreateCbt.addEventListener("submit", (e) => {
+        e.preventDefault();
+        handleSaveAssessment(true);
+      });
+    }
+
+    const btnSaveDraftCbt = document.getElementById("btn-cbt-save-draft");
+    if (btnSaveDraftCbt) {
+      btnSaveDraftCbt.addEventListener("click", () => handleSaveAssessment(false));
+    }
+
+    // -----------------------------------------------------------------------
+    // 10E. SCHEDULED, LIVE & COMPLETED TABS
+    // -----------------------------------------------------------------------
+    const renderScheduledCbt = () => {
+      const container = document.getElementById("cbt-scheduled-container");
+      if (!container) return;
+
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
+      const filterCourse = (document.getElementById("filter-scheduled-course")?.value || "all").toUpperCase();
+      const now = new Date();
+
+      const scheduled = (allCbtAssessmentsState || []).filter((a) => {
+        const matchCourse = filterCourse === "ALL" || (a.courseCode || "").toUpperCase() === filterCourse;
+        const isMine = myCourseCodes.has((a.courseCode || "").toUpperCase()) || a.lecturerStaffId === staffId;
+        const isFuture = a.status === "scheduled" || (a.status !== "closed" && new Date(a.startDate) > now);
+        return matchCourse && isMine && isFuture;
+      });
+
+      if (scheduled.length === 0) {
+        container.innerHTML = `
+          <div class="student-empty-box" style="grid-column: 1 / -1; padding: 2.5rem 1rem;">
+            <div class="student-empty-icon">🗓️</div>
+            <div class="student-empty-text">No Scheduled CBTs</div>
+            <div class="student-empty-sub">Assessments with a future start date/time will appear here. Click "Create Test / Exam" to schedule a test.</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = scheduled.map((a) => `
+        <div class="cbt-item-card" style="border-top: 4px solid var(--student-blue);">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span class="status-pill-badge badge-blue">${a.type.toUpperCase()}</span>
+              <span class="status-pill-badge badge-gold">🗓️ Scheduled</span>
+            </div>
+            <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--student-navy); margin-bottom: 0.35rem;">${a.title}</h4>
+            <div style="font-size: 0.8125rem; color: var(--student-text-muted); margin-bottom: 0.75rem;">
+              <strong>${a.courseCode}</strong> · ${a.questions?.length || 0} Questions · ${a.totalMarks} Marks · ${a.durationMinutes} Mins
+            </div>
+            <div style="background: #F8FAFC; border: 1px solid var(--student-border-subtle); border-radius: var(--student-radius-sm); padding: 0.75rem; font-size: 0.75rem; color: var(--student-navy); margin-bottom: 0.75rem;">
+              <div>📅 <strong>Starts:</strong> ${formatDateTime(a.startDate)}</div>
+              <div>🏁 <strong>Closes:</strong> ${formatDateTime(a.closingDate)}</div>
+              <div>📍 <strong>Scope:</strong> ${a.studyCentre === "all" ? "Institution-Wide" : a.studyCentre}</div>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--student-border-subtle); padding-top: 0.75rem; margin-top: 0.5rem;">
+            <button type="button" class="btn btn-outline-blue btn-sm" onclick="alert('Assessment ID: ${a.id}\\n\\nInstructions:\\n${a.instructions || 'Standard examination instructions'}\\n\\nQuestions: ${a.questions?.length || 0}')">
+              Preview
+            </button>
+            <button type="button" class="btn btn-sm" style="background:#FEE2E2; color:#B91C1C; border:1px solid #FECACA;" onclick="window.cbtCancelAssessment('${a.id}')">
+              Cancel / Delete
+            </button>
+          </div>
+        </div>
+      `).join("");
+    };
+
+    const renderLiveCbt = () => {
+      const container = document.getElementById("cbt-live-container");
+      if (!container) return;
+
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
+      const now = new Date();
+
+      const live = (allCbtAssessmentsState || []).filter((a) => {
+        const isMine = myCourseCodes.has((a.courseCode || "").toUpperCase()) || a.lecturerStaffId === staffId;
+        const start = new Date(a.startDate || now);
+        const end = a.closingDate ? new Date(a.closingDate) : null;
+        return isMine && a.status !== "closed" && a.status !== "draft" && start <= now && (!end || end >= now);
+      });
+
+      if (live.length === 0) {
+        container.innerHTML = `
+          <div class="student-empty-box" style="grid-column: 1 / -1; padding: 2.5rem 1rem;">
+            <div class="student-empty-icon">🟢</div>
+            <div class="student-empty-text">No Live Assessment Sessions Right Now</div>
+            <div class="student-empty-sub">Assessments currently between their start and closing date/time will be actively monitored here.</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = live.map((a) => {
+        const mySubmissions = (allCbtSubmissionsState || []).filter((s) => s.assessmentId === a.id);
+        const submittedCount = mySubmissions.length;
+
+        return `
+          <div class="cbt-item-card" style="border-top: 4px solid #16A34A; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.1);">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span class="status-pill-badge badge-green">🟢 ACTIVE SESSION</span>
+                <span style="font-size: 0.75rem; font-weight: 800; color: #16A34A;">Live Now</span>
+              </div>
+              <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--student-navy); margin-bottom: 0.35rem;">${a.title}</h4>
+              <div style="font-size: 0.8125rem; color: var(--student-text-muted); margin-bottom: 0.75rem;">
+                <strong>${a.courseCode}</strong> · ${a.questions?.length || 0} Questions · ${a.totalMarks} Marks
+              </div>
+
+              <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--student-radius-sm); padding: 0.75rem; margin-bottom: 0.75rem; font-size: 0.8125rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                  <span>Submissions Received:</span>
+                  <strong style="color: #166534;">${submittedCount} Candidates</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span>Closes At:</span>
+                  <strong style="color: var(--student-navy); font-family: monospace;">${formatDateTime(a.closingDate)}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--student-border-subtle); padding-top: 0.75rem; margin-top: 0.5rem; gap: 0.5rem;">
+              <button type="button" class="btn btn-outline-blue btn-sm" onclick="window.cbtOpenExtendModal('${a.id}')">
+                ⏱️ Extend Deadline
+              </button>
+              <button type="button" class="btn btn-sm" style="background:#FEE2E2; color:#B91C1C; border:1px solid #FECACA;" onclick="window.cbtCloseAssessment('${a.id}')">
+                Close Early
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    };
+
+    const renderCompletedCbt = () => {
+      const container = document.getElementById("cbt-completed-container");
+      if (!container) return;
+
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
+      const now = new Date();
+
+      const completed = (allCbtAssessmentsState || []).filter((a) => {
+        const isMine = myCourseCodes.has((a.courseCode || "").toUpperCase()) || a.lecturerStaffId === staffId;
+        const end = a.closingDate ? new Date(a.closingDate) : null;
+        return isMine && (a.status === "closed" || (end && end < now));
+      });
+
+      if (completed.length === 0) {
+        container.innerHTML = `
+          <div class="student-empty-box" style="grid-column: 1 / -1; padding: 2.5rem 1rem;">
+            <div class="student-empty-icon">🏁</div>
+            <div class="student-empty-text">No Completed CBTs</div>
+            <div class="student-empty-sub">Assessments past their closing deadline or closed by the examiner will appear here for archival review.</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = completed.map((a) => {
+        const subs = (allCbtSubmissionsState || []).filter((s) => s.assessmentId === a.id);
+        const avg = subs.length > 0 ? Math.round(subs.reduce((acc, s) => acc + (s.totalScore || 0), 0) / subs.length) : 0;
+
+        return `
+          <div class="cbt-item-card" style="border-top: 4px solid var(--student-navy);">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span class="status-pill-badge badge-gold">COMPLETED</span>
+                <span style="font-size: 0.75rem; color: var(--student-text-muted);">${formatDateOnly(a.closingDate || a.createdAt)}</span>
+              </div>
+              <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--student-navy); margin-bottom: 0.35rem;">${a.title}</h4>
+              <div style="font-size: 0.8125rem; color: var(--student-text-muted); margin-bottom: 0.75rem;">
+                <strong>${a.courseCode}</strong> · ${a.questions?.length || 0} Questions · ${a.totalMarks} Marks
+              </div>
+
+              <div style="background: #F8FAFC; border: 1px solid var(--student-border-subtle); border-radius: var(--student-radius-sm); padding: 0.75rem; font-size: 0.8125rem; margin-bottom: 0.75rem;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span>Total Submissions:</span>
+                  <strong>${subs.length}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 0.25rem;">
+                  <span>Cohort Average:</span>
+                  <strong style="color: var(--student-blue);">${avg}/${a.totalMarks}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--student-border-subtle); padding-top: 0.75rem; margin-top: 0.5rem;">
+              <button type="button" class="btn btn-outline-blue btn-sm" onclick="window.cbtViewAssessmentResults('${a.id}')">
+                View Broadsheet →
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="window.cbtReleaseResults('${a.id}')">
+                Release Results
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    };
+
+    window.cbtCancelAssessment = async (aId) => {
+      if (!confirm("Are you sure you want to cancel and delete this scheduled assessment?")) return;
+      try {
+        await deleteCbtAssessment(aId);
+        showCbtAlert("Assessment cancelled.", "success");
+      } catch (err) {
+        showCbtAlert(`Cancel error: ${err.message}`, "error");
+      }
+    };
+
+    window.cbtCloseAssessment = async (aId) => {
+      if (!confirm("Close this assessment early? Students who have not submitted will be automatically submitted.")) return;
+      try {
+        await closeCbtAssessment(aId);
+        showCbtAlert("Assessment closed successfully.", "success");
+      } catch (err) {
+        showCbtAlert(`Close error: ${err.message}`, "error");
+      }
+    };
+
+    window.cbtOpenExtendModal = (aId) => {
+      const a = (allCbtAssessmentsState || []).find((item) => item.id === aId);
+      const modalExtend = document.getElementById("modal-cbt-extend");
+      const titleEl = document.getElementById("extend-modal-course-title");
+      const idInput = document.getElementById("extend-cbt-id");
+
+      if (titleEl && a) titleEl.textContent = `${a.courseCode} — ${a.title}`;
+      if (idInput) idInput.value = aId;
+      if (modalExtend) modalExtend.style.display = "flex";
+    };
+
+    const modalExtend = document.getElementById("modal-cbt-extend");
+    const btnCancelExtend = document.getElementById("btn-cancel-extend");
+    const formExtend = document.getElementById("form-cbt-extend");
+    if (btnCancelExtend) btnCancelExtend.addEventListener("click", () => modalExtend.style.display = "none");
+    if (formExtend) {
+      formExtend.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const aId = document.getElementById("extend-cbt-id")?.value;
+        const newClosing = document.getElementById("extend-new-closing")?.value;
+        const reason = document.getElementById("extend-reason")?.value;
+
+        try {
+          await extendCbtDeadline(aId, new Date(newClosing).toISOString(), reason);
+          modalExtend.style.display = "none";
+          showCbtAlert("Assessment deadline extended successfully.", "success");
+        } catch (err) {
+          alert(`Failed to extend deadline: ${err.message}`);
+        }
+      });
+    }
+
+    window.cbtViewAssessmentResults = (aId) => {
+      const resFilter = document.getElementById("results-filter-assessment");
+      if (resFilter) resFilter.value = aId;
+      switchCbtTab("results");
+    };
+
+    window.cbtReleaseResults = async (aId) => {
+      if (!confirm("Release results for this assessment to candidate student portals?")) return;
+      try {
+        await updateCbtResultVisibility(aId, "immediate");
+        showCbtAlert("Results released to students.", "success");
+      } catch (err) {
+        showCbtAlert(`Release error: ${err.message}`, "error");
+      }
+    };
+
+    // -----------------------------------------------------------------------
+    // 10F. STUDENT SUBMISSIONS & MANUAL THEORY MARKING
+    // -----------------------------------------------------------------------
+    const renderCbtSubmissions = () => {
+      const tbody = document.getElementById("cbt-submissions-tbody");
+      if (!tbody) return;
+
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
+
+      const sSearch = (document.getElementById("submissions-search")?.value || "").trim().toLowerCase();
+      const sAsmt = document.getElementById("submissions-filter-assessment")?.value || "all";
+      const sStatus = document.getElementById("submissions-filter-status")?.value || "all";
+
+      // Populate assessment filter dropdown
+      const asmtFilterSel = document.getElementById("submissions-filter-assessment");
+      if (asmtFilterSel && asmtFilterSel.options.length <= 1) {
+        const myAssessments = (allCbtAssessmentsState || []).filter(
+          (a) => myCourseCodes.has((a.courseCode || "").toUpperCase()) || a.lecturerStaffId === staffId
+        );
+        asmtFilterSel.innerHTML = `
+          <option value="all">All Assessments</option>
+          ${myAssessments.map((a) => `<option value="${a.id}">${a.courseCode} — ${a.title}</option>`).join("")}
+        `;
+      }
+
+      const filtered = (allCbtSubmissionsState || []).filter((s) => {
+        const isMine = myCourseCodes.has((s.courseCode || "").toUpperCase()) || (allCbtAssessmentsState || []).some((a) => a.id === s.assessmentId && a.lecturerStaffId === staffId);
+        const matchAsmt = sAsmt === "all" || s.assessmentId === sAsmt;
+        const matchStatus = sStatus === "all" || s.markingStatus === sStatus;
+        const matchSearch = !sSearch ||
+          (s.studentName || "").toLowerCase().includes(sSearch) ||
+          (s.matricNumber || "").toLowerCase().includes(sSearch) ||
+          (s.courseCode || "").toLowerCase().includes(sSearch);
+        return isMine && matchAsmt && matchStatus && matchSearch;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="11">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📝</div>
+                <div class="student-empty-text">No Submissions Matching Criteria</div>
+                <div class="student-empty-sub">When candidates submit answers to your CBTs, their attempts will appear here for grading.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((s, idx) => `
+        <tr>
+          <td style="color: var(--student-text-muted); font-weight: 700;">${idx + 1}</td>
+          <td>
+            <strong style="color: var(--student-navy); display: block;">${s.studentName}</strong>
+            <span style="font-size: 0.72rem; color: var(--student-text-muted);">${s.programme || "Diploma in Theology"}</span>
+          </td>
+          <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${s.matricNumber}</td>
+          <td><span class="status-pill-badge badge-blue" style="font-size: 0.72rem;">${s.courseCode}</span></td>
+          <td style="font-size: 0.84rem; font-weight: 600;">${s.assessmentTitle}</td>
+          <td style="text-align: center; font-weight: 700;">#${s.attemptNumber || 1}</td>
+          <td style="text-align: center; color: #16A34A; font-weight: 700;">${s.autoScore !== undefined ? s.autoScore : 0}</td>
+          <td style="text-align: center; color: var(--student-navy); font-weight: 700;">${s.manualScore !== undefined ? s.manualScore : 0}</td>
+          <td style="text-align: center; font-weight: 800; font-size: 0.95rem; color: var(--student-navy);">
+            ${s.totalScore !== undefined ? s.totalScore : 0}/${s.maxMarks || 30}
+          </td>
+          <td style="text-align: center;">
+            <span class="status-pill-badge ${s.markingStatus === 'pending_manual' ? 'badge-gold' : 'badge-green'}">
+              ${s.markingStatus === 'pending_manual' ? 'Pending Manual' : 'Fully Graded'}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            <button type="button" class="btn btn-outline-blue btn-sm" onclick="window.cbtOpenGradingModal('${s.id}')" style="font-size: 0.75rem; font-weight: 700;">
+              🔍 Open &amp; Grade
+            </button>
+          </td>
+        </tr>
+      `).join("");
+    };
+
+    const subSearchIn = document.getElementById("submissions-search");
+    const subAsmtFilter = document.getElementById("submissions-filter-assessment");
+    const subStatusFilter = document.getElementById("submissions-filter-status");
+    if (subSearchIn) subSearchIn.addEventListener("input", renderCbtSubmissions);
+    if (subAsmtFilter) subAsmtFilter.addEventListener("change", renderCbtSubmissions);
+    if (subStatusFilter) subStatusFilter.addEventListener("change", renderCbtSubmissions);
+
+    // -----------------------------------------------------------------------
+    // 10G. MANUAL THEORY MARKING MODAL
+    // -----------------------------------------------------------------------
+    const modalGrading = document.getElementById("modal-cbt-grading");
+    const btnCloseGrading = document.getElementById("btn-close-cbt-grading");
+    const btnCancelGrading = document.getElementById("btn-cancel-grading");
+    const btnSaveGradingProgress = document.getElementById("btn-save-grading-progress");
+    const btnFinalizeGrading = document.getElementById("btn-finalize-grading");
+
+    window.cbtOpenGradingModal = (submissionId) => {
+      const s = (allCbtSubmissionsState || []).find((item) => item.id === submissionId);
+      if (!s) return;
+      currentGradingSubmission = s;
+
+      const assessment = (allCbtAssessmentsState || []).find((a) => a.id === s.assessmentId);
+      const questions = assessment?.questions || [];
+
+      // Set header metadata
+      document.getElementById("grading-student-name").textContent = s.studentName;
+      document.getElementById("grading-matric-number").textContent = s.matricNumber;
+      document.getElementById("grading-programme-centre").textContent = ` · ${s.courseCode} · ${s.assessmentTitle} (Attempt #${s.attemptNumber || 1})`;
+      document.getElementById("grading-auto-score").textContent = `${s.autoScore || 0} Marks`;
+      document.getElementById("grading-live-total").textContent = `${s.totalScore || 0}/${s.maxMarks || 30}`;
+      document.getElementById("grading-feedback").value = s.lecturerFeedback || "";
+
+      const qContainer = document.getElementById("grading-questions-container");
+      if (qContainer) {
+        qContainer.innerHTML = questions.map((q, idx) => {
+          const gradingObj = s.questionGrading?.[q.id] || {};
+          const studentAns = s.answers?.[q.id] || "";
+          const isTheoryOrManual = q.type === "theory" || (q.type === "short_answer" && q.matchingRule === "manual");
+
+          if (isTheoryOrManual) {
+            const currentMark = gradingObj.awardedMarks !== undefined ? gradingObj.awardedMarks : "";
+            return `
+              <div style="background: #FFFFFF; border: 1.5px solid #FCD34D; border-radius: var(--student-radius-sm); padding: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                  <strong style="color: var(--student-navy); font-size: 0.9375rem;">Question ${idx + 1} (${q.type === 'theory' ? 'Theory / Essay' : 'Short Answer'})</strong>
+                  <span style="font-weight: 800; color: #B45309; font-size: 0.8125rem;">Max Marks: ${q.marks}</span>
+                </div>
+                <p style="font-size: 0.875rem; color: var(--student-navy); font-weight: 600; margin-bottom: 0.75rem;">${q.questionText}</p>
+
+                ${q.markingGuide ? `
+                  <div style="background: #FEF3C7; border: 1px solid #FDE68A; padding: 0.5rem 0.75rem; border-radius: var(--student-radius-sm); font-size: 0.75rem; color: #92400E; margin-bottom: 0.75rem;">
+                    <strong>Marking Guide:</strong> ${q.markingGuide}
+                  </div>
+                ` : ""}
+
+                <div style="background: #F8FAFC; border: 1px solid var(--student-border); border-radius: var(--student-radius-sm); padding: 0.75rem; font-size: 0.84rem; color: var(--student-navy); margin-bottom: 0.75rem;">
+                  <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 0.25rem;">Candidate Written Response:</span>
+                  <p style="margin: 0; line-height: 1.5; white-space: pre-wrap;">${studentAns || "<em style='color: #94A3B8;'>[No Answer Submitted]</em>"}</p>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 0.75rem; justify-content: flex-end;">
+                  <label style="font-size: 0.8125rem; font-weight: 700; color: var(--student-navy);">Award Marks (0–${q.marks}):</label>
+                  <input type="number" min="0" max="${q.marks}" class="grade-score-input input-theory-grade" data-q-id="${q.id}" data-max="${q.marks}" value="${currentMark}" placeholder="0–${q.marks}" style="width: 80px; text-align: center; font-weight: 800; font-size: 1rem;">
+                </div>
+              </div>
+            `;
+          } else {
+            // Objective question preview
+            const isCorrect = gradingObj.isCorrect;
+            return `
+              <div style="background: #FFFFFF; border: 1px solid var(--student-border); border-radius: var(--student-radius-sm); padding: 0.75rem 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                  <strong style="color: var(--student-navy); font-size: 0.875rem;">Question ${idx + 1} (${q.type.toUpperCase()})</strong>
+                  <span class="status-pill-badge ${isCorrect ? 'badge-green' : 'badge-red'}" style="font-size: 0.68rem;">
+                    ${isCorrect ? `✓ Correct (+${q.marks}m)` : `✗ Incorrect (0m)`}
+                  </span>
+                </div>
+                <p style="font-size: 0.8125rem; color: var(--student-navy); margin-bottom: 0.35rem;">${q.questionText}</p>
+                <div style="font-size: 0.75rem; color: var(--student-text-muted);">
+                  Candidate Selected: <strong style="color: var(--student-navy);">${studentAns || "None"}</strong> | Correct Answer: <strong style="color: #16A34A;">${q.correctOptionId || q.expectedAnswer || "—"}</strong>
+                </div>
+              </div>
+            `;
+          }
+        }).join("");
+
+        // Attach dynamic score recalculation as lecturer types
+        qContainer.querySelectorAll(".input-theory-grade").forEach((input) => {
+          input.addEventListener("input", () => {
+            let val = parseInt(input.value, 10);
+            const max = parseInt(input.getAttribute("data-max"), 10) || 1;
+            if (val > max) { val = max; input.value = max; }
+            if (val < 0) { val = 0; input.value = 0; }
+
+            let manualSum = 0;
+            qContainer.querySelectorAll(".input-theory-grade").forEach((inp) => {
+              const v = parseInt(inp.value, 10);
+              if (!isNaN(v)) manualSum += v;
+            });
+            const newTotal = (s.autoScore || 0) + manualSum;
+            document.getElementById("grading-live-total").textContent = `${newTotal}/${s.maxMarks || 30}`;
+          });
+        });
+      }
+
+      modalGrading.style.display = "flex";
+    };
+
+    const handleSaveGrading = async (finalize = false) => {
+      if (!currentGradingSubmission) return;
+
+      const manualGrading = {};
+      const inputs = modalGrading.querySelectorAll(".input-theory-grade");
+      inputs.forEach((inp) => {
+        const qId = inp.getAttribute("data-q-id");
+        manualGrading[qId] = inp.value !== "" ? parseInt(inp.value, 10) : "";
+      });
+
+      const feedback = document.getElementById("grading-feedback")?.value || "";
+
+      try {
+        await gradeCbtSubmission(currentGradingSubmission.id, {
+          manualGrading,
+          lecturerFeedback: feedback,
+          lecturerStaffId: staffId,
+          lecturerName: fullName,
+          finalize
+        });
+
+        modalGrading.style.display = "none";
+        showCbtAlert(`✓ Grade evaluation ${finalize ? "finalized & approved" : "saved"} for ${currentGradingSubmission.studentName}.`, "success");
+        renderCbtSubmissions();
+        renderCbtResults();
+      } catch (err) {
+        alert(`Grading failed: ${err.message}`);
+      }
+    };
+
+    if (btnSaveGradingProgress) btnSaveGradingProgress.addEventListener("click", () => handleSaveGrading(false));
+    if (btnFinalizeGrading) btnFinalizeGrading.addEventListener("click", () => handleSaveGrading(true));
+    if (btnCloseGrading) btnCloseGrading.addEventListener("click", () => modalGrading.style.display = "none");
+    if (btnCancelGrading) btnCancelGrading.addEventListener("click", () => modalGrading.style.display = "none");
+
+    // -----------------------------------------------------------------------
+    // 10H. RESULTS & PERFORMANCE TAB
+    // -----------------------------------------------------------------------
+    const renderCbtResults = () => {
+      const tbody = document.getElementById("cbt-full-results-tbody");
+      if (!tbody) return;
+
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
+
+      const rSearch = (document.getElementById("results-search")?.value || "").trim().toLowerCase();
+      const rAsmt = document.getElementById("results-filter-assessment")?.value || "all";
+      const rCourse = (document.getElementById("results-filter-course")?.value || "all").toUpperCase();
+
+      // Populate assessment filter dropdown
+      const asmtSel = document.getElementById("results-filter-assessment");
+      if (asmtSel && asmtSel.options.length <= 1) {
+        const myAssessments = (allCbtAssessmentsState || []).filter(
+          (a) => myCourseCodes.has((a.courseCode || "").toUpperCase()) || a.lecturerStaffId === staffId
+        );
+        asmtSel.innerHTML = `
+          <option value="all">All Assessments</option>
+          ${myAssessments.map((a) => `<option value="${a.id}">${a.courseCode} — ${a.title}</option>`).join("")}
+        `;
+      }
+
+      const filtered = (allCbtSubmissionsState || []).filter((s) => {
+        const isMine = myCourseCodes.has((s.courseCode || "").toUpperCase()) || (allCbtAssessmentsState || []).some((a) => a.id === s.assessmentId && a.lecturerStaffId === staffId);
+        const matchAsmt = rAsmt === "all" || s.assessmentId === rAsmt;
+        const matchCourse = rCourse === "ALL" || (s.courseCode || "").toUpperCase() === rCourse;
+        const matchSearch = !rSearch ||
+          (s.studentName || "").toLowerCase().includes(rSearch) ||
+          (s.matricNumber || "").toLowerCase().includes(rSearch);
+        return isMine && matchAsmt && matchCourse && matchSearch;
+      });
+
+      // Statistics calculations
+      const participants = filtered.length;
+      let avgScore = 0;
+      let highestScore = 0;
+      let lowestScore = participants > 0 ? 100 : 0;
+
+      if (participants > 0) {
+        const scores = filtered.map((s) => s.percentage || 0);
+        avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / participants);
+        highestScore = Math.max(...scores);
+        lowestScore = Math.min(...scores);
+      }
+
+      const setEl = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+      };
+      setEl("res-stat-participants", participants);
+      setEl("res-stat-avg", `${avgScore}%`);
+      setEl("res-stat-high", `${highestScore}%`);
+      setEl("res-stat-low", `${lowestScore}%`);
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="16">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📈</div>
+                <div class="student-empty-text">No Candidate Results Found</div>
+                <div class="student-empty-sub">Submissions and scores will appear here once candidates take scheduled assessments.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((s, idx) => {
+        const asmt = (allCbtAssessmentsState || []).find((a) => a.id === s.assessmentId);
+        const passMark = asmt?.passMark || Math.round((s.maxMarks || 30) * 0.4);
+        const isPassed = (s.totalScore || 0) >= passMark;
+
+        return `
+          <tr>
+            <td style="color: var(--student-text-muted); font-weight: 700;">${idx + 1}</td>
+            <td>
+              <strong style="color: var(--student-navy); display: block;">${s.studentName}</strong>
+              <span style="font-size: 0.72rem; color: var(--student-text-muted);">${s.studyCentre || "Main Campus"}</span>
+            </td>
+            <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${s.matricNumber}</td>
+            <td><span class="status-pill-badge badge-blue" style="font-size: 0.72rem;">${s.courseCode}</span></td>
+            <td style="font-size: 0.8125rem;">${s.assessmentTitle}</td>
+            <td style="text-align: center; font-size: 0.75rem; text-transform: uppercase;">${s.assessmentType || "Test"}</td>
+            <td style="text-align: center; font-weight: 700;">#${s.attemptNumber || 1}</td>
+            <td style="text-align: center; color: #16A34A; font-weight: 700;">${s.autoScore !== undefined ? s.autoScore : 0}</td>
+            <td style="text-align: center; font-weight: 700;">${s.manualScore !== undefined ? s.manualScore : 0}</td>
+            <td style="text-align: center; font-weight: 800; font-size: 0.95rem; color: var(--student-navy);">${s.totalScore !== undefined ? s.totalScore : 0}</td>
+            <td style="text-align: center; font-weight: 700; color: var(--student-text-muted);">${s.maxMarks || 30}</td>
+            <td style="text-align: center; font-weight: 800; color: var(--student-blue);">${s.percentage || 0}%</td>
+            <td style="text-align: center;"><span class="grade-letter-pill ${s.grade || 'F'}">${s.grade || 'F'}</span></td>
+            <td style="text-align: center;">
+              <span class="status-pill-badge ${isPassed ? 'badge-green' : 'badge-red'}" style="font-size: 0.68rem;">
+                ${isPassed ? 'PASS' : 'FAIL'}
+              </span>
+            </td>
+            <td style="text-align: center;">
+              <span class="status-pill-badge ${s.markingStatus === 'pending_manual' ? 'badge-gold' : 'badge-green'}" style="font-size: 0.65rem;">
+                ${s.markingStatus === 'pending_manual' ? 'Pending Manual' : 'Fully Graded'}
+              </span>
+            </td>
+            <td style="text-align: center;">
+              <span class="status-pill-badge ${s.resultsReleased ? 'badge-green' : 'badge-draft'}" style="font-size: 0.65rem;">
+                ${s.resultsReleased ? 'Visible' : 'Hidden'}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    };
+
+    const resSearchIn = document.getElementById("results-search");
+    const resAsmtFilter = document.getElementById("results-filter-assessment");
+    const resCourseFilter = document.getElementById("results-filter-course");
+    const btnExportCsv = document.getElementById("btn-export-cbt-csv");
+    if (resSearchIn) resSearchIn.addEventListener("input", renderCbtResults);
+    if (resAsmtFilter) resAsmtFilter.addEventListener("change", renderCbtResults);
+    if (resCourseFilter) resCourseFilter.addEventListener("change", renderCbtResults);
+    if (btnExportCsv) {
+      btnExportCsv.addEventListener("click", () => {
+        const asmtId = document.getElementById("results-filter-assessment")?.value;
+        exportCbtResultsCsv(asmtId === "all" ? "" : asmtId);
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 10I. CBT SETTINGS TAB
+    // -----------------------------------------------------------------------
+    const btnSaveCbtSettings = document.getElementById("btn-save-cbt-settings");
+    if (btnSaveCbtSettings) {
+      btnSaveCbtSettings.addEventListener("click", () => {
+        const dur = document.getElementById("cbt-pref-duration")?.value;
+        const max = document.getElementById("cbt-pref-max")?.value;
+        const honor = document.getElementById("cbt-pref-honor")?.value;
+        localStorage.setItem("dimabin_cbt_pref_dur", dur);
+        localStorage.setItem("dimabin_cbt_pref_max", max);
+        localStorage.setItem("dimabin_cbt_pref_honor", honor);
+        showCbtAlert("CBT preferences saved successfully.", "success");
+      });
+    }
+
+    // Master dispatcher for currently active CBT tab
+    const refreshCbtViews = () => {
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      refreshCbtCourseSelects(myAllocations);
+
+      if (activeCbtTab === "dashboard") renderCbtDashboard();
+      else if (activeCbtTab === "questions") renderQuestionBank();
+      else if (activeCbtTab === "scheduled") renderScheduledCbt();
+      else if (activeCbtTab === "live") renderLiveCbt();
+      else if (activeCbtTab === "completed") renderCompletedCbt();
+      else if (activeCbtTab === "submissions") renderCbtSubmissions();
+      else if (activeCbtTab === "results") renderCbtResults();
+    };
+
+    return {
+      refreshCbtViews,
+      switchCbtTab
+    };
+  };
+
+  const cbtEngine = initCbtEngineController();
 
   // =========================================================================
   // 11. SUBSCRIBE TO REAL-TIME FIRESTORE DATA COLLECTIONS

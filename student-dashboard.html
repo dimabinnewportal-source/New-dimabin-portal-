@@ -1046,33 +1046,90 @@
         <!-- ================================================================
              SECTION 9: CBT MODULE (14. CBT MODULE PLACEHOLDER)
              ================================================================ -->
+        <!-- ================================================================
+             SECTION 9: CBT MODULE (COMPUTER-BASED TEST ENGINE)
+             ================================================================ -->
         <section class="student-section" id="section-cbt" aria-label="CBT Computer-Based Test">
           <div class="cbt-hero-card">
-            <span class="status-pill-badge badge-gold" style="margin-bottom: 0.75rem;">ASSESSMENT SUITE</span>
-            <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.35rem;">CBT / Computer-Based Test</h2>
-            <p style="font-size: 0.9375rem; color: #CBD5E1; max-width: 36rem;">
-              Take your assigned computer-based assessments. Please adhere to institutional examination rules and honor codes during tests.
-            </p>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <span class="status-pill-badge badge-gold" style="margin-bottom: 0.75rem;">ASSESSMENT SUITE</span>
+                <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.35rem; color: #FFFFFF;">
+                  Computer-Based Test (CBT) Portal
+                </h2>
+                <p style="font-size: 0.9375rem; color: #CBD5E1; max-width: 38rem;">
+                  Access official continuous assessment tests (10 marks) and final semester CBT examinations (70 marks). Real-time timer, auto-saved responses, and instant grading.
+                </p>
+              </div>
+              <div style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 0.75rem 1.25rem; text-align: right;">
+                <span style="font-size: 0.72rem; color: #CBD5E1; text-transform: uppercase; font-weight: 700; display: block;">Institutional Integrity</span>
+                <strong style="color: #FBBF24; font-size: 0.95rem;">Honor Code Enforced</strong>
+              </div>
+            </div>
           </div>
 
-          <div class="student-content-card">
-            <div class="student-card-header">
-              <h3 class="student-card-title">Available &amp; Upcoming Assessments</h3>
-              <span class="status-pill-badge badge-blue">DIAGNOSTIC &amp; SEMESTER EXAMINATIONS</span>
+          <!-- Quick Statistics Strip -->
+          <div class="cbt-stat-strip">
+            <div class="cbt-stat-badge">
+              <span class="cbt-stat-label">Available Now</span>
+              <span class="cbt-stat-value" id="stu-cbt-count-active" style="color: #16A34A;">0</span>
             </div>
+            <div class="cbt-stat-badge">
+              <span class="cbt-stat-label">Upcoming Scheduled</span>
+              <span class="cbt-stat-value" id="stu-cbt-count-upcoming" style="color: #D97706;">0</span>
+            </div>
+            <div class="cbt-stat-badge">
+              <span class="cbt-stat-label">Completed Tests</span>
+              <span class="cbt-stat-value" id="stu-cbt-count-completed" style="color: var(--student-navy);">0</span>
+            </div>
+            <div class="cbt-stat-badge">
+              <span class="cbt-stat-label">Average CBT Score</span>
+              <span class="cbt-stat-value" id="stu-cbt-avg-score" style="color: var(--student-blue);">—</span>
+            </div>
+          </div>
+
+          <!-- Main Content Card -->
+          <div class="student-content-card">
+            <div class="student-card-header" style="flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <h3 class="student-card-title">Institutional Assessments &amp; Examinations</h3>
+                <span class="student-card-subtitle">Assigned tests for your enrolled curriculum and study centre cohort</span>
+              </div>
+
+              <!-- Filter Tabs -->
+              <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;" id="stu-cbt-status-tabs">
+                <button type="button" class="btn btn-primary btn-sm stu-cbt-tab-btn active" data-filter="available" style="font-weight: 700;">
+                  🟢 Available Now
+                </button>
+                <button type="button" class="btn btn-outline-blue btn-sm stu-cbt-tab-btn" data-filter="upcoming" style="font-weight: 700;">
+                  ⏳ Upcoming
+                </button>
+                <button type="button" class="btn btn-outline-blue btn-sm stu-cbt-tab-btn" data-filter="completed" style="font-weight: 700;">
+                  📑 Completed &amp; Results
+                </button>
+                <button type="button" class="btn btn-outline-blue btn-sm stu-cbt-tab-btn" data-filter="all" style="font-weight: 700;">
+                  All Cohort Tests
+                </button>
+              </div>
+            </div>
+
             <div class="student-card-body">
-              <!-- Professional CBT Landing State -->
-              <div class="student-empty-box">
-                <div class="student-empty-icon">🖥️</div>
-                <div class="student-empty-text">No CBT Available at this moment.</div>
-                <div class="student-empty-sub">
-                  Assigned tests and quizzes will become active here when published by the course lecturer and registry.
-                </div>
-                <div style="margin-top: 1.5rem;">
-                  <button type="button" class="student-card-action-btn" style="padding: 0.6rem 1.25rem; font-size: 0.84rem;" onclick="alert('No CBT tests are currently scheduled for your cohort. Check back during examination periods.')">
-                    View Available Tests
-                  </button>
-                </div>
+              <!-- Search & Course Filter Bar -->
+              <div class="portal-filter-bar no-print" style="margin-bottom: 1.25rem;">
+                <input type="text" class="portal-search-input" id="stu-cbt-search" placeholder="Search tests by title or course code..." style="flex: 2; min-width: 200px;">
+                <select class="portal-filter-select" id="stu-cbt-course-filter" style="flex: 1; min-width: 160px;">
+                  <option value="all">All Enrolled Courses</option>
+                </select>
+                <select class="portal-filter-select" id="stu-cbt-type-filter" style="flex: 1; min-width: 140px;">
+                  <option value="all">All Types</option>
+                  <option value="test">Continuous Assessment (CA)</option>
+                  <option value="exam">Semester Examination</option>
+                </select>
+              </div>
+
+              <!-- Assessments Grid -->
+              <div id="stu-cbt-cards-container" class="cbt-card-grid">
+                <!-- Dynamically populated -->
               </div>
             </div>
           </div>
@@ -1152,6 +1209,370 @@
 
     </div>
 
+  </div>
+
+  <!-- ======================================================================
+       MODAL 1: STUDENT CBT PRE-ASSESSMENT BRIEFING & HONOR CODE
+       ====================================================================== -->
+  <div class="student-modal" id="modal-stu-cbt-briefing" style="display: none; position: fixed; inset: 0; background: rgba(10, 22, 51, 0.65); backdrop-filter: blur(2px); z-index: 1050; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto;">
+    <div style="background: #FFFFFF; border-radius: var(--student-radius-md); max-width: 650px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 1.75rem; box-shadow: var(--student-shadow-lg);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; border-bottom: 1px solid var(--student-border); padding-bottom: 0.75rem;">
+        <div>
+          <span class="status-pill-badge badge-blue" id="briefing-type-pill">CONTINUOUS ASSESSMENT</span>
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--student-navy); margin-top: 0.35rem;" id="briefing-test-title">
+            Biblical Canonicity &amp; Manuscripts Assessment
+          </h3>
+          <span style="font-size: 0.84rem; color: var(--student-text-muted);" id="briefing-course-meta">
+            BIB-101 · Introduction to Biblical Studies
+          </span>
+        </div>
+        <button type="button" id="btn-close-briefing" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--student-text-muted);">&times;</button>
+      </div>
+
+      <!-- Test Parameters Strip -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; background: #F8FAFC; border: 1px solid #EDF2F7; border-radius: var(--student-radius-sm); padding: 1rem; margin-bottom: 1.25rem;">
+        <div>
+          <span style="font-size: 0.7rem; color: var(--student-text-muted); text-transform: uppercase; font-weight: 700; display: block;">Duration</span>
+          <strong style="color: var(--student-blue); font-size: 1.05rem;" id="briefing-duration">30 Mins</strong>
+        </div>
+        <div>
+          <span style="font-size: 0.7rem; color: var(--student-text-muted); text-transform: uppercase; font-weight: 700; display: block;">Questions</span>
+          <strong style="color: var(--student-navy); font-size: 1.05rem;" id="briefing-questions-count">10 Questions</strong>
+        </div>
+        <div>
+          <span style="font-size: 0.7rem; color: var(--student-text-muted); text-transform: uppercase; font-weight: 700; display: block;">Total Marks</span>
+          <strong style="color: #16A34A; font-size: 1.05rem;" id="briefing-total-marks">10 Marks</strong>
+        </div>
+        <div>
+          <span style="font-size: 0.7rem; color: var(--student-text-muted); text-transform: uppercase; font-weight: 700; display: block;">Attempts Allowed</span>
+          <strong style="color: var(--student-navy); font-size: 1.05rem;" id="briefing-allowed-attempts">1 Attempt</strong>
+        </div>
+      </div>
+
+      <!-- Instructions & Anti-Cheating Notice -->
+      <div style="margin-bottom: 1.25rem;">
+        <h4 style="font-size: 0.9rem; font-weight: 800; color: var(--student-navy); margin-bottom: 0.5rem;">
+          Official Examination Regulations:
+        </h4>
+        <ul style="font-size: 0.825rem; color: var(--student-text-main); line-height: 1.6; padding-left: 1.25rem; margin: 0;">
+          <li>Once started, the countdown timer cannot be paused. It runs continuously until timeout or submission.</li>
+          <li>All answers are <strong>automatically saved</strong> in real-time. If connection drops, re-launching the test will restore your saved progress.</li>
+          <li><strong>Anti-Cheating Integrity:</strong> Tab switching, opening other windows, and browser minimization are strictly monitored and logged on your official institutional record.</li>
+          <li>The test will automatically submit when the timer reaches <strong>00:00</strong>.</li>
+        </ul>
+      </div>
+
+      <!-- Honor Code Affirmation Checkbox -->
+      <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--student-radius-sm); padding: 1rem; margin-bottom: 1.5rem;">
+        <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; user-select: none;">
+          <input type="checkbox" id="cbt-briefing-honor-check" style="width: 18px; height: 18px; accent-color: var(--student-blue); margin-top: 0.15rem;">
+          <span style="font-size: 0.8125rem; color: #92400E; font-weight: 600; line-height: 1.45;">
+            I solemnly affirm on my Christian faith that I will complete this assessment independently, without unapproved notes, AI tools, or peer collaboration. All submissions reflect my personal biblical study.
+          </span>
+        </label>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-outline-blue" id="btn-cancel-briefing">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-launch-cbt-exam" style="font-weight: 800; padding: 0.65rem 1.5rem; background: #16A34A; border-color: #15803D;" disabled>
+          🚀 I am Ready — Launch Assessment
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 2: FULL-SCREEN EXAMINATION RUNNER OVERLAY
+       ====================================================================== -->
+  <div class="cbt-runner-overlay" id="modal-stu-cbt-runner">
+    <!-- Runner Top Header -->
+    <header class="cbt-runner-header">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 40px; height: 40px; border-radius: 8px; background: #1E3A8A; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #F59E0B; font-size: 1.1rem; border: 1px solid rgba(255,255,255,0.2);">
+          📖
+        </div>
+        <div>
+          <div style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;" id="runner-course-badge">
+            BIB-101 · INTRO TO BIBLICAL STUDIES
+          </div>
+          <strong style="color: #FFFFFF; font-size: 1.1rem;" id="runner-assessment-title">
+            Continuous Assessment Test 1
+          </strong>
+        </div>
+      </div>
+
+      <!-- Timer & Candidate Strip -->
+      <div style="display: flex; align-items: center; gap: 1.25rem;">
+        <!-- Live Countdown Timer -->
+        <div class="cbt-timer-box" id="stu-exam-timer-box" title="Remaining Examination Time">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span id="stu-exam-timer-display">29:59</span>
+        </div>
+
+        <!-- Candidate ID Badge -->
+        <div style="text-align: right; display: none; @media(min-width: 600px){display: block;}" class="candidate-header-pill">
+          <strong style="display: block; font-size: 0.875rem; color: #FFFFFF;" id="runner-candidate-name">Student Candidate</strong>
+          <span style="font-size: 0.72rem; color: #94A3B8; font-family: monospace;" id="runner-candidate-matric">DIMABIN/STU/2026/01</span>
+        </div>
+
+        <!-- Finish Test Button -->
+        <button type="button" class="btn btn-primary" id="btn-finish-cbt-exam" style="background: #16A34A; border-color: #15803D; font-weight: 800; padding: 0.5rem 1.15rem;">
+          Submit Test ✓
+        </button>
+      </div>
+    </header>
+
+    <!-- Integrity Alert Banner (shown when window loses focus) -->
+    <div id="stu-exam-cheat-alert" style="display: none; background: #FEF2F2; color: #991B1B; border-bottom: 2px solid #EF4444; padding: 0.6rem 1.5rem; font-size: 0.8125rem; font-weight: 700; text-align: center;">
+      ⚠️ Integrity Warning: Tab switch or focus change detected (<span id="cheat-violation-count">1</span> incident logged). Maintain focus on the examination screen.
+    </div>
+
+    <!-- Runner Main Split Layout -->
+    <main class="cbt-runner-body">
+      <!-- Left: Active Question Display -->
+      <section class="cbt-question-card" id="runner-active-question-card">
+        <div>
+          <!-- Question Header Row -->
+          <div class="cbt-question-header">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <span class="status-pill-badge badge-blue" style="font-size: 0.8rem; font-weight: 800;" id="runner-q-num-badge">
+                Question 1 of 10
+              </span>
+              <span class="status-pill-badge badge-gold" id="runner-q-type-badge">
+                Multiple Choice
+              </span>
+              <span style="font-size: 0.78rem; color: var(--student-text-muted); font-weight: 700;" id="runner-q-marks-badge">
+                2 Marks
+              </span>
+            </div>
+
+            <!-- Auto-save Pill -->
+            <div style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #16A34A; font-weight: 700;" id="runner-save-indicator">
+              <span>💾</span>
+              <span>Saved</span>
+            </div>
+          </div>
+
+          <!-- Question Prompt Text -->
+          <div class="cbt-question-prompt" id="stu-exam-question-text">
+            Loading assessment question...
+          </div>
+
+          <!-- Dynamic Options / Input Container -->
+          <div class="cbt-options-list" id="stu-exam-options-container">
+            <!-- Dynamically injected MCQ / Binary / Text inputs -->
+          </div>
+        </div>
+
+        <!-- Question Bottom Toolbar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; border-top: 1px solid #F1F5F9; padding-top: 1.25rem;">
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-outline-blue btn-sm" id="btn-exam-prev-q" style="font-weight: 700;">
+              ← Previous
+            </button>
+            <button type="button" class="btn btn-outline-blue btn-sm" id="btn-exam-clear-q" style="font-weight: 700;">
+              ✕ Clear Answer
+            </button>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-outline-gold btn-sm" id="btn-exam-flag-q" style="font-weight: 700;">
+              🚩 Flag for Review
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-exam-next-q" style="font-weight: 700;">
+              Next →
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Questions Palette & Status Sidebar -->
+      <aside class="cbt-palette-panel">
+        <h4 style="font-size: 0.875rem; font-weight: 800; color: var(--student-navy); margin-bottom: 0.35rem;">
+          Question Palette
+        </h4>
+        <span style="font-size: 0.72rem; color: var(--student-text-muted);">
+          Jump to any question by clicking its number
+        </span>
+
+        <!-- Palette Grid (1..N) -->
+        <div class="cbt-palette-grid" id="stu-exam-palette-grid">
+          <!-- Injected dynamically -->
+        </div>
+
+        <!-- Palette Status Legend -->
+        <div class="cbt-palette-legend">
+          <div class="cbt-legend-item">
+            <div class="cbt-legend-dot" style="background: #DCFCE7; border: 1px solid #86EFAC;"></div>
+            <span>Answered (<strong id="palette-count-answered">0</strong>)</span>
+          </div>
+          <div class="cbt-legend-item">
+            <div class="cbt-legend-dot" style="background: #F8FAFC; border: 1px solid #CBD5E1;"></div>
+            <span>Unanswered (<strong id="palette-count-unanswered">0</strong>)</span>
+          </div>
+          <div class="cbt-legend-item">
+            <div class="cbt-legend-dot" style="background: #FEF3C7; border: 1px solid #F59E0B;"></div>
+            <span>Flagged (<strong id="palette-count-flagged">0</strong>)</span>
+          </div>
+          <div class="cbt-legend-item">
+            <div class="cbt-legend-dot" style="background: #EFF6FF; border: 2px solid var(--student-blue);"></div>
+            <span>Current</span>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-primary" id="btn-sidebar-submit-cbt" style="width: 100%; margin-top: 1.25rem; font-weight: 800; background: #16A34A; border-color: #15803D;">
+          Submit Entire Assessment
+        </button>
+      </aside>
+    </main>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 3: CONFIRMATION SUBMISSION DIALOG
+       ====================================================================== -->
+  <div class="student-modal" id="modal-stu-cbt-confirm-submit" style="display: none; position: fixed; inset: 0; background: rgba(10, 22, 51, 0.7); backdrop-filter: blur(2px); z-index: 2100; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: #FFFFFF; border-radius: var(--student-radius-md); max-width: 480px; width: 100%; padding: 1.75rem; box-shadow: var(--student-shadow-lg);">
+      <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--student-navy); margin-bottom: 0.5rem;">
+        Confirm Final Submission?
+      </h3>
+      <p style="font-size: 0.875rem; color: var(--student-text-main); margin-bottom: 1rem;" id="submit-confirm-summary-text">
+        You have answered 10 of 10 questions. Once submitted, answers cannot be modified.
+      </p>
+
+      <div id="submit-unanswered-warning" style="display: none; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--student-radius-sm); padding: 0.85rem; margin-bottom: 1.25rem; font-size: 0.8125rem; color: #92400E; font-weight: 600;">
+        ⚠️ Attention: You have unanswered questions remaining! Are you certain you want to conclude the test now?
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-outline-blue" id="btn-back-to-exam">Return to Exam</button>
+        <button type="button" class="btn btn-primary" id="btn-final-confirm-submit" style="font-weight: 800; background: #16A34A; border-color: #15803D;">
+          Yes, Submit Assessment
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 4: SUBMISSION OFFICIAL RECEIPT & PERFORMANCE
+       ====================================================================== -->
+  <div class="student-modal" id="modal-stu-cbt-receipt" style="display: none; position: fixed; inset: 0; background: rgba(10, 22, 51, 0.7); backdrop-filter: blur(2px); z-index: 2200; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto;">
+    <div style="background: #FFFFFF; border-radius: var(--student-radius-md); max-width: 580px; width: 100%; padding: 2rem; box-shadow: var(--student-shadow-lg); text-align: center;">
+      <!-- Green Success Icon -->
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: #DCFCE7; color: #16A34A; font-size: 2rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto; border: 2px solid #86EFAC;">
+        ✓
+      </div>
+
+      <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--student-navy); margin-bottom: 0.35rem;">
+        Assessment Submitted Successfully
+      </h3>
+      <p style="font-size: 0.84rem; color: var(--student-text-muted); margin-bottom: 1.5rem;">
+        Your answers have been registered securely in the DIMABIN Central Examination Registry.
+      </p>
+
+      <!-- Official Receipt Strip -->
+      <div style="background: #F8FAFC; border: 1px solid #EDF2F7; border-radius: var(--student-radius-sm); padding: 1.25rem; text-align: left; margin-bottom: 1.5rem; font-size: 0.8125rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; border-bottom: 1px solid #E2E8F0; padding-bottom: 0.75rem;">
+          <div>
+            <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Candidate Name</span>
+            <strong style="color: var(--student-navy);" id="receipt-candidate-name">-</strong>
+          </div>
+          <div>
+            <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Matriculation No.</span>
+            <strong style="color: var(--student-blue);" id="receipt-matric-number">-</strong>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; border-bottom: 1px solid #E2E8F0; padding-bottom: 0.75rem;">
+          <div>
+            <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Course</span>
+            <strong style="color: var(--student-navy);" id="receipt-course-code">-</strong>
+          </div>
+          <div>
+            <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Submission Timestamp</span>
+            <strong style="color: var(--student-navy);" id="receipt-timestamp">-</strong>
+          </div>
+        </div>
+
+        <div>
+          <span style="color: var(--student-text-muted); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; display: block;">Official Attempt ID</span>
+          <span style="font-family: monospace; font-size: 0.75rem; color: #64748B;" id="receipt-attempt-id">-</span>
+        </div>
+      </div>
+
+      <!-- Performance Score Box (if results released) -->
+      <div id="receipt-score-container" style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--student-radius-sm); padding: 1.25rem; margin-bottom: 1.5rem;">
+        <span style="font-size: 0.72rem; color: var(--student-blue); text-transform: uppercase; font-weight: 700; display: block;">Automated Objective Score</span>
+        <div style="font-size: 2rem; font-weight: 900; color: var(--student-navy); margin: 0.25rem 0;" id="receipt-total-score">
+          8 / 10
+        </div>
+        <div style="display: flex; justify-content: center; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
+          <span class="status-pill-badge badge-green" id="receipt-percentage-badge">80%</span>
+          <span class="status-pill-badge badge-blue" id="receipt-grade-badge">Grade A</span>
+          <span class="status-pill-badge badge-green" id="receipt-passfail-badge">PASSED</span>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--student-text-muted); margin-top: 0.5rem; margin-bottom: 0;" id="receipt-theory-notice">
+          Theory / Essay components will be evaluated by your course lecturer.
+        </p>
+      </div>
+
+      <button type="button" class="btn btn-primary" id="btn-close-cbt-receipt" style="font-weight: 800; padding: 0.65rem 1.75rem; width: 100%;">
+        Return to Student Assessment Suite
+      </button>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL 5: TEST RESULT & DETAILED ANSWER REVIEW MODAL
+       ====================================================================== -->
+  <div class="student-modal" id="modal-stu-cbt-review" style="display: none; position: fixed; inset: 0; background: rgba(10, 22, 51, 0.7); backdrop-filter: blur(2px); z-index: 2200; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto;">
+    <div style="background: #FFFFFF; border-radius: var(--student-radius-md); max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 1.75rem; box-shadow: var(--student-shadow-lg);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; border-bottom: 1px solid var(--student-border); padding-bottom: 0.75rem;">
+        <div>
+          <span class="status-pill-badge badge-blue" id="review-test-type">CONTINUOUS ASSESSMENT</span>
+          <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--student-navy); margin-top: 0.35rem;" id="review-test-title">
+            Test Performance &amp; Evaluation Review
+          </h3>
+          <span style="font-size: 0.8125rem; color: var(--student-text-muted);" id="review-test-meta">
+            BIB-101 · Introduction to Biblical Studies
+          </span>
+        </div>
+        <button type="button" id="btn-close-review" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--student-text-muted);">&times;</button>
+      </div>
+
+      <!-- Performance Summary Header -->
+      <div style="background: #F8FAFC; border: 1px solid #EDF2F7; border-radius: var(--student-radius-sm); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+        <div>
+          <span style="font-size: 0.72rem; color: var(--student-text-muted); text-transform: uppercase; font-weight: 700;">Score Achieved</span>
+          <div style="font-size: 1.5rem; font-weight: 900; color: var(--student-navy);" id="review-summary-score">
+            8 / 10
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <span class="status-pill-badge badge-green" id="review-summary-percent">80%</span>
+          <span class="status-pill-badge badge-blue" id="review-summary-grade">Grade A</span>
+          <span class="status-pill-badge badge-gold" id="review-marking-status">Fully Graded</span>
+        </div>
+      </div>
+
+      <!-- Lecturer Feedback Box (if present) -->
+      <div id="review-feedback-box" style="display: none; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--student-radius-sm); padding: 1rem; margin-bottom: 1.25rem;">
+        <span style="font-size: 0.72rem; color: #92400E; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 0.25rem;">Lecturer Evaluation &amp; Theological Feedback:</span>
+        <p style="font-size: 0.84rem; color: #78350F; margin: 0; line-height: 1.5;" id="review-feedback-text"></p>
+      </div>
+
+      <!-- Questions Review Container -->
+      <div id="review-questions-list" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+        <!-- Injected dynamically -->
+      </div>
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button type="button" class="btn btn-primary" id="btn-done-review" style="font-weight: 700;">Close Review</button>
+      </div>
+    </div>
   </div>
 
   <!-- Pure Vanilla JavaScript Modules -->

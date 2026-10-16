@@ -470,6 +470,221 @@
   font-weight: 400;
 }
 
+/* ==========================================================================
+   CBT ENGINE — LECTURER & STUDENT ENHANCEMENTS
+   ========================================================================== */
+.cbt-subnav-bar {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 0.75rem 1rem;
+  background: #F8FAFC;
+  border-bottom: 2px solid var(--student-border);
+  scrollbar-width: thin;
+}
+
+.cbt-subnav-btn {
+  white-space: nowrap;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--student-radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--student-border);
+  background: #FFFFFF;
+  color: var(--student-navy);
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cbt-subnav-btn:hover {
+  background: #F1F5F9;
+  border-color: #CBD5E1;
+}
+
+.cbt-subnav-btn.active {
+  background: var(--student-blue) !important;
+  color: #FFFFFF !important;
+  border-color: var(--student-blue) !important;
+  box-shadow: 0 1px 3px rgba(31, 60, 130, 0.25);
+}
+
+.cbt-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.cbt-stat-box {
+  background: #FFFFFF;
+  border: 1px solid var(--student-border);
+  border-radius: var(--student-radius-md);
+  padding: 1.15rem;
+  box-shadow: var(--student-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-left: 4px solid var(--student-blue);
+}
+
+.cbt-stat-box.green { border-left-color: #16A34A; }
+.cbt-stat-box.gold { border-left-color: #D97706; }
+.cbt-stat-box.red { border-left-color: #DC2626; }
+.cbt-stat-box.purple { border-left-color: #7C3AED; }
+
+.cbt-stat-num {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--student-navy);
+  line-height: 1.1;
+  margin: 0.35rem 0 0.2rem 0;
+}
+
+.cbt-stat-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--student-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cbt-stat-foot {
+  font-size: 0.75rem;
+  color: var(--student-text-muted);
+  margin-top: 0.25rem;
+}
+
+.cbt-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.cbt-item-card {
+  background: #FFFFFF;
+  border: 1px solid var(--student-border);
+  border-radius: var(--student-radius-md);
+  padding: 1.25rem;
+  box-shadow: var(--student-shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.cbt-item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--student-shadow-md);
+}
+
+.cbt-badge-type {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge-mcq { background: #DBEAFE; color: #1E40AF; border: 1px solid #BFDBFE; }
+.badge-yesno { background: #DCFCE7; color: #166534; border: 1px solid #BBF7D0; }
+.badge-tf { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+.badge-short { background: #F3E8FF; color: #6B21A8; border: 1px solid #E9D5FF; }
+.badge-theory { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
+
+/* Student Exam Runner UI */
+.cbt-runner-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.cbt-timer-badge {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  color: #B91C1C;
+  font-family: monospace;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--student-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cbt-timer-badge.warning {
+  animation: pulseWarning 1s infinite alternate;
+}
+
+@keyframes pulseWarning {
+  from { background: #FEE2E2; }
+  to { background: #EF4444; color: #FFFFFF; }
+}
+
+.cbt-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 0.45rem;
+}
+
+.cbt-palette-btn {
+  height: 38px;
+  border-radius: var(--student-radius-sm);
+  border: 1px solid var(--student-border);
+  background: #F8FAFC;
+  color: var(--student-navy);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cbt-palette-btn.answered {
+  background: #16A34A;
+  color: #FFFFFF;
+  border-color: #15803D;
+}
+
+.cbt-palette-btn.current {
+  outline: 2px solid var(--student-blue);
+  outline-offset: 1px;
+  border-color: var(--student-blue);
+  font-weight: 800;
+}
+
+.cbt-option-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--student-border);
+  border-radius: var(--student-radius-sm);
+  cursor: pointer;
+  margin-bottom: 0.65rem;
+  background: #FFFFFF;
+  transition: all 0.15s ease;
+}
+
+.cbt-option-label:hover {
+  background: #F8FAFC;
+  border-color: var(--student-blue);
+}
+
+.cbt-option-label.selected {
+  background: #EFF6FF;
+  border-color: var(--student-blue);
+  box-shadow: 0 0 0 1px var(--student-blue);
+}
+
 /* Print Roster Formatting */
 @media print {
   body {

@@ -62,6 +62,10 @@ export const COLLECTIONS = Object.freeze({
   STUDY_CENTRES_LEGACY: "study_centres",
   RESULTS: "results",
   ASSESSMENTS: "course_assessments",
+  CBT_QUESTIONS: "cbt_questions",
+  CBT_ASSESSMENTS: "cbt_assessments",
+  CBT_SUBMISSIONS: "cbt_submissions",
+  CBT_SETTINGS: "cbt_settings",
   ANNOUNCEMENTS: "announcements",
   NOTIFICATIONS: "notifications",
   PUBLIC_NOTIFICATIONS: "public_notifications",
@@ -4591,4 +4595,1038 @@ export async function saveSettingDoc(docId, data) {
   });
 
   return { success: true, docId, data: payload };
+}
+
+// =============================================================================
+// 10. COMPUTER-BASED TEST (CBT) ENGINE — QUESTION BANK & ASSESSMENTS
+// =============================================================================
+
+/**
+ * Default Seed Theological Question Bank
+ */
+const SEED_CBT_QUESTIONS = [
+  {
+    id: "q_theo_bib101_01",
+    courseCode: "BIB-101",
+    courseTitle: "Introduction to Biblical Studies",
+    topic: "Biblical Canonicity & Manuscripts",
+    type: "mcq", // mcq | yes_no | true_false | short_answer | theory
+    difficulty: "intermediate", // basic | intermediate | advanced
+    questionText: "Which ancient manuscript codex, dating to the mid-4th century AD and written in Greek uncial script, was discovered at Saint Catherine's Monastery on Mount Sinai by Constantin von Tischendorf?",
+    options: [
+      { id: "opt_a", text: "Codex Vaticanus" },
+      { id: "opt_b", text: "Codex Sinaiticus" },
+      { id: "opt_c", text: "Codex Alexandrinus" },
+      { id: "opt_d", text: "Codex Ephraemi Rescriptus" }
+    ],
+    correctOptionId: "opt_b",
+    marks: 2,
+    explanation: "Codex Sinaiticus is a 4th-century uncial manuscript of the Christian Bible containing the earliest complete New Testament, found at Mount Sinai.",
+    markingGuide: "Award 2 marks for selecting Option B (Codex Sinaiticus).",
+    status: "published",
+    lecturerStaffId: "DIMABIN/LEC/2026/01",
+    lecturerName: "Dr. Emmanuel Adebayo",
+    createdAt: "2026-10-01T08:00:00.000Z",
+    updatedAt: "2026-10-01T08:00:00.000Z"
+  },
+  {
+    id: "q_theo_bib101_02",
+    courseCode: "BIB-101",
+    courseTitle: "Introduction to Biblical Studies",
+    topic: "Old Testament Survey",
+    type: "true_false",
+    difficulty: "basic",
+    questionText: "The Septuagint (LXX) is the primary ancient Greek translation of the Hebrew Old Testament compiled in Alexandria, Egypt.",
+    options: [
+      { id: "opt_true", text: "True" },
+      { id: "opt_false", text: "False" }
+    ],
+    correctOptionId: "opt_true",
+    marks: 2,
+    explanation: "The Septuagint (LXX) was translated into Koine Greek around the 3rd to 2nd centuries BC for the Greek-speaking Jewish diaspora in Alexandria.",
+    markingGuide: "Award 2 marks for selecting True.",
+    status: "published",
+    lecturerStaffId: "DIMABIN/LEC/2026/01",
+    lecturerName: "Dr. Emmanuel Adebayo",
+    createdAt: "2026-10-01T08:15:00.000Z",
+    updatedAt: "2026-10-01T08:15:00.000Z"
+  },
+  {
+    id: "q_theo_bib101_03",
+    courseCode: "BIB-101",
+    courseTitle: "Introduction to Biblical Studies",
+    topic: "Hermeneutics & Exegesis",
+    type: "yes_no",
+    difficulty: "basic",
+    questionText: "Does proper biblical exegesis require discovering the original author's intended theological meaning rather than imposing modern presuppositions (eisegesis)?",
+    options: [
+      { id: "opt_yes", text: "Yes" },
+      { id: "opt_no", text: "No" }
+    ],
+    correctOptionId: "opt_yes",
+    marks: 2,
+    explanation: "Exegesis is the objective extraction of meaning out of the biblical text, contrasting with eisegesis where the reader projects subjective ideas into the text.",
+    markingGuide: "Award 2 marks for Yes.",
+    status: "published",
+    lecturerStaffId: "DIMABIN/LEC/2026/01",
+    lecturerName: "Dr. Emmanuel Adebayo",
+    createdAt: "2026-10-01T08:30:00.000Z",
+    updatedAt: "2026-10-01T08:30:00.000Z"
+  },
+  {
+    id: "q_theo_bib101_04",
+    courseCode: "BIB-101",
+    courseTitle: "Introduction to Biblical Studies",
+    topic: "New Testament Canon",
+    type: "short_answer",
+    difficulty: "intermediate",
+    questionText: "Name the fourth-century Church Father whose 39th Festal Letter in AD 367 was the first known historical document to list precisely the twenty-seven books of the New Testament canon.",
+    expectedAnswer: "Athanasius",
+    matchingRule: "exact_or_contains", // exact | exact_or_contains | manual
+    marks: 2,
+    explanation: "Athanasius, Bishop of Alexandria, promulgated his 39th Festal Letter in 367 AD specifying the 27 books of the Christian New Testament.",
+    markingGuide: "Accept 'Athanasius' or 'Bishop Athanasius' or 'St. Athanasius'. Award 2 marks.",
+    status: "published",
+    lecturerStaffId: "DIMABIN/LEC/2026/01",
+    lecturerName: "Dr. Emmanuel Adebayo",
+    createdAt: "2026-10-01T08:45:00.000Z",
+    updatedAt: "2026-10-01T08:45:00.000Z"
+  },
+  {
+    id: "q_theo_bib101_05",
+    courseCode: "BIB-101",
+    courseTitle: "Introduction to Biblical Studies",
+    topic: "Biblical Theology & Application",
+    type: "theory",
+    difficulty: "advanced",
+    questionText: "Discuss the theological significance of the Abrahamic Covenant (Genesis 12:1–3, 15:1–21) in the unfolding narrative of redemption, with specific reference to land, seed, and universal blessing.",
+    marks: 5,
+    explanation: "Students must analyze God's unilateral promise to Abraham and how Christ fulfills the promised 'Seed' bringing blessing to all nations (Galatians 3:8).",
+    markingGuide: "Marks distribution:\n- Explication of Genesis 12:1-3 (Promise of land, great nation, name): 1.5 Marks\n- The covenant ratification ceremony in Gen 15 (Divine unconditional oath): 1.5 Marks\n- New Testament Christological fulfillment in Galatians 3 & Romans 4: 2.0 Marks.\nTotal: 5 Marks.",
+    status: "published",
+    lecturerStaffId: "DIMABIN/LEC/2026/01",
+    lecturerName: "Dr. Emmanuel Adebayo",
+    createdAt: "2026-10-01T09:00:00.000Z",
+    updatedAt: "2026-10-01T09:00:00.000Z"
+  },
+  {
+    id: "q_theo_the101_01",
+    courseCode: "THE-101",
+    courseTitle: "Systematic Theology I",
+    topic: "Doctrine of the Trinity",
+    type: "mcq",
+    difficulty: "intermediate",
+    questionText: "Which theological term, famously affirmed at the Council of Nicaea (AD 325), describes the Son as being of the 'same substance or essence' with the Father?",
+    options: [
+      { id: "opt_a", text: "Homoiousios" },
+      { id: "opt_b", text: "Homoousios" },
+      { id: "opt_c", text: "Hypostasis" },
+      { id: "opt_d", text: "Perichoresis" }
+    ],
+    correctOptionId: "opt_b",
+    marks: 2,
+    explanation: "Homoousios (consubstantial / same substance) was defended by Athanasius against the Arian term Homoiousios (similar substance).",
+    markingGuide: "Award 2 marks for Homoousios (Option B).",
+    status: "published",
+    lecturerStaffId: "DIMABIN/LEC/2026/01",
+    lecturerName: "Dr. Emmanuel Adebayo",
+    createdAt: "2026-10-02T10:00:00.000Z",
+    updatedAt: "2026-10-02T10:00:00.000Z"
+  },
+  {
+    id: "q_theo_the101_02",
+    courseCode: "THE-101",
+    courseTitle: "Systematic Theology I",
+    topic: "Pneumatology & Christology",
+    type: "true_false",
+    difficulty: "basic",
+    questionText: "The Hypostatic Union asserts that the divine and human natures in Jesus Christ exist without confusion, without change, without division, and without separation (Chalcedonian Definition).",
+    options: [
+      { id: "opt_true", text: "True" },
+      { id: "opt_false", text: "False" }
+    ],
+    correctOptionId: "opt_true",
+    marks: 2,
+    explanation: "Affirmed at the Council of Chalcedon in AD 451, defining the two full natures united in one divine person.",
+    markingGuide: "Award 2 marks for True.",
+    status: "published",
+    lecturerStaffId: "DIMABIN/LEC/2026/01",
+    lecturerName: "Dr. Emmanuel Adebayo",
+    createdAt: "2026-10-02T10:15:00.000Z",
+    updatedAt: "2026-10-02T10:15:00.000Z"
+  }
+];
+
+// Initialize Question Bank cache if empty
+(function initCbtSeed() {
+  const existingQuestions = getCachedCollection(COLLECTIONS.CBT_QUESTIONS);
+  if (!existingQuestions || existingQuestions.length === 0) {
+    setCachedCollection(COLLECTIONS.CBT_QUESTIONS, SEED_CBT_QUESTIONS);
+  }
+})();
+
+/**
+ * 10A. QUESTION BANK OPERATIONS
+ */
+export function subscribeCbtQuestions(callback) {
+  if (typeof callback !== "function") return () => {};
+
+  const initial = getCachedCollection(COLLECTIONS.CBT_QUESTIONS);
+  callback(initial && initial.length > 0 ? initial : SEED_CBT_QUESTIONS);
+
+  const localListener = (e) => {
+    if (e.detail) callback(e.detail);
+  };
+  window.addEventListener(`dimabin:db:${COLLECTIONS.CBT_QUESTIONS}`, localListener);
+
+  let unsubscribe = () => {};
+  try {
+    const collRef = collection(db, COLLECTIONS.CBT_QUESTIONS);
+    unsubscribe = onSnapshot(
+      collRef,
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setCachedCollection(COLLECTIONS.CBT_QUESTIONS, list);
+          callback(list);
+        } else {
+          callback(getCachedCollection(COLLECTIONS.CBT_QUESTIONS) || SEED_CBT_QUESTIONS);
+        }
+      },
+      (err) => {
+        console.warn("[DIMABIN CBT Questions] onSnapshot note:", err.message);
+        callback(getCachedCollection(COLLECTIONS.CBT_QUESTIONS) || SEED_CBT_QUESTIONS);
+      }
+    );
+  } catch (err) {
+    console.warn("[DIMABIN CBT Questions] init note:", err.message);
+  }
+
+  return () => {
+    try { unsubscribe(); } catch (_) {}
+    window.removeEventListener(`dimabin:db:${COLLECTIONS.CBT_QUESTIONS}`, localListener);
+  };
+}
+
+export async function createCbtQuestion(data) {
+  const normCourse = (data.courseCode || "").trim().toUpperCase();
+  if (!normCourse) throw new Error("Course Code is required for Question Bank entry.");
+  if (!data.questionText || !data.questionText.trim()) throw new Error("Question text is required.");
+
+  const nowIso = new Date().toISOString();
+  const qId = `q_${normCourse.replace(/[^A-Z0-9]/g, "_")}_${Date.now()}`;
+
+  const payload = {
+    id: qId,
+    courseCode: normCourse,
+    courseTitle: data.courseTitle || "",
+    topic: (data.topic || "General").trim(),
+    type: data.type || "mcq", // mcq | yes_no | true_false | short_answer | theory
+    difficulty: data.difficulty || "intermediate",
+    questionText: data.questionText.trim(),
+    options: Array.isArray(data.options) ? data.options : [],
+    correctOptionId: data.correctOptionId || "",
+    expectedAnswer: data.expectedAnswer || "",
+    matchingRule: data.matchingRule || "exact_or_contains",
+    marks: Math.max(1, parseInt(data.marks, 10) || 2),
+    explanation: data.explanation || "",
+    markingGuide: data.markingGuide || "",
+    status: data.status || "published", // draft | published
+    lecturerStaffId: data.lecturerStaffId || "",
+    lecturerName: data.lecturerName || "",
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.CBT_QUESTIONS, payload);
+
+  let savedId = qId;
+  try {
+    const docRef = await addDoc(collection(db, COLLECTIONS.CBT_QUESTIONS), {
+      ...payload,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    savedId = docRef.id;
+    removeCachedItem(COLLECTIONS.CBT_QUESTIONS, qId);
+    upsertCachedItem(COLLECTIONS.CBT_QUESTIONS, { ...payload, id: savedId });
+  } catch (err) {
+    console.warn(`[DIMABIN CBT] Add question note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "cbt_question_created",
+    description: `Created ${payload.type.toUpperCase()} question (${payload.marks} marks) in ${normCourse} for topic "${payload.topic}".`,
+    targetCollection: COLLECTIONS.CBT_QUESTIONS,
+    targetDocumentId: savedId
+  });
+
+  return { success: true, id: savedId, ...payload };
+}
+
+export async function updateCbtQuestion(questionId, data) {
+  if (!questionId) throw new Error("Question ID is required.");
+  const nowIso = new Date().toISOString();
+  const existing = (getCachedCollection(COLLECTIONS.CBT_QUESTIONS) || []).find((q) => q.id === questionId);
+
+  const updatedPayload = {
+    ...(existing || {}),
+    ...data,
+    courseCode: (data.courseCode || existing?.courseCode || "").trim().toUpperCase(),
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.CBT_QUESTIONS, updatedPayload);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.CBT_QUESTIONS, questionId);
+    await updateDoc(docRef, { ...updatedPayload, updatedAt: serverTimestamp() });
+  } catch (err) {
+    console.warn(`[DIMABIN CBT] Update question note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "cbt_question_updated",
+    description: `Updated question ${questionId} in course ${updatedPayload.courseCode}.`,
+    targetCollection: COLLECTIONS.CBT_QUESTIONS,
+    targetDocumentId: questionId
+  });
+
+  return { success: true, ...updatedPayload };
+}
+
+export async function deleteCbtQuestion(questionId) {
+  if (!questionId) return;
+  removeCachedItem(COLLECTIONS.CBT_QUESTIONS, questionId);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.CBT_QUESTIONS, questionId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn(`[DIMABIN CBT] Delete question note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "cbt_question_deleted",
+    description: `Deleted question ${questionId} from question bank.`,
+    targetCollection: COLLECTIONS.CBT_QUESTIONS,
+    targetDocumentId: questionId
+  });
+
+  return { success: true, id: questionId };
+}
+
+export async function duplicateCbtQuestion(questionId) {
+  const existing = (getCachedCollection(COLLECTIONS.CBT_QUESTIONS) || []).find((q) => q.id === questionId);
+  if (!existing) throw new Error("Question not found.");
+
+  const cloneData = {
+    ...existing,
+    questionText: `${existing.questionText} (Copy)`,
+    topic: `${existing.topic || "General"}`,
+    status: "draft"
+  };
+  delete cloneData.id;
+  delete cloneData.createdAt;
+  delete cloneData.updatedAt;
+
+  return await createCbtQuestion(cloneData);
+}
+
+/**
+ * 10B. CBT ASSESSMENTS (TESTS & EXAMINATIONS)
+ */
+export function subscribeCbtAssessments(callback) {
+  if (typeof callback !== "function") return () => {};
+
+  callback(getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || []);
+
+  const localListener = (e) => {
+    if (e.detail) callback(e.detail);
+  };
+  window.addEventListener(`dimabin:db:${COLLECTIONS.CBT_ASSESSMENTS}`, localListener);
+
+  let unsubscribe = () => {};
+  try {
+    const collRef = collection(db, COLLECTIONS.CBT_ASSESSMENTS);
+    unsubscribe = onSnapshot(
+      collRef,
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setCachedCollection(COLLECTIONS.CBT_ASSESSMENTS, list);
+        callback(list);
+      },
+      (err) => {
+        console.warn("[DIMABIN CBT Assessments] onSnapshot note:", err.message);
+        callback(getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || []);
+      }
+    );
+  } catch (err) {
+    console.warn("[DIMABIN CBT Assessments] init note:", err.message);
+  }
+
+  return () => {
+    try { unsubscribe(); } catch (_) {}
+    window.removeEventListener(`dimabin:db:${COLLECTIONS.CBT_ASSESSMENTS}`, localListener);
+  };
+}
+
+export async function createCbtAssessment(assessmentData) {
+  const normCourse = (assessmentData.courseCode || "").trim().toUpperCase();
+  if (!normCourse) throw new Error("Course Code is required.");
+  if (!assessmentData.title || !assessmentData.title.trim()) throw new Error("Assessment Title is required.");
+
+  const questionsSnapshot = Array.isArray(assessmentData.questions) ? assessmentData.questions : [];
+  if (questionsSnapshot.length === 0) {
+    throw new Error("At least one question must be selected for the assessment.");
+  }
+
+  // Validate sum of question marks equals totalMarks
+  const sumMarks = questionsSnapshot.reduce((acc, q) => acc + (parseInt(q.marks, 10) || 0), 0);
+  const totalMarks = parseInt(assessmentData.totalMarks, 10) || sumMarks;
+  if (totalMarks !== sumMarks) {
+    throw new Error(`Assessment total marks (${totalMarks}) does not equal the sum of selected question marks (${sumMarks}). Adjust total marks or question weights.`);
+  }
+
+  const nowIso = new Date().toISOString();
+  const cbtId = `cbt_${normCourse.replace(/[^A-Z0-9]/g, "_")}_${Date.now()}`;
+
+  // Check if initial status should be scheduled or open
+  let initialStatus = assessmentData.status || "draft"; // draft | scheduled | open | closed
+  if (initialStatus !== "draft") {
+    const startIso = assessmentData.startDate || nowIso;
+    const endIso = assessmentData.closingDate || "";
+    const now = new Date();
+    if (new Date(startIso) > now) {
+      initialStatus = "scheduled";
+    } else if (endIso && new Date(endIso) < now) {
+      initialStatus = "closed";
+    } else {
+      initialStatus = "open";
+    }
+  }
+
+  const payload = {
+    id: cbtId,
+    title: assessmentData.title.trim(),
+    type: (assessmentData.type || "test").toLowerCase(), // test | exam
+    courseCode: normCourse,
+    courseTitle: assessmentData.courseTitle || "",
+    topic: assessmentData.topic || "Comprehensive Assessment",
+    academicSession: assessmentData.academicSession || "2026/2027",
+    semester: assessmentData.semester || "First Semester",
+    studyCentre: assessmentData.studyCentre || "all",
+    instructions: assessmentData.instructions || "Answer all questions carefully. Time counts down automatically.",
+    startDate: assessmentData.startDate || nowIso,
+    closingDate: assessmentData.closingDate || "",
+    durationMinutes: Math.max(5, parseInt(assessmentData.durationMinutes, 10) || 30),
+    totalMarks,
+    passMark: parseInt(assessmentData.passMark, 10) || Math.round(totalMarks * 0.4),
+    allowedAttempts: parseInt(assessmentData.allowedAttempts, 10) || 1,
+    shuffleQuestions: Boolean(assessmentData.shuffleQuestions),
+    shuffleOptions: Boolean(assessmentData.shuffleOptions),
+    allowNavigation: assessmentData.allowNavigation !== false,
+    allowUnanswered: assessmentData.allowUnanswered !== false,
+    resultVisibility: assessmentData.resultVisibility || "after_marking", // hide | immediate | after_marking | manual
+    hasTheory: questionsSnapshot.some((q) => q.type === "theory" || (q.type === "short_answer" && q.matchingRule === "manual")),
+    questions: questionsSnapshot, // Frozen historical snapshot
+    status: initialStatus,
+    lecturerStaffId: assessmentData.lecturerStaffId || "",
+    lecturerName: assessmentData.lecturerName || "",
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.CBT_ASSESSMENTS, payload);
+
+  let savedId = cbtId;
+  try {
+    const docRef = await addDoc(collection(db, COLLECTIONS.CBT_ASSESSMENTS), {
+      ...payload,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    savedId = docRef.id;
+    removeCachedItem(COLLECTIONS.CBT_ASSESSMENTS, cbtId);
+    upsertCachedItem(COLLECTIONS.CBT_ASSESSMENTS, { ...payload, id: savedId });
+  } catch (err) {
+    console.warn(`[DIMABIN CBT] Add assessment note: ${err.message}`);
+  }
+
+  // If published immediately, alert students via Portal Notifications
+  if (payload.status === "open" || payload.status === "scheduled") {
+    try {
+      const notifPayload = {
+        title: `New CBT ${payload.type.toUpperCase()}: ${payload.courseCode}`,
+        message: `A new Computer-Based Test "${payload.title}" (${payload.durationMinutes} mins, ${payload.totalMarks} marks) has been scheduled for ${payload.courseCode}. Check your Student CBT portal for schedule and instructions.`,
+        audience: "student",
+        priority: "normal",
+        status: "published",
+        createdAt: nowIso
+      };
+      await addDoc(collection(db, COLLECTIONS.PORTAL_NOTIFICATIONS), {
+        ...notifPayload,
+        createdAt: serverTimestamp()
+      });
+    } catch (_) {}
+  }
+
+  await logActivity({
+    action: "cbt_assessment_created",
+    description: `Created CBT ${payload.type.toUpperCase()} "${payload.title}" for ${normCourse} with ${questionsSnapshot.length} questions (${totalMarks} marks). Status: ${payload.status}.`,
+    targetCollection: COLLECTIONS.CBT_ASSESSMENTS,
+    targetDocumentId: savedId
+  });
+
+  return { success: true, id: savedId, ...payload };
+}
+
+export async function updateCbtAssessment(assessmentId, data) {
+  if (!assessmentId) throw new Error("Assessment ID is required.");
+  const existing = (getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || []).find((a) => a.id === assessmentId);
+  if (!existing) throw new Error("Assessment not found.");
+
+  // Check if there are already student submissions for this assessment
+  const existingSubmissions = (getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || []).filter(
+    (s) => s.assessmentId === assessmentId
+  );
+  if (existingSubmissions.length > 0 && data.questions && JSON.stringify(data.questions) !== JSON.stringify(existing.questions)) {
+    throw new Error("Cannot alter the questions of an assessment that already has student submissions. Create a revised assessment instead.");
+  }
+
+  const nowIso = new Date().toISOString();
+  const updatedPayload = {
+    ...existing,
+    ...data,
+    courseCode: (data.courseCode || existing.courseCode).trim().toUpperCase(),
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.CBT_ASSESSMENTS, updatedPayload);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.CBT_ASSESSMENTS, assessmentId);
+    await updateDoc(docRef, { ...updatedPayload, updatedAt: serverTimestamp() });
+  } catch (err) {
+    console.warn(`[DIMABIN CBT] Update assessment note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "cbt_assessment_updated",
+    description: `Updated CBT assessment "${updatedPayload.title}" (${updatedPayload.courseCode}).`,
+    targetCollection: COLLECTIONS.CBT_ASSESSMENTS,
+    targetDocumentId: assessmentId
+  });
+
+  return { success: true, ...updatedPayload };
+}
+
+export async function deleteCbtAssessment(assessmentId) {
+  if (!assessmentId) return;
+  removeCachedItem(COLLECTIONS.CBT_ASSESSMENTS, assessmentId);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.CBT_ASSESSMENTS, assessmentId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn(`[DIMABIN CBT] Delete assessment note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "cbt_assessment_deleted",
+    description: `Deleted CBT assessment ${assessmentId}.`,
+    targetCollection: COLLECTIONS.CBT_ASSESSMENTS,
+    targetDocumentId: assessmentId
+  });
+
+  return { success: true, id: assessmentId };
+}
+
+export async function publishCbtAssessment(assessmentId) {
+  const existing = (getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || []).find((a) => a.id === assessmentId);
+  if (!existing) throw new Error("Assessment not found.");
+
+  const now = new Date();
+  const start = new Date(existing.startDate || now);
+  const newStatus = start > now ? "scheduled" : "open";
+
+  return await updateCbtAssessment(assessmentId, { status: newStatus });
+}
+
+export async function closeCbtAssessment(assessmentId) {
+  return await updateCbtAssessment(assessmentId, { status: "closed" });
+}
+
+export async function extendCbtDeadline(assessmentId, newClosingDateIso, reason = "Authorized extension") {
+  if (!newClosingDateIso) throw new Error("New closing date is required.");
+  return await updateCbtAssessment(assessmentId, {
+    closingDate: newClosingDateIso,
+    extensionReason: reason,
+    status: "open"
+  });
+}
+
+export async function updateCbtResultVisibility(assessmentId, visibilitySetting) {
+  return await updateCbtAssessment(assessmentId, { resultVisibility: visibilitySetting });
+}
+
+/**
+ * 10C. CBT SUBMISSIONS, REAL-TIME ATTEMPTS & GRADING
+ */
+export function subscribeCbtSubmissions(callback) {
+  if (typeof callback !== "function") return () => {};
+
+  callback(getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || []);
+
+  const localListener = (e) => {
+    if (e.detail) callback(e.detail);
+  };
+  window.addEventListener(`dimabin:db:${COLLECTIONS.CBT_SUBMISSIONS}`, localListener);
+
+  let unsubscribe = () => {};
+  try {
+    const collRef = collection(db, COLLECTIONS.CBT_SUBMISSIONS);
+    unsubscribe = onSnapshot(
+      collRef,
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setCachedCollection(COLLECTIONS.CBT_SUBMISSIONS, list);
+        callback(list);
+      },
+      (err) => {
+        console.warn("[DIMABIN CBT Submissions] onSnapshot note:", err.message);
+        callback(getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || []);
+      }
+    );
+  } catch (err) {
+    console.warn("[DIMABIN CBT Submissions] init note:", err.message);
+  }
+
+  return () => {
+    try { unsubscribe(); } catch (_) {}
+    window.removeEventListener(`dimabin:db:${COLLECTIONS.CBT_SUBMISSIONS}`, localListener);
+  };
+}
+
+/**
+ * Start or restore student CBT attempt
+ * Prevents multiple attempts beyond permitted limit
+ */
+export async function startCbtAttempt({ studentId, studentName, matricNumber, studyCentre, programme }, assessmentId) {
+  if (!assessmentId) throw new Error("Assessment ID is required.");
+  const assessment = (getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || []).find((a) => a.id === assessmentId);
+  if (!assessment) throw new Error("Assessment not found or unavailable.");
+
+  const normMatric = (matricNumber || studentId || "").trim().toUpperCase();
+  const allSubmissions = getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || [];
+
+  // Check student attempts for this assessment
+  const studentAttempts = allSubmissions.filter(
+    (s) => s.assessmentId === assessmentId && (s.matricNumber || "").trim().toUpperCase() === normMatric
+  );
+
+  // If there is an active in-progress attempt, restore it
+  const activeAttempt = studentAttempts.find((s) => s.status === "in_progress");
+  if (activeAttempt) {
+    // Check if time expired
+    const now = Date.now();
+    const expiry = new Date(activeAttempt.expiresAt).getTime();
+    if (now >= expiry) {
+      // Auto-submit expired attempt
+      await submitCbtAttempt(activeAttempt.id, activeAttempt.answers || {});
+      throw new Error("Your previous test attempt duration has expired and has been submitted automatically.");
+    }
+    return { isResumed: true, attempt: activeAttempt, assessment };
+  }
+
+  // Check attempt limit
+  const completedAttempts = studentAttempts.filter((s) => s.status !== "in_progress");
+  const maxAllowed = assessment.allowedAttempts || 1;
+  if (completedAttempts.length >= maxAllowed) {
+    throw new Error(`You have reached the maximum allowed attempts (${maxAllowed}) for this assessment.`);
+  }
+
+  // Verify time window
+  const now = new Date();
+  if (assessment.startDate && new Date(assessment.startDate) > now) {
+    throw new Error("This assessment is scheduled for a future time and is not yet open.");
+  }
+  if (assessment.closingDate && new Date(assessment.closingDate) < now) {
+    throw new Error("This assessment deadline has passed. New attempts are closed.");
+  }
+
+  const nowIso = now.toISOString();
+  const durationMs = (assessment.durationMinutes || 30) * 60 * 1000;
+  const expiresAtIso = new Date(now.getTime() + durationMs).toISOString();
+
+  const attemptId = `sub_${assessmentId}_${normMatric.replace(/[^A-Z0-9]/g, "_")}_att${completedAttempts.length + 1}`;
+
+  const attemptPayload = {
+    id: attemptId,
+    assessmentId,
+    assessmentTitle: assessment.title,
+    assessmentType: assessment.type,
+    courseCode: assessment.courseCode,
+    courseTitle: assessment.courseTitle,
+    studentId: studentId || normMatric,
+    studentName: studentName || "Candidate",
+    matricNumber: normMatric,
+    studyCentre: studyCentre || "All Centres",
+    programme: programme || "Diploma in Theology",
+    attemptNumber: completedAttempts.length + 1,
+    status: "in_progress", // in_progress | submitted | graded
+    answers: {},
+    startedAt: nowIso,
+    expiresAt: expiresAtIso,
+    submittedAt: null,
+    autoScore: 0,
+    manualScore: 0,
+    totalScore: 0,
+    maxMarks: assessment.totalMarks || 30,
+    percentage: 0,
+    grade: "F",
+    markingStatus: assessment.hasTheory ? "pending_manual" : "auto_completed",
+    resultVisibility: assessment.resultVisibility || "after_marking",
+    resultsReleased: assessment.resultVisibility === "immediate" && !assessment.hasTheory,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.CBT_SUBMISSIONS, attemptPayload);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.CBT_SUBMISSIONS, attemptId);
+    await setDoc(docRef, { ...attemptPayload, startedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  } catch (err) {
+    console.warn(`[DIMABIN CBT] Start attempt note: ${err.message}`);
+  }
+
+  return { isResumed: false, attempt: attemptPayload, assessment };
+}
+
+/**
+ * Auto-save student progress answers periodically or on question change
+ */
+export async function saveCbtProgress(attemptId, savedAnswers) {
+  if (!attemptId) return;
+  const existing = (getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || []).find((s) => s.id === attemptId);
+  if (!existing || existing.status !== "in_progress") return;
+
+  const nowIso = new Date().toISOString();
+  const updatedPayload = {
+    ...existing,
+    answers: { ...(existing.answers || {}), ...savedAnswers },
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.CBT_SUBMISSIONS, updatedPayload);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.CBT_SUBMISSIONS, attemptId);
+    await updateDoc(docRef, { answers: updatedPayload.answers, updatedAt: serverTimestamp() });
+  } catch (_) {}
+}
+
+/**
+ * Submit CBT attempt and execute automatic marking
+ */
+export async function submitCbtAttempt(attemptId, finalAnswers = {}) {
+  if (!attemptId) throw new Error("Attempt ID is required.");
+  const existing = (getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || []).find((s) => s.id === attemptId);
+  if (!existing) throw new Error("Attempt not found.");
+
+  if (existing.status !== "in_progress") {
+    return { success: true, attempt: existing, message: "Attempt already submitted." };
+  }
+
+  const assessment = (getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || []).find((a) => a.id === existing.assessmentId);
+  const questions = assessment?.questions || [];
+  const mergedAnswers = { ...(existing.answers || {}), ...finalAnswers };
+
+  // Automated Marking Process
+  let autoScore = 0;
+  let hasPendingTheory = false;
+  const questionGrading = {};
+
+  questions.forEach((q) => {
+    const ans = mergedAnswers[q.id];
+    const qMarks = parseInt(q.marks, 10) || 1;
+
+    if (q.type === "mcq" || q.type === "yes_no" || q.type === "true_false") {
+      const isCorrect = String(ans || "").trim().toLowerCase() === String(q.correctOptionId || "").trim().toLowerCase();
+      const awarded = isCorrect ? qMarks : 0;
+      autoScore += awarded;
+      questionGrading[q.id] = {
+        type: q.type,
+        studentAnswer: ans || "",
+        correctOptionId: q.correctOptionId,
+        awardedMarks: awarded,
+        maxMarks: qMarks,
+        isCorrect,
+        status: "auto_graded"
+      };
+    } else if (q.type === "short_answer") {
+      // Evaluate if auto matching is enabled
+      const expected = (q.expectedAnswer || "").trim().toLowerCase();
+      const given = String(ans || "").trim().toLowerCase();
+      if (q.matchingRule === "exact" && given && given === expected) {
+        autoScore += qMarks;
+        questionGrading[q.id] = { type: q.type, studentAnswer: ans || "", awardedMarks: qMarks, maxMarks: qMarks, status: "auto_graded" };
+      } else if (q.matchingRule === "exact_or_contains" && given && (given === expected || given.includes(expected))) {
+        autoScore += qMarks;
+        questionGrading[q.id] = { type: q.type, studentAnswer: ans || "", awardedMarks: qMarks, maxMarks: qMarks, status: "auto_graded" };
+      } else {
+        hasPendingTheory = true;
+        questionGrading[q.id] = { type: q.type, studentAnswer: ans || "", awardedMarks: 0, maxMarks: qMarks, status: "pending_manual" };
+      }
+    } else if (q.type === "theory") {
+      hasPendingTheory = true;
+      questionGrading[q.id] = {
+        type: q.type,
+        studentAnswer: ans || "",
+        awardedMarks: 0,
+        maxMarks: qMarks,
+        status: "pending_manual"
+      };
+    }
+  });
+
+  const nowIso = new Date().toISOString();
+  const maxMarks = assessment?.totalMarks || 30;
+  const totalScore = autoScore; // Will be augmented when theory questions are marked
+  const percentage = maxMarks > 0 ? Math.round((totalScore / maxMarks) * 100) : 0;
+
+  // Derive initial grade
+  let grade = "F";
+  if (percentage >= 70) grade = "A";
+  else if (percentage >= 60) grade = "B";
+  else if (percentage >= 50) grade = "C";
+  else if (percentage >= 45) grade = "D";
+  else if (percentage >= 40) grade = "E";
+
+  const markingStatus = hasPendingTheory ? "pending_manual" : "fully_graded";
+  const visibilitySetting = assessment?.resultVisibility || "after_marking";
+  const resultsReleased =
+    visibilitySetting === "immediate" ||
+    (visibilitySetting === "after_marking" && !hasPendingTheory);
+
+  const updatedPayload = {
+    ...existing,
+    status: "submitted",
+    submittedAt: nowIso,
+    answers: mergedAnswers,
+    questionGrading,
+    autoScore,
+    manualScore: 0,
+    totalScore,
+    maxMarks,
+    percentage,
+    grade,
+    markingStatus,
+    resultsReleased,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.CBT_SUBMISSIONS, updatedPayload);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.CBT_SUBMISSIONS, attemptId);
+    await updateDoc(docRef, { ...updatedPayload, submittedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  } catch (err) {
+    console.warn(`[DIMABIN CBT] Submit attempt note: ${err.message}`);
+  }
+
+  // Automatic integration with Results continuous assessment CBT mark (max 10m)
+  try {
+    const cbtScoreOutOf10 = maxMarks > 0 ? Math.min(10, Math.round((totalScore / maxMarks) * 10)) : 0;
+    await saveLecturerGradeRecord({
+      studentName: existing.studentName,
+      matricNumber: existing.matricNumber,
+      courseCode: existing.courseCode,
+      courseTitle: existing.courseTitle,
+      studyCentre: existing.studyCentre,
+      academicSession: assessment?.academicSession || "2026/2027",
+      semester: assessment?.semester || "First Semester",
+      cbtScore: cbtScoreOutOf10,
+      lecturerStaffId: assessment?.lecturerStaffId || "",
+      lecturerName: assessment?.lecturerName || ""
+    });
+  } catch (err) {
+    console.warn("[DIMABIN CBT] Gradebook sync note:", err.message);
+  }
+
+  await logActivity({
+    action: "cbt_attempt_submitted",
+    description: `Candidate ${existing.studentName} (${existing.matricNumber}) submitted CBT "${existing.assessmentTitle}". Auto Score: ${autoScore}/${maxMarks} (${markingStatus}).`,
+    targetCollection: COLLECTIONS.CBT_SUBMISSIONS,
+    targetDocumentId: attemptId
+  });
+
+  return { success: true, attempt: updatedPayload };
+}
+
+/**
+ * Lecturer: Manually grade student theory and short-answer questions
+ */
+export async function gradeCbtSubmission(submissionId, { manualGrading = {}, lecturerFeedback = "", lecturerStaffId = "", lecturerName = "", finalize = false }) {
+  if (!submissionId) throw new Error("Submission ID is required.");
+  const existing = (getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || []).find((s) => s.id === submissionId);
+  if (!existing) throw new Error("Submission not found.");
+
+  const assessment = (getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || []).find((a) => a.id === existing.assessmentId);
+  const questions = assessment?.questions || [];
+
+  let manualScoreTotal = 0;
+  let stillHasPending = false;
+  const qGrading = { ...(existing.questionGrading || {}) };
+
+  questions.forEach((q) => {
+    if (q.type === "theory" || (q.type === "short_answer" && q.matchingRule === "manual")) {
+      const qMax = parseInt(q.marks, 10) || 1;
+      const givenMark = manualGrading[q.id];
+
+      if (givenMark !== undefined && givenMark !== null && givenMark !== "") {
+        const validatedScore = Math.min(qMax, Math.max(0, parseInt(givenMark, 10) || 0));
+        manualScoreTotal += validatedScore;
+        qGrading[q.id] = {
+          ...(qGrading[q.id] || {}),
+          type: q.type,
+          studentAnswer: existing.answers?.[q.id] || "",
+          awardedMarks: validatedScore,
+          maxMarks: qMax,
+          status: "manually_graded"
+        };
+      } else {
+        stillHasPending = true;
+      }
+    }
+  });
+
+  const nowIso = new Date().toISOString();
+  const maxMarks = existing.maxMarks || 30;
+  const totalScore = (existing.autoScore || 0) + manualScoreTotal;
+  const percentage = maxMarks > 0 ? Math.round((totalScore / maxMarks) * 100) : 0;
+
+  let grade = "F";
+  if (percentage >= 70) grade = "A";
+  else if (percentage >= 60) grade = "B";
+  else if (percentage >= 50) grade = "C";
+  else if (percentage >= 45) grade = "D";
+  else if (percentage >= 40) grade = "E";
+
+  const markingStatus = stillHasPending && !finalize ? "pending_manual" : "fully_graded";
+  const resultsReleased =
+    existing.resultVisibility === "immediate" ||
+    (existing.resultVisibility === "after_marking" && markingStatus === "fully_graded") ||
+    existing.resultsReleased;
+
+  const updatedPayload = {
+    ...existing,
+    questionGrading: qGrading,
+    manualScore: manualScoreTotal,
+    totalScore,
+    percentage,
+    grade,
+    markingStatus,
+    resultsReleased,
+    lecturerFeedback: lecturerFeedback || existing.lecturerFeedback || "",
+    gradedBy: lecturerName || lecturerStaffId,
+    gradedAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.CBT_SUBMISSIONS, updatedPayload);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.CBT_SUBMISSIONS, submissionId);
+    await updateDoc(docRef, { ...updatedPayload, updatedAt: serverTimestamp() });
+  } catch (err) {
+    console.warn(`[DIMABIN CBT] Manual grade note: ${err.message}`);
+  }
+
+  // Sync to Results Management CA CBT mark
+  try {
+    const cbtScoreOutOf10 = maxMarks > 0 ? Math.min(10, Math.round((totalScore / maxMarks) * 10)) : 0;
+    await saveLecturerGradeRecord({
+      studentName: existing.studentName,
+      matricNumber: existing.matricNumber,
+      courseCode: existing.courseCode,
+      courseTitle: existing.courseTitle,
+      studyCentre: existing.studyCentre,
+      academicSession: assessment?.academicSession || "2026/2027",
+      semester: assessment?.semester || "First Semester",
+      cbtScore: cbtScoreOutOf10,
+      lecturerStaffId: lecturerStaffId || assessment?.lecturerStaffId || "",
+      lecturerName: lecturerName || assessment?.lecturerName || ""
+    });
+  } catch (_) {}
+
+  await logActivity({
+    action: "cbt_submission_graded",
+    description: `Faculty instructor ${lecturerName || lecturerStaffId} graded submission for ${existing.studentName} (${existing.matricNumber}): Total ${totalScore}/${maxMarks} (${grade}).`,
+    targetCollection: COLLECTIONS.CBT_SUBMISSIONS,
+    targetDocumentId: submissionId
+  });
+
+  return { success: true, submission: updatedPayload };
+}
+
+/**
+ * Export CBT Assessment Results to CSV format
+ */
+export function exportCbtResultsCsv(assessmentId) {
+  const assessment = (getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || []).find((a) => a.id === assessmentId);
+  const submissions = (getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || []).filter(
+    (s) => !assessmentId || s.assessmentId === assessmentId
+  );
+
+  const headers = [
+    "S/N",
+    "Student Name",
+    "Matriculation Number",
+    "Course Code",
+    "Assessment Title",
+    "Type",
+    "Study Centre",
+    "Submission Date",
+    "Auto Score",
+    "Manual Score",
+    "Total Score",
+    "Max Marks",
+    "Percentage (%)",
+    "Letter Grade",
+    "Pass / Fail",
+    "Marking Status"
+  ];
+
+  const rows = submissions.map((s, idx) => {
+    const passMark = assessment?.passMark || Math.round((s.maxMarks || 30) * 0.4);
+    const passFail = s.totalScore >= passMark ? "PASS" : "FAIL";
+    return [
+      idx + 1,
+      `"${(s.studentName || "").replace(/"/g, '""')}"`,
+      `"${s.matricNumber || ""}"`,
+      `"${s.courseCode || ""}"`,
+      `"${(s.assessmentTitle || "").replace(/"/g, '""')}"`,
+      s.assessmentType || "Test",
+      `"${s.studyCentre || "Main Campus"}"`,
+      s.submittedAt ? formatDateOnly(s.submittedAt) : "In Progress",
+      s.autoScore !== undefined ? s.autoScore : 0,
+      s.manualScore !== undefined ? s.manualScore : 0,
+      s.totalScore !== undefined ? s.totalScore : 0,
+      s.maxMarks || 30,
+      `${s.percentage || 0}%`,
+      s.grade || "F",
+      passFail,
+      s.markingStatus === "fully_graded" ? "Fully Graded" : "Pending Manual"
+    ].join(",");
+  });
+
+  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `DIMABIN_CBT_Results_${assessment?.courseCode || "All"}_${Date.now()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }

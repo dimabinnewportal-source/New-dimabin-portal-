@@ -60,7 +60,12 @@ import {
   subscribeResults,
   approveAndPublishCourseResults,
   rejectCourseResultsWithFeedback,
-  updateResultStatus
+  updateResultStatus,
+  subscribeCbtAssessments,
+  subscribeCbtSubmissions,
+  extendCbtDeadline,
+  closeCbtAssessment,
+  exportCbtResultsCsv
 } from "./firebase-backend.js";
 import { printApplicationForm, downloadApplicationPdf } from "./admission-print-pdf.js";
 
@@ -6637,6 +6642,385 @@ export function initResultApproval() {
     allCentres = centres || [];
     populateCentresDropdown();
   });
+
+  // Initialize CBT Oversight Engine
+  initAdminCbtOversight();
+}
+
+/**
+ * =============================================================================
+ * SECTION 11B: CBT OVERSIGHT & EXAMINATION CONTROL ENGINE (ADMIN)
+ * Real-time monitoring, emergency schedule overrides, telemetry audits & reports
+ * =============================================================================
+ */
+export function initAdminCbtOversight() {
+  const statTotal = document.getElementById("admin-stat-cbt-total");
+  const statLive = document.getElementById("admin-stat-cbt-live");
+  const statSubs = document.getElementById("admin-stat-cbt-subs");
+  const statAvg = document.getElementById("admin-stat-cbt-avg");
+  const tableCount = document.getElementById("admin-cbt-table-count");
+  const assessmentsTbody = document.getElementById("admin-cbt-assessments-tbody");
+  const submissionsTbody = document.getElementById("admin-cbt-submissions-tbody");
+  const filterSearch = document.getElementById("admin-cbt-search");
+  const filterCentre = document.getElementById("admin-cbt-centre-filter");
+  const filterStatus = document.getElementById("admin-cbt-status-filter");
+  const filterType = document.getElementById("admin-cbt-type-filter");
+  const subSearch = document.getElementById("admin-cbt-sub-search");
+  const btnExportAll = document.getElementById("btn-admin-export-cbt-csv");
+
+  // Extension Modal elements
+  const modalExtend = document.getElementById("modal-admin-cbt-extend");
+  const formExtend = document.getElementById("form-admin-cbt-extend");
+  const inputExtendId = document.getElementById("admin-extend-id");
+  const metaExtend = document.getElementById("admin-extend-meta");
+  const inputNewDeadline = document.getElementById("admin-extend-new-deadline");
+  const btnCancelExtend = document.getElementById("btn-admin-cancel-extend");
+
+  if (!assessmentsTbody) {
+    return;
+  }
+
+  let assessmentsList = [];
+  let submissionsList = [];
+
+  function computeStats() {
+    const now = Date.now();
+    const total = assessmentsList.length;
+    let liveCount = 0;
+
+    assessmentsList.forEach((a) => {
+      const startMs = a.startTime ? (typeof a.startTime === "string" ? new Date(a.startTime).getTime() : (a.startTime.toMillis ? a.startTime.toMillis() : a.startTime)) : 0;
+      const endMs = a.deadline ? (typeof a.deadline === "string" ? new Date(a.deadline).getTime() : (a.deadline.toMillis ? a.deadline.toMillis() : a.deadline)) : Infinity;
+      const isOpen = (a.status === "open" || a.status === "published") && now >= startMs && now <= endMs;
+      if (isOpen) liveCount++;
+    });
+
+    const totalSubs = submissionsList.length;
+    let avgPercent = 0;
+    if (totalSubs > 0) {
+      const sum = submissionsList.reduce((acc, s) => acc + (Number(s.percentage) || 0), 0);
+      avgPercent = Math.round(sum / totalSubs);
+    }
+
+    if (statTotal) statTotal.textContent = total;
+    if (statLive) statLive.textContent = liveCount;
+    if (statSubs) statSubs.textContent = totalSubs;
+    if (statAvg) statAvg.textContent = `${avgPercent}%`;
+  }
+
+  function renderAssessments() {
+    const q = (filterSearch?.value || "").toLowerCase().trim();
+    const selCentre = filterCentre?.value || "all";
+    const selStatus = filterStatus?.value || "all";
+    const selType = filterType?.value || "all";
+    const now = Date.now();
+
+    const filtered = assessmentsList.filter((a) => {
+      const matchQ = !q || (a.title && a.title.toLowerCase().includes(q)) || (a.courseCode && a.courseCode.toLowerCase().includes(q)) || (a.lecturerName && a.lecturerName.toLowerCase().includes(q));
+      const matchCentre = selCentre === "all" || (a.studyCentre || "Main Campus") === selCentre;
+      
+      const startMs = a.startTime ? (typeof a.startTime === "string" ? new Date(a.startTime).getTime() : (a.startTime.toMillis ? a.startTime.toMillis() : a.startTime)) : 0;
+      const endMs = a.deadline ? (typeof a.deadline === "string" ? new Date(a.deadline).getTime() : (a.deadline.toMillis ? a.deadline.toMillis() : a.deadline)) : Infinity;
+      const isOpen = (a.status === "open" || a.status === "published") && now >= startMs && now <= endMs;
+      const isScheduled = now < startMs && a.status !== "closed";
+      const isClosed = a.status === "closed" || now > endMs;
+
+      let matchStatus = true;
+      if (selStatus === "open") matchStatus = isOpen;
+      else if (selStatus === "scheduled") matchStatus = isScheduled;
+      else if (selStatus === "closed") matchStatus = isClosed;
+
+      const aType = (a.type || a.assessmentType || "test").toLowerCase();
+      let matchType = true;
+      if (selType === "test") matchType = aType.includes("test") || aType.includes("ca") || aType.includes("quiz");
+      else if (selType === "exam") matchType = aType.includes("exam");
+
+      return matchQ && matchCentre && matchStatus && matchType;
+    });
+
+    if (tableCount) {
+      tableCount.textContent = `${filtered.length} Assessment${filtered.length === 1 ? "" : "s"}`;
+    }
+
+    if (!assessmentsTbody) return;
+
+    if (filtered.length === 0) {
+      assessmentsTbody.innerHTML = `
+        <tr>
+          <td colspan="12" style="text-align: center; padding: 2.5rem; color: var(--admin-text-muted);">
+            No CBT assessments match the current search &amp; filter criteria.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    assessmentsTbody.innerHTML = filtered.map((a, idx) => {
+      const startMs = a.startTime ? (typeof a.startTime === "string" ? new Date(a.startTime).getTime() : (a.startTime.toMillis ? a.startTime.toMillis() : a.startTime)) : 0;
+      const endMs = a.deadline ? (typeof a.deadline === "string" ? new Date(a.deadline).getTime() : (a.deadline.toMillis ? a.deadline.toMillis() : a.deadline)) : Infinity;
+      const isOpen = (a.status === "open" || a.status === "published") && now >= startMs && now <= endMs;
+      const isScheduled = now < startMs && a.status !== "closed";
+      const isClosed = a.status === "closed" || now > endMs;
+
+      let statusBadge = `<span class="session-strip-badge" style="background:#F1F5F9; color:#475569; border-color:#CBD5E1;">Draft</span>`;
+      if (isOpen) {
+        statusBadge = `<span class="session-strip-badge" style="background:#DCFCE7; color:#15803D; border-color:#BBF7D0; font-weight:800;">🟢 Live Now</span>`;
+      } else if (isScheduled) {
+        statusBadge = `<span class="session-strip-badge" style="background:#DBEAFE; color:#1E40AF; border-color:#BFDBFE;">⏳ Scheduled</span>`;
+      } else if (isClosed) {
+        statusBadge = `<span class="session-strip-badge" style="background:#FEE2E2; color:#B91C1C; border-color:#FCA5A5;">🔒 Closed</span>`;
+      }
+
+      const qCount = Array.isArray(a.questions) ? a.questions.length : (a.questionCount || 0);
+      const subsForThis = submissionsList.filter(s => s.assessmentId === a.id || (s.courseCode === a.courseCode && s.assessmentTitle === a.title));
+      const dur = a.durationMinutes || a.duration || 30;
+
+      const formatTime = (ts) => {
+        if (!ts) return "—";
+        const d = typeof ts === "string" ? new Date(ts) : (ts.toMillis ? new Date(ts.toMillis()) : new Date(ts));
+        return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      };
+
+      return `
+        <tr>
+          <td style="color: var(--admin-text-muted); font-weight: 700;">${idx + 1}</td>
+          <td>
+            <strong style="color: var(--admin-navy); display: block;">${a.courseCode || "GEN"}</strong>
+            <span style="font-size: 0.72rem; color: var(--admin-text-muted);">${a.courseTitle || ""}</span>
+          </td>
+          <td>
+            <strong style="color: var(--dark-navy); font-size: 0.875rem;">${a.title || "Assessment"}</strong>
+            <div style="font-size: 0.72rem; color: var(--admin-text-muted);">By: ${a.lecturerName || "Lecturer"}</div>
+          </td>
+          <td style="text-align: center;">
+            <span class="session-strip-badge" style="background: ${(a.type || "").toLowerCase().includes("exam") ? "#FEF3C7" : "#F3E8FF"}; color: ${(a.type || "").toLowerCase().includes("exam") ? "#92400E" : "#6B21A8"};">
+              ${(a.type || a.assessmentType || "Test").toUpperCase()}
+            </span>
+          </td>
+          <td><span style="font-size: 0.75rem; color: var(--admin-navy); font-weight: 600;">${a.studyCentre || "All Centres"}</span></td>
+          <td><span style="font-size: 0.8125rem; font-weight: 700;">⏱️ ${dur}m</span></td>
+          <td style="font-size: 0.75rem; white-space: nowrap;">
+            <div><strong>Start:</strong> ${formatTime(a.startTime)}</div>
+            <div><strong>Due:</strong> ${formatTime(a.deadline)}</div>
+          </td>
+          <td style="text-align: center; font-weight: 700;">${qCount}</td>
+          <td style="text-align: center; font-weight: 700; color: #2563EB;">${a.totalMarks || a.maxMarks || 30}</td>
+          <td style="text-align: center;">
+            <span class="session-strip-badge" style="background:#E0E7FF; color:#3730A3; font-weight:800;">
+              👥 ${subsForThis.length}
+            </span>
+          </td>
+          <td style="text-align: center;">${statusBadge}</td>
+          <td style="text-align: center; white-space: nowrap;">
+            <div style="display: inline-flex; gap: 4px; align-items: center;">
+              <button type="button" class="btn-table-action btn-admin-extend-cbt" data-id="${a.id}" data-title="${encodeURIComponent(a.title || "")}" data-course="${a.courseCode || ""}" style="color: #2563EB;" title="Emergency extension of deadline">
+                ⏱️ Extend
+              </button>
+              ${a.status !== "closed" ? `
+                <button type="button" class="btn-table-action btn-admin-close-cbt" data-id="${a.id}" data-title="${encodeURIComponent(a.title || "")}" style="color: #DC2626;" title="Force close this assessment immediately">
+                  🔒 Close
+                </button>
+              ` : ""}
+              <button type="button" class="btn-table-action btn-admin-csv-cbt" data-id="${a.id}" style="color: #059669;" title="Export results CSV for this assessment">
+                📥 CSV
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    assessmentsTbody.querySelectorAll(".btn-admin-extend-cbt").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const title = decodeURIComponent(btn.getAttribute("data-title") || "");
+        const course = btn.getAttribute("data-course") || "";
+        if (inputExtendId) inputExtendId.value = id;
+        if (metaExtend) metaExtend.textContent = `${course} · ${title}`;
+        if (modalExtend) modalExtend.style.display = "flex";
+      });
+    });
+
+    assessmentsTbody.querySelectorAll(".btn-admin-close-cbt").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const title = decodeURIComponent(btn.getAttribute("data-title") || "");
+        if (!confirm(`Are you sure you want to FORCE CLOSE the assessment "${title}"?\n\nNo further candidate submissions will be permitted.`)) return;
+        btn.disabled = true;
+        try {
+          await closeCbtAssessment(id);
+          showAdminToast(`Assessment "${title}" has been closed.`, "success");
+        } catch (err) {
+          showAdminToast(`Failed to close: ${err.message}`, "error");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    assessmentsTbody.querySelectorAll(".btn-admin-csv-cbt").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const ass = assessmentsList.find(x => x.id === id);
+        if (!ass) return;
+        const subs = submissionsList.filter(s => s.assessmentId === id || (s.courseCode === ass.courseCode && s.assessmentTitle === ass.title));
+        exportCbtResultsCsv(ass, subs);
+        showAdminToast(`CSV exported with ${subs.length} submission(s).`, "success");
+      });
+    });
+  }
+
+  function renderSubmissions() {
+    const q = (subSearch?.value || "").toLowerCase().trim();
+
+    const filtered = submissionsList.filter((s) => {
+      if (!q) return true;
+      return (s.studentName && s.studentName.toLowerCase().includes(q)) ||
+             (s.matricNumber && s.matricNumber.toLowerCase().includes(q)) ||
+             (s.courseCode && s.courseCode.toLowerCase().includes(q)) ||
+             (s.assessmentTitle && s.assessmentTitle.toLowerCase().includes(q));
+    });
+
+    if (!submissionsTbody) return;
+
+    if (filtered.length === 0) {
+      submissionsTbody.innerHTML = `
+        <tr>
+          <td colspan="14" style="text-align: center; padding: 2.5rem; color: var(--admin-text-muted);">
+            No candidate submissions recorded or matching filter.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    submissionsTbody.innerHTML = filtered.map((s, idx) => {
+      const violations = Number(s.tabSwitches || s.violations || 0);
+      let integrityBadge = `<span class="session-strip-badge" style="background:#DCFCE7; color:#15803D; border-color:#BBF7D0; font-weight:700;">✓ Verified</span>`;
+      if (violations > 0) {
+        integrityBadge = `<span class="session-strip-badge" style="background:#FEE2E2; color:#B91C1C; border-color:#FCA5A5; font-weight:800;" title="${violations} suspicious tab switch / defocus event(s) recorded">⚠️ ${violations} Alert${violations === 1 ? "" : "s"}</span>`;
+      }
+
+      const gradeLetter = s.grade || "F";
+      const gradePill = `<span class="session-strip-badge" style="background: ${gradeLetter === "A" ? "#DCFCE7" : gradeLetter === "B" ? "#DBEAFE" : gradeLetter === "C" ? "#FEF3C7" : "#FEE2E2"}; font-weight:800;">${gradeLetter}</span>`;
+
+      const subDate = s.submittedAt ? (s.submittedAt.toMillis ? new Date(s.submittedAt.toMillis()).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : new Date(s.submittedAt).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })) : "In Progress";
+
+      return `
+        <tr>
+          <td style="color: var(--admin-text-muted); font-weight: 700;">${idx + 1}</td>
+          <td>
+            <strong style="color: var(--admin-navy); display: block;">${s.studentName || "Candidate"}</strong>
+          </td>
+          <td style="font-weight: 700; color: var(--primary-blue); font-family: monospace;">${s.matricNumber || "—"}</td>
+          <td><span class="session-strip-badge" style="font-weight: 700;">${s.courseCode || "GEN"}</span></td>
+          <td style="font-size: 0.8125rem; font-weight: 600; color: var(--dark-navy);">${s.assessmentTitle || "Assessment"}</td>
+          <td><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${s.studyCentre || "Main Campus"}</span></td>
+          <td style="text-align: center; font-weight: 600; color: #16A34A;">${s.autoScore !== undefined ? s.autoScore : 0}</td>
+          <td style="text-align: center; font-weight: 600; color: #D97706;">${s.manualScore !== undefined ? s.manualScore : 0}</td>
+          <td style="text-align: center; font-weight: 800; color: var(--admin-navy);">${s.totalScore !== undefined ? s.totalScore : 0} / ${s.maxMarks || 30}</td>
+          <td style="text-align: center; font-weight: 700;">${s.percentage !== undefined ? `${s.percentage}%` : "0%"}</td>
+          <td style="text-align: center;">${gradePill}</td>
+          <td style="text-align: center;">${integrityBadge}</td>
+          <td style="font-size: 0.75rem; color: var(--admin-text-muted); white-space: nowrap;">${subDate}</td>
+          <td style="text-align: center; white-space: nowrap;">
+            <button type="button" class="btn-table-action btn-admin-view-sub" data-sub-id="${s.id}" style="color: #2563EB;">
+              👁️ Audit
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    submissionsTbody.querySelectorAll(".btn-admin-view-sub").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-sub-id");
+        const sub = submissionsList.find(x => x.id === id);
+        if (!sub) return;
+        alert(
+          `CBT Candidate Telemetry Audit:\n\n` +
+          `Student: ${sub.studentName} (${sub.matricNumber})\n` +
+          `Course: ${sub.courseCode} — ${sub.assessmentTitle}\n` +
+          `Total Score: ${sub.totalScore || 0} / ${sub.maxMarks || 30} (${sub.percentage || 0}%, Grade ${sub.grade || "F"})\n` +
+          `Auto Mark: ${sub.autoScore || 0} | Manual Mark: ${sub.manualScore || 0}\n` +
+          `Integrity Events: ${sub.tabSwitches || 0} tab switch/focus loss events.\n` +
+          `Submitted At: ${sub.submittedAt ? new Date(sub.submittedAt.toMillis ? sub.submittedAt.toMillis() : sub.submittedAt).toLocaleString() : "In Progress"}`
+        );
+      });
+    });
+  }
+
+  function renderAdminCbtView() {
+    computeStats();
+    renderAssessments();
+    renderSubmissions();
+  }
+
+  // Filter Listeners
+  if (filterSearch) filterSearch.addEventListener("input", renderAssessments);
+  if (filterCentre) filterCentre.addEventListener("change", renderAssessments);
+  if (filterStatus) filterStatus.addEventListener("change", renderAssessments);
+  if (filterType) filterType.addEventListener("change", renderAssessments);
+  if (subSearch) subSearch.addEventListener("input", renderSubmissions);
+
+  // Modal Extension Submit
+  if (btnCancelExtend && modalExtend) {
+    btnCancelExtend.addEventListener("click", () => {
+      modalExtend.style.display = "none";
+    });
+  }
+
+  if (formExtend) {
+    formExtend.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = inputExtendId?.value;
+      const newDeadlineVal = inputNewDeadline?.value;
+      if (!id || !newDeadlineVal) {
+        showAdminToast("Please specify a valid new deadline date and time.", "error");
+        return;
+      }
+
+      try {
+        await extendCbtDeadline(id, newDeadlineVal);
+        showAdminToast("CBT deadline extended successfully by Academic Registry.", "success");
+        if (modalExtend) modalExtend.style.display = "none";
+        formExtend.reset();
+      } catch (err) {
+        showAdminToast(`Failed to extend deadline: ${err.message}`, "error");
+      }
+    });
+  }
+
+  // Institutional CSV Export
+  if (btnExportAll) {
+    btnExportAll.addEventListener("click", () => {
+      if (assessmentsList.length === 0) {
+        showAdminToast("No CBT assessment records found to export.", "info");
+        return;
+      }
+      exportCbtResultsCsv({ courseCode: "ALL_INSTITUTIONAL", title: "Institutional CBT Registry Summary" }, submissionsList);
+      showAdminToast("Institutional CBT report exported to CSV.", "success");
+    });
+  }
+
+  // Subscriptions
+  subscribeCbtAssessments((list) => {
+    assessmentsList = list || [];
+    if (filterCentre && filterCentre.options.length <= 1) {
+      const centres = Array.from(new Set(assessmentsList.map(a => a.studyCentre || "Main Campus").filter(Boolean)));
+      centres.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        filterCentre.appendChild(opt);
+      });
+    }
+    renderAdminCbtView();
+  });
+
+  subscribeCbtSubmissions((list) => {
+    submissionsList = list || [];
+    renderAdminCbtView();
+  });
 }
 
 // Auto-run on DOM ready
@@ -6661,6 +7045,7 @@ if (typeof window !== "undefined") {
     initStudyCentresManagement,
     initStudyCentreNavAndWorkspaces,
     initStudentDirectoryManagement,
+    initAdminCbtOversight,
     populateStudyCentreSelects,
     showAdminToast
   });

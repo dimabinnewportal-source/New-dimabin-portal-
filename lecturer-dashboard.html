@@ -101,6 +101,17 @@
           <span>Academic Notices</span>
         </button>
 
+        <!-- CBT EXAMINATION ENGINE -->
+        <div class="student-nav-group-title">EXAMINATIONS &amp; CBT</div>
+        <button type="button" class="student-nav-item" data-section="cbt">
+          <svg class="student-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span>CBT Management</span>
+        </button>
+
         <!-- ACCOUNT -->
         <div class="student-nav-group-title">ACCOUNT</div>
         <button type="button" class="student-nav-item" data-section="profile">
@@ -685,6 +696,588 @@
         </section>
 
         <!-- ================================================================
+             SECTION 4B: COMPUTER-BASED TEST (CBT) MANAGEMENT ENGINE
+             ================================================================ -->
+        <section class="student-section" id="section-cbt" aria-label="CBT Management">
+          <div class="student-content-card">
+            
+            <!-- CBT Engine Card Header -->
+            <div class="student-card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+              <div>
+                <h3 class="student-card-title">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--student-blue);">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                  </svg>
+                  <span>Computer-Based Test (CBT) Management Engine</span>
+                </h3>
+                <span class="student-card-subtitle">
+                  Question bank repository, assessment scheduling, automated &amp; manual theory grading, and real-time candidate analytics
+                </span>
+              </div>
+              <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-quick-create-test" style="font-weight: 700; padding: 0.45rem 0.85rem;">
+                  ➕ Create Test / Exam
+                </button>
+                <button type="button" class="btn btn-outline-blue btn-sm" id="btn-quick-add-question" style="font-weight: 700; padding: 0.45rem 0.85rem;">
+                  📚 Add to Question Bank
+                </button>
+              </div>
+            </div>
+
+            <!-- CBT 9-Tab Navigation Bar -->
+            <div class="cbt-subnav-bar no-print" id="cbt-subnav-bar">
+              <button type="button" class="cbt-subnav-btn active" data-cbt-tab="dashboard">
+                <span>📊</span> <span>CBT Dashboard</span>
+              </button>
+              <button type="button" class="cbt-subnav-btn" data-cbt-tab="questions">
+                <span>📚</span> <span>Question Bank</span>
+              </button>
+              <button type="button" class="cbt-subnav-btn" data-cbt-tab="create">
+                <span>➕</span> <span>Create Test / Exam</span>
+              </button>
+              <button type="button" class="cbt-subnav-btn" data-cbt-tab="scheduled">
+                <span>🗓️</span> <span>Scheduled CBTs</span>
+                <span class="status-pill-badge badge-blue" style="font-size: 0.68rem; padding: 1px 6px;" id="cbt-badge-scheduled">0</span>
+              </button>
+              <button type="button" class="cbt-subnav-btn" data-cbt-tab="live">
+                <span>🟢</span> <span>Live &amp; Active CBTs</span>
+                <span class="status-pill-badge badge-green" style="font-size: 0.68rem; padding: 1px 6px;" id="cbt-badge-live">0</span>
+              </button>
+              <button type="button" class="cbt-subnav-btn" data-cbt-tab="completed">
+                <span>🏁</span> <span>Completed CBTs</span>
+                <span class="status-pill-badge badge-gold" style="font-size: 0.68rem; padding: 1px 6px;" id="cbt-badge-completed">0</span>
+              </button>
+              <button type="button" class="cbt-subnav-btn" data-cbt-tab="submissions">
+                <span>📝</span> <span>Student Submissions</span>
+                <span class="status-pill-badge badge-red" style="font-size: 0.68rem; padding: 1px 6px;" id="cbt-badge-pending-marking">0</span>
+              </button>
+              <button type="button" class="cbt-subnav-btn" data-cbt-tab="results">
+                <span>📈</span> <span>Results &amp; Performance</span>
+              </button>
+              <button type="button" class="cbt-subnav-btn" data-cbt-tab="settings">
+                <span>⚙️</span> <span>CBT Settings</span>
+              </button>
+            </div>
+
+            <!-- CBT Alert Strip -->
+            <div id="cbt-alert-banner" style="display: none; padding: 0.75rem 1.25rem; font-size: 0.84rem; font-weight: 600;"></div>
+
+            <!-- Card Body Container for Panes -->
+            <div class="student-card-body" style="padding: 1.25rem;">
+
+              <!-- ==============================================================
+                   TAB 1: CBT DASHBOARD
+                   ============================================================== -->
+              <div class="cbt-tab-pane" id="cbt-pane-dashboard">
+                <!-- 10 Metric Statistics Grid -->
+                <div class="cbt-stats-grid">
+                  <div class="cbt-stat-box">
+                    <span class="cbt-stat-label">Question Bank</span>
+                    <div class="cbt-stat-num" id="stat-cbt-total-questions">0</div>
+                    <span class="cbt-stat-foot">Theological questions stored</span>
+                  </div>
+                  <div class="cbt-stat-box">
+                    <span class="cbt-stat-label">Total Assessments</span>
+                    <div class="cbt-stat-num" id="stat-cbt-total-tests">0</div>
+                    <span class="cbt-stat-foot">Tests &amp; semester examinations</span>
+                  </div>
+                  <div class="cbt-stat-box gold">
+                    <span class="cbt-stat-label">Scheduled CBTs</span>
+                    <div class="cbt-stat-num" id="stat-cbt-scheduled">0</div>
+                    <span class="cbt-stat-foot">Awaiting start date/time</span>
+                  </div>
+                  <div class="cbt-stat-box green">
+                    <span class="cbt-stat-label">Currently Live</span>
+                    <div class="cbt-stat-num" id="stat-cbt-active">0</div>
+                    <span class="cbt-stat-foot">In progress right now</span>
+                  </div>
+                  <div class="cbt-stat-box">
+                    <span class="cbt-stat-label">Completed CBTs</span>
+                    <div class="cbt-stat-num" id="stat-cbt-completed">0</div>
+                    <span class="cbt-stat-foot">Closed examination sessions</span>
+                  </div>
+                  <div class="cbt-stat-box">
+                    <span class="cbt-stat-label">Expected Candidates</span>
+                    <div class="cbt-stat-num" id="stat-cbt-expected-students">0</div>
+                    <span class="cbt-stat-foot">Eligible enrolled students</span>
+                  </div>
+                  <div class="cbt-stat-box green">
+                    <span class="cbt-stat-label">Completed Attempts</span>
+                    <div class="cbt-stat-num" id="stat-cbt-completed-attempts">0</div>
+                    <span class="cbt-stat-foot">Submissions recorded</span>
+                  </div>
+                  <div class="cbt-stat-box gold">
+                    <span class="cbt-stat-label">Unparticipated</span>
+                    <div class="cbt-stat-num" id="stat-cbt-unparticipated">0</div>
+                    <span class="cbt-stat-foot">Yet to sit for assessment</span>
+                  </div>
+                  <div class="cbt-stat-box red">
+                    <span class="cbt-stat-label">Pending Manual Marking</span>
+                    <div class="cbt-stat-num" id="stat-cbt-pending-marking">0</div>
+                    <span class="cbt-stat-foot">Theory questions awaiting review</span>
+                  </div>
+                  <div class="cbt-stat-box purple">
+                    <span class="cbt-stat-label">Published Results</span>
+                    <div class="cbt-stat-num" id="stat-cbt-published-results">0</div>
+                    <span class="cbt-stat-foot">Released to student portals</span>
+                  </div>
+                </div>
+
+                <!-- Dashboard 3-Column Highlights -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
+                  <!-- Upcoming CBTs -->
+                  <div style="background: #FFFFFF; border: 1px solid var(--student-border); border-radius: var(--student-radius-md); padding: 1.25rem;">
+                    <h4 style="font-size: 0.9375rem; font-weight: 700; color: var(--student-navy); margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+                      <span>🗓️ Upcoming Assessments</span>
+                      <button type="button" class="btn btn-sm btn-outline-blue" onclick="window.cbtSwitchTab('scheduled')" style="font-size: 0.72rem; padding: 2px 8px;">View All</button>
+                    </h4>
+                    <div id="cbt-dash-upcoming-list">
+                      <!-- Populated dynamically -->
+                    </div>
+                  </div>
+
+                  <!-- Live / Active CBTs -->
+                  <div style="background: #FFFFFF; border: 1px solid var(--student-border); border-radius: var(--student-radius-md); padding: 1.25rem;">
+                    <h4 style="font-size: 0.9375rem; font-weight: 700; color: var(--student-navy); margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+                      <span>🟢 Active Sessions</span>
+                      <button type="button" class="btn btn-sm btn-outline-blue" onclick="window.cbtSwitchTab('live')" style="font-size: 0.72rem; padding: 2px 8px;">Monitor</button>
+                    </h4>
+                    <div id="cbt-dash-active-list">
+                      <!-- Populated dynamically -->
+                    </div>
+                  </div>
+
+                  <!-- Recent Submissions -->
+                  <div style="background: #FFFFFF; border: 1px solid var(--student-border); border-radius: var(--student-radius-md); padding: 1.25rem;">
+                    <h4 style="font-size: 0.9375rem; font-weight: 700; color: var(--student-navy); margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+                      <span>⚡ Recent Submissions</span>
+                      <button type="button" class="btn btn-sm btn-outline-blue" onclick="window.cbtSwitchTab('submissions')" style="font-size: 0.72rem; padding: 2px 8px;">Grade</button>
+                    </h4>
+                    <div id="cbt-dash-submissions-list">
+                      <!-- Populated dynamically -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ==============================================================
+                   TAB 2: QUESTION BANK
+                   ============================================================== -->
+              <div class="cbt-tab-pane" id="cbt-pane-questions" style="display: none;">
+                <!-- Question Bank Filter Bar -->
+                <div class="portal-filter-bar no-print" style="margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                  <input type="text" class="portal-search-input" id="qbank-search" placeholder="Search questions by text or keywords..." style="flex: 2; min-width: 220px;">
+                  <select class="portal-filter-select" id="qbank-filter-course" style="flex: 1; min-width: 150px;">
+                    <option value="all">All Assigned Courses</option>
+                  </select>
+                  <select class="portal-filter-select" id="qbank-filter-type" style="flex: 1; min-width: 140px;">
+                    <option value="all">All Question Types</option>
+                    <option value="mcq">Multiple Choice (MCQ)</option>
+                    <option value="yes_no">Yes / No</option>
+                    <option value="true_false">True / False</option>
+                    <option value="short_answer">Short Answer</option>
+                    <option value="theory">Theory / Essay</option>
+                  </select>
+                  <select class="portal-filter-select" id="qbank-filter-difficulty" style="flex: 1; min-width: 120px;">
+                    <option value="all">All Difficulties</option>
+                    <option value="basic">Basic</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                  <button type="button" class="btn btn-primary" id="btn-open-add-q-modal" style="font-weight: 700; white-space: nowrap;">
+                    ➕ New Question
+                  </button>
+                </div>
+
+                <!-- Question Bank List -->
+                <div id="qbank-container">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+
+              <!-- ==============================================================
+                   TAB 3: CREATE TEST OR EXAMINATION
+                   ============================================================== -->
+              <div class="cbt-tab-pane" id="cbt-pane-create" style="display: none;">
+                <form id="form-create-cbt" style="max-width: 900px; margin: 0 auto;">
+                  <div style="background: #F8FAFC; border: 1px solid var(--student-border); border-radius: var(--student-radius-md); padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--student-navy); margin-bottom: 1rem; border-bottom: 1px solid var(--student-border); padding-bottom: 0.5rem;">
+                      1. General Assessment Details
+                    </h4>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-title">Assessment Title *</label>
+                        <input type="text" class="student-form-input" id="cbt-form-title" placeholder="e.g. Mid-Semester Diagnostic CBT Test" required>
+                      </div>
+
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-type">Assessment Type *</label>
+                        <select class="student-form-select" id="cbt-form-type" required>
+                          <option value="test">Test (Continuous Assessment — max 10/30)</option>
+                          <option value="exam">Semester Examination (Final — max 70)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-course">Course Offering *</label>
+                        <select class="student-form-select" id="cbt-form-course" required>
+                          <option value="">-- Choose Assigned Course --</option>
+                        </select>
+                      </div>
+
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-topic">Topic or Syllabus Coverage</label>
+                        <input type="text" class="student-form-input" id="cbt-form-topic" placeholder="e.g. Modules 1 to 4: Canonical History">
+                      </div>
+
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-centre">Target Study Centre</label>
+                        <select class="student-form-select" id="cbt-form-centre">
+                          <option value="all">All Study Centres (Institution-Wide)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="student-form-group" style="margin-bottom: 0;">
+                      <label class="student-form-label" for="cbt-form-instructions">Instructions for Students</label>
+                      <textarea class="student-form-input" id="cbt-form-instructions" rows="2" placeholder="e.g. Read each theological question carefully. Answer all questions within the allocated time. Once submitted, answers cannot be edited."></textarea>
+                    </div>
+                  </div>
+
+                  <div style="background: #F8FAFC; border: 1px solid var(--student-border); border-radius: var(--student-radius-md); padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--student-navy); margin-bottom: 1rem; border-bottom: 1px solid var(--student-border); padding-bottom: 0.5rem;">
+                      2. Schedule, Duration &amp; Security Controls
+                    </h4>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-start">Start Date &amp; Time *</label>
+                        <input type="datetime-local" class="student-form-input" id="cbt-form-start" required>
+                      </div>
+
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-closing">Closing Date &amp; Time *</label>
+                        <input type="datetime-local" class="student-form-input" id="cbt-form-closing" required>
+                      </div>
+
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-duration">Duration (Minutes) *</label>
+                        <input type="number" min="5" max="300" class="student-form-input" id="cbt-form-duration" value="30" required>
+                      </div>
+
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-attempts">Attempts Allowed</label>
+                        <select class="student-form-select" id="cbt-form-attempts">
+                          <option value="1">1 Attempt Only (Strict Examination)</option>
+                          <option value="2">2 Attempts (Higher Score Counts)</option>
+                          <option value="3">3 Attempts (Diagnostic Practice)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-total-marks">Total Marks for Assessment *</label>
+                        <input type="number" min="1" max="100" class="student-form-input" id="cbt-form-total-marks" value="10" required>
+                        <span style="font-size: 0.72rem; color: var(--student-text-muted);">Must match the exact sum of selected question marks</span>
+                      </div>
+
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-pass-mark">Pass Mark</label>
+                        <input type="number" min="1" max="100" class="student-form-input" id="cbt-form-pass-mark" value="4">
+                      </div>
+
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-visibility">Result Visibility Policy *</label>
+                        <select class="student-form-select" id="cbt-form-visibility">
+                          <option value="after_marking">Show After Required Marking Complete</option>
+                          <option value="immediate">Show Score Immediately Upon Submit</option>
+                          <option value="hide">Hide Results Until Lecturer Releases</option>
+                          <option value="manual">Manual Release Only</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <!-- Toggles -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; background: #FFFFFF; padding: 1rem; border-radius: var(--student-radius-sm); border: 1px solid var(--student-border);">
+                      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" id="cbt-form-shuffle-q" checked>
+                        <span>Shuffle Questions for each candidate</span>
+                      </label>
+                      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" id="cbt-form-shuffle-opt" checked>
+                        <span>Shuffle Options in MCQ</span>
+                      </label>
+                      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" id="cbt-form-allow-nav" checked>
+                        <span>Allow Question Navigation</span>
+                      </label>
+                      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" id="cbt-form-allow-unanswered" checked>
+                        <span>Allow Unanswered at Submission</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- 3. Question Bank Selection Area -->
+                  <div style="background: #F8FAFC; border: 1px solid var(--student-border); border-radius: var(--student-radius-md); padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                      <div>
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--student-navy); margin: 0;">
+                          3. Question Selection from Question Bank
+                        </h4>
+                        <span style="font-size: 0.8125rem; color: var(--student-text-muted);">
+                          Select questions from your saved question bank to include in this assessment
+                        </span>
+                      </div>
+                      <button type="button" class="btn btn-outline-blue" id="btn-open-q-picker" style="font-weight: 700;">
+                        📚 Select Questions from Bank (<span id="cbt-selected-count">0</span> Selected)
+                      </button>
+                    </div>
+
+                    <!-- Marks Sum Validation Strip -->
+                    <div id="cbt-marks-validation-strip" style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--student-radius-sm); padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                      <div>
+                        <span style="font-size: 0.8125rem; color: var(--student-text-muted);">Questions Chosen:</span>
+                        <strong style="color: var(--student-navy);" id="cbt-summary-q-count">0 Questions</strong>
+                        <span style="margin: 0 0.5rem; color: #94A3B8;">|</span>
+                        <span style="font-size: 0.8125rem; color: var(--student-text-muted);">Sum of Question Marks:</span>
+                        <strong style="color: var(--student-blue); font-size: 1rem;" id="cbt-summary-marks-sum">0 Marks</strong>
+                      </div>
+                      <div id="cbt-validation-status">
+                        <span class="status-pill-badge badge-gold">Awaiting Question Selection</span>
+                      </div>
+                    </div>
+
+                    <!-- Selected Questions Preview Container -->
+                    <div id="cbt-selected-questions-preview">
+                      <div class="student-empty-box" style="padding: 1.5rem;">
+                        <div class="student-empty-icon">📖</div>
+                        <div class="student-empty-text">No questions selected yet.</div>
+                        <div class="student-empty-sub">Click "Select Questions from Bank" above to pick questions for this assessment.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Form Action Buttons -->
+                  <div style="display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-outline-blue" id="btn-cbt-save-draft" style="font-weight: 700;">
+                      💾 Save as Draft
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="btn-cbt-publish-now" style="font-weight: 700;">
+                      🚀 Schedule / Publish Assessment
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- ==============================================================
+                   TAB 4: SCHEDULED CBTs
+                   ============================================================== -->
+              <div class="cbt-tab-pane" id="cbt-pane-scheduled" style="display: none;">
+                <div class="portal-filter-bar no-print" style="margin-bottom: 1rem;">
+                  <select class="portal-filter-select" id="filter-scheduled-course">
+                    <option value="all">All Assigned Courses</option>
+                  </select>
+                </div>
+                <div class="cbt-card-grid" id="cbt-scheduled-container">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+
+              <!-- ==============================================================
+                   TAB 5: LIVE AND ACTIVE CBTs
+                   ============================================================== -->
+              <div class="cbt-tab-pane" id="cbt-pane-live" style="display: none;">
+                <div class="student-info-alert" style="margin-bottom: 1rem; background: #DCFCE7; border: 1px solid #BBF7D0;">
+                  <strong style="color: #166534;">🟢 Real-Time Active Sessions:</strong>
+                  <div style="font-size: 0.8125rem; color: #14532D; margin-top: 0.25rem;">
+                    These assessments are currently open and accepting student attempts. You can monitor candidate submissions live, extend deadlines if necessary, or close sessions early.
+                  </div>
+                </div>
+                <div class="cbt-card-grid" id="cbt-live-container">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+
+              <!-- ==============================================================
+                   TAB 6: COMPLETED CBTs
+                   ============================================================== -->
+              <div class="cbt-tab-pane" id="cbt-pane-completed" style="display: none;">
+                <div class="portal-filter-bar no-print" style="margin-bottom: 1rem;">
+                  <select class="portal-filter-select" id="filter-completed-course">
+                    <option value="all">All Assigned Courses</option>
+                  </select>
+                </div>
+                <div class="cbt-card-grid" id="cbt-completed-container">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+
+              <!-- ==============================================================
+                   TAB 7: STUDENT SUBMISSIONS & MANUAL MARKING
+                   ============================================================== -->
+              <div class="cbt-tab-pane" id="cbt-pane-submissions" style="display: none;">
+                <!-- Filter Bar -->
+                <div class="portal-filter-bar no-print" style="margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                  <input type="text" class="portal-search-input" id="submissions-search" placeholder="Filter by candidate name or matric..." style="flex: 2; min-width: 200px;">
+                  <select class="portal-filter-select" id="submissions-filter-assessment" style="flex: 2; min-width: 200px;">
+                    <option value="all">All Assessments</option>
+                  </select>
+                  <select class="portal-filter-select" id="submissions-filter-status" style="flex: 1; min-width: 160px;">
+                    <option value="all">All Marking Statuses</option>
+                    <option value="pending_manual">Pending Manual Marking</option>
+                    <option value="fully_graded">Fully Graded</option>
+                  </select>
+                </div>
+
+                <!-- Submissions Table -->
+                <div class="student-table-wrap">
+                  <table class="student-table" id="cbt-submissions-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 40px;">#</th>
+                        <th>Candidate Name</th>
+                        <th>Matriculation ID</th>
+                        <th>Course</th>
+                        <th>Assessment</th>
+                        <th style="text-align: center;">Attempt</th>
+                        <th style="text-align: center;">Auto Score</th>
+                        <th style="text-align: center;">Manual Score</th>
+                        <th style="text-align: center;">Total Score</th>
+                        <th style="text-align: center;">Marking Status</th>
+                        <th style="text-align: right;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="cbt-submissions-tbody">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- ==============================================================
+                   TAB 8: RESULTS & PERFORMANCE
+                   ============================================================== -->
+              <div class="cbt-tab-pane" id="cbt-pane-results" style="display: none;">
+                <!-- Results Filter Bar -->
+                <div class="portal-filter-bar no-print" style="margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                  <input type="text" class="portal-search-input" id="results-search" placeholder="Search candidate name or matric..." style="flex: 2; min-width: 180px;">
+                  <select class="portal-filter-select" id="results-filter-assessment" style="flex: 2; min-width: 180px;">
+                    <option value="all">All Assessments</option>
+                  </select>
+                  <select class="portal-filter-select" id="results-filter-course" style="flex: 1; min-width: 140px;">
+                    <option value="all">All Courses</option>
+                  </select>
+                  <div style="display: flex; gap: 0.4rem;">
+                    <button type="button" class="btn btn-outline-blue btn-sm" id="btn-export-cbt-csv" style="font-weight: 700; white-space: nowrap;">
+                      📥 Export CSV
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-navy" onclick="window.print()" style="font-weight: 700; white-space: nowrap;">
+                      🖨️ Print
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Summary Statistics Strip -->
+                <div style="background: #F8FAFC; border: 1px solid var(--student-border); border-radius: var(--student-radius-sm); padding: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                  <div style="display: flex; gap: 1.25rem; flex-wrap: wrap;">
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Participants</span>
+                      <strong style="display: block; font-size: 1.15rem; color: var(--student-navy);" id="res-stat-participants">0</strong>
+                    </div>
+                    <div style="height: 25px; width: 1px; background: #CBD5E1;"></div>
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Average Score</span>
+                      <strong style="display: block; font-size: 1.15rem; color: var(--student-blue);" id="res-stat-avg">0%</strong>
+                    </div>
+                    <div style="height: 25px; width: 1px; background: #CBD5E1;"></div>
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Highest Score</span>
+                      <strong style="display: block; font-size: 1.15rem; color: #16A34A;" id="res-stat-high">0%</strong>
+                    </div>
+                    <div style="height: 25px; width: 1px; background: #CBD5E1;"></div>
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Lowest Score</span>
+                      <strong style="display: block; font-size: 1.15rem; color: #DC2626;" id="res-stat-low">0%</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Comprehensive Results Table (16 Columns) -->
+                <div class="student-table-wrap">
+                  <table class="student-table" id="cbt-full-results-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 35px;">#</th>
+                        <th>Student Full Name</th>
+                        <th>Matriculation No.</th>
+                        <th>Course</th>
+                        <th>Assessment Title</th>
+                        <th style="text-align: center;">Type</th>
+                        <th style="text-align: center;">Attempt</th>
+                        <th style="text-align: center;">Auto Mark</th>
+                        <th style="text-align: center;">Manual Mark</th>
+                        <th style="text-align: center;">Total Score</th>
+                        <th style="text-align: center;">Max</th>
+                        <th style="text-align: center;">%</th>
+                        <th style="text-align: center;">Grade</th>
+                        <th style="text-align: center;">Result</th>
+                        <th style="text-align: center;">Marking</th>
+                        <th style="text-align: center;">Visibility</th>
+                      </tr>
+                    </thead>
+                    <tbody id="cbt-full-results-tbody">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- ==============================================================
+                   TAB 9: CBT SETTINGS
+                   ============================================================== -->
+              <div class="cbt-tab-pane" id="cbt-pane-settings" style="display: none;">
+                <div style="max-width: 750px; background: #F8FAFC; border: 1px solid var(--student-border); border-radius: var(--student-radius-md); padding: 1.5rem;">
+                  <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--student-navy); margin-bottom: 0.5rem;">
+                    Institutional CBT Examination Parameters
+                  </h4>
+                  <p style="font-size: 0.84rem; color: var(--student-text-muted); margin-bottom: 1.25rem;">
+                    Configure default policies for computer-based continuous assessments and examinations.
+                  </p>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="student-form-group">
+                      <label class="student-form-label">Default CA Test Duration (Minutes)</label>
+                      <input type="number" class="student-form-input" id="cbt-pref-duration" value="30">
+                    </div>
+                    <div class="student-form-group">
+                      <label class="student-form-label">Default CA Test Max Marks</label>
+                      <input type="number" class="student-form-input" id="cbt-pref-max" value="10">
+                    </div>
+                  </div>
+
+                  <div class="student-form-group" style="margin-bottom: 1.25rem;">
+                    <label class="student-form-label">Standard Student Examination Honor Code Statement</label>
+                    <textarea class="student-form-input" id="cbt-pref-honor" rows="3">I solemnly affirm on my Christian faith that I will neither give nor receive unapproved assistance during this assessment, and that all answers submitted reflect my own theological study.</textarea>
+                  </div>
+
+                  <button type="button" class="btn btn-primary" id="btn-save-cbt-settings" style="font-weight: 700;">
+                    Save CBT Preferences
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
              SECTION 5: ACADEMIC NOTICES & ANNOUNCEMENTS
              ================================================================ -->
         <section class="student-section" id="section-announcements" aria-label="Academic Notices">
@@ -1024,6 +1617,234 @@
         <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
           <button type="button" class="btn btn-outline-blue" id="btn-cancel-asmt-modal">Cancel</button>
           <button type="submit" class="btn btn-primary" id="btn-submit-asmt-form" style="font-weight: 700;">Create Assessment</button>
+        </div>
+  <!-- ======================================================================
+       MODAL: CREATE / EDIT QUESTION IN QUESTION BANK
+       ====================================================================== -->
+  <div class="student-modal" id="modal-cbt-question" style="display: none; position: fixed; inset: 0; background: rgba(18,36,82,0.6); z-index: 1050; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto;">
+    <div style="background: #FFFFFF; border-radius: var(--student-radius-md); max-width: 680px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 1.5rem; box-shadow: var(--student-shadow-lg);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--student-border); padding-bottom: 0.75rem;">
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--student-navy); margin: 0;" id="modal-cbt-q-title">
+            📚 Add Question to Question Bank
+          </h3>
+          <span style="font-size: 0.8125rem; color: var(--student-text-muted);">
+            Create persistent theological assessment questions with automatic or manual grading
+          </span>
+        </div>
+        <button type="button" id="btn-close-cbt-q-modal" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--student-text-muted);">&times;</button>
+      </div>
+
+      <form id="form-cbt-question">
+        <input type="hidden" id="cbt-q-id">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label class="student-form-label" for="cbt-q-course">Course *</label>
+            <select class="student-form-select" id="cbt-q-course" required>
+              <option value="">-- Select Course --</option>
+            </select>
+          </div>
+          <div>
+            <label class="student-form-label" for="cbt-q-topic">Topic / Module *</label>
+            <input type="text" class="student-form-input" id="cbt-q-topic" placeholder="e.g. Hermeneutics / Canonicity" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label class="student-form-label" for="cbt-q-type">Question Type *</label>
+            <select class="student-form-select" id="cbt-q-type" required>
+              <option value="mcq">Multiple Choice (MCQ)</option>
+              <option value="yes_no">Yes / No</option>
+              <option value="true_false">True / False</option>
+              <option value="short_answer">Short Answer</option>
+              <option value="theory">Theory / Essay</option>
+            </select>
+          </div>
+          <div>
+            <label class="student-form-label" for="cbt-q-difficulty">Difficulty Level</label>
+            <select class="student-form-select" id="cbt-q-difficulty">
+              <option value="basic">Basic</option>
+              <option value="intermediate" selected>Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </div>
+          <div>
+            <label class="student-form-label" for="cbt-q-marks">Marks Value *</label>
+            <input type="number" min="1" max="50" class="student-form-input" id="cbt-q-marks" value="2" required>
+          </div>
+        </div>
+
+        <div class="student-form-group" style="margin-bottom: 1rem;">
+          <label class="student-form-label" for="cbt-q-text">Question Text *</label>
+          <textarea class="student-form-input" id="cbt-q-text" rows="3" placeholder="Enter the complete question prompt..." required></textarea>
+        </div>
+
+        <!-- Dynamic Answer Options Section -->
+        <div id="cbt-q-options-container" style="background: #F8FAFC; border: 1px solid var(--student-border); border-radius: var(--student-radius-sm); padding: 1rem; margin-bottom: 1rem;">
+          <!-- Rendered dynamically based on question type -->
+        </div>
+
+        <!-- Marking Guide / Explanation -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+          <div>
+            <label class="student-form-label" for="cbt-q-marking-guide">Marking Guide / Rubric</label>
+            <textarea class="student-form-input" id="cbt-q-marking-guide" rows="2" placeholder="Key points, grading rubric, or criteria for awarding full marks..."></textarea>
+          </div>
+          <div>
+            <label class="student-form-label" for="cbt-q-explanation">Explanation / Scriptural Reference</label>
+            <textarea class="student-form-input" id="cbt-q-explanation" rows="2" placeholder="e.g. Supported by Genesis 15:6 and Galatians 3:8..."></textarea>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn btn-outline-blue" id="btn-cancel-cbt-q-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-cbt-q-form" style="font-weight: 700;">Save Question</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL: QUESTION BANK SELECTOR DRAWER / PICKER
+       ====================================================================== -->
+  <div class="student-modal" id="modal-cbt-picker" style="display: none; position: fixed; inset: 0; background: rgba(18,36,82,0.6); z-index: 1050; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto;">
+    <div style="background: #FFFFFF; border-radius: var(--student-radius-md); max-width: 820px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 1.5rem; box-shadow: var(--student-shadow-lg);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--student-border); padding-bottom: 0.75rem;">
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--student-navy); margin: 0;">
+            Select Questions from Question Bank
+          </h3>
+          <span style="font-size: 0.8125rem; color: var(--student-text-muted);">
+            Pick questions to include in your assessment. Marks are summed automatically.
+          </span>
+        </div>
+        <button type="button" id="btn-close-cbt-picker" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--student-text-muted);">&times;</button>
+      </div>
+
+      <!-- Picker Filter Bar -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+        <input type="text" class="portal-search-input" id="picker-search" placeholder="Search question text..." style="flex: 2; min-width: 180px;">
+        <select class="portal-filter-select" id="picker-filter-type" style="flex: 1; min-width: 140px;">
+          <option value="all">All Types</option>
+          <option value="mcq">MCQ</option>
+          <option value="yes_no">Yes / No</option>
+          <option value="true_false">True / False</option>
+          <option value="short_answer">Short Answer</option>
+          <option value="theory">Theory</option>
+        </select>
+        <button type="button" class="btn btn-outline-blue btn-sm" id="btn-picker-select-all" style="font-weight: 700;">
+          Select All Filtered
+        </button>
+      </div>
+
+      <!-- Questions Selection List -->
+      <div id="picker-questions-list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--student-border); border-radius: var(--student-radius-sm); padding: 0.5rem; margin-bottom: 1rem;">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- Footer Summary & Confirm -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; border-top: 1px solid var(--student-border); padding-top: 1rem;">
+        <div>
+          <span style="font-size: 0.8125rem; color: var(--student-text-muted);">Selected in Picker:</span>
+          <strong style="color: var(--student-navy);" id="picker-total-selected">0 Questions</strong>
+          <span style="margin: 0 0.5rem; color: #94A3B8;">|</span>
+          <strong style="color: var(--student-blue);" id="picker-total-marks">0 Marks</strong>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-outline-blue" id="btn-cancel-picker">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-confirm-picker" style="font-weight: 700;">Apply to Assessment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL: STUDENT SUBMISSION & MANUAL THEORY MARKING
+       ====================================================================== -->
+  <div class="student-modal" id="modal-cbt-grading" style="display: none; position: fixed; inset: 0; background: rgba(18,36,82,0.6); z-index: 1050; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto;">
+    <div style="background: #FFFFFF; border-radius: var(--student-radius-md); max-width: 850px; width: 100%; max-height: 92vh; overflow-y: auto; padding: 1.5rem; box-shadow: var(--student-shadow-lg);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--student-border); padding-bottom: 0.75rem;">
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--student-navy); margin: 0;">
+            📝 Candidate CBT Submission &amp; Grading Evaluation
+          </h3>
+          <span style="font-size: 0.8125rem; color: var(--student-text-muted);" id="grading-candidate-meta">
+            Review objective responses and award scores for theory/essay questions
+          </span>
+        </div>
+        <button type="button" id="btn-close-cbt-grading" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--student-text-muted);">&times;</button>
+      </div>
+
+      <!-- Candidate Header Strip -->
+      <div style="background: #F8FAFC; border: 1px solid var(--student-border); border-radius: var(--student-radius-sm); padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <strong style="color: var(--student-navy); font-size: 1rem; display: block;" id="grading-student-name">-</strong>
+          <span style="font-size: 0.8125rem; color: var(--student-blue); font-family: monospace;" id="grading-matric-number">-</span>
+          <span style="font-size: 0.8125rem; color: var(--student-text-muted);" id="grading-programme-centre"> · Main Campus</span>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <div style="text-align: right;">
+            <span style="font-size: 0.72rem; color: var(--student-text-muted); text-transform: uppercase; font-weight: 700; display: block;">Automated Score</span>
+            <strong style="color: #16A34A; font-size: 1.1rem;" id="grading-auto-score">0</strong>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 0.72rem; color: var(--student-text-muted); text-transform: uppercase; font-weight: 700; display: block;">Total Score</span>
+            <strong style="color: var(--student-navy); font-size: 1.2rem;" id="grading-live-total">0/30</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Questions List Container -->
+      <div id="grading-questions-container" style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- General Feedback -->
+      <div class="student-form-group" style="margin-bottom: 1.25rem;">
+        <label class="student-form-label" for="grading-feedback">Lecturer Overall Remarks &amp; Feedback for Candidate</label>
+        <textarea class="student-form-input" id="grading-feedback" rows="2" placeholder="e.g. Excellent grasp of the Alexandrian manuscript tradition. Review Genesis 15 covenantal structure..."></textarea>
+      </div>
+
+      <!-- Footer Action Buttons -->
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
+        <button type="button" class="btn btn-outline-blue" id="btn-cancel-grading">Close</button>
+        <button type="button" class="btn btn-outline-navy" id="btn-save-grading-progress" style="font-weight: 700;">
+          💾 Save Marking Progress
+        </button>
+        <button type="button" class="btn btn-primary" id="btn-finalize-grading" style="font-weight: 700; background: #16A34A; border-color: #15803D;">
+          ✓ Finalize &amp; Approve Grade
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL: EXTEND ASSESSMENT DEADLINE
+       ====================================================================== -->
+  <div class="student-modal" id="modal-cbt-extend" style="display: none; position: fixed; inset: 0; background: rgba(18,36,82,0.6); z-index: 1050; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: #FFFFFF; border-radius: var(--student-radius-md); max-width: 480px; width: 100%; padding: 1.5rem; box-shadow: var(--student-shadow-lg);">
+      <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--student-navy); margin-bottom: 0.5rem;">
+        ⏱️ Extend Assessment Deadline
+      </h3>
+      <p style="font-size: 0.84rem; color: var(--student-text-muted); margin-bottom: 1rem;" id="extend-modal-course-title">
+        Grant authorized deadline extension for candidate submissions.
+      </p>
+
+      <form id="form-cbt-extend">
+        <input type="hidden" id="extend-cbt-id">
+        <div class="student-form-group" style="margin-bottom: 1rem;">
+          <label class="student-form-label" for="extend-new-closing">New Closing Date &amp; Time *</label>
+          <input type="datetime-local" class="student-form-input" id="extend-new-closing" required>
+        </div>
+        <div class="student-form-group" style="margin-bottom: 1.25rem;">
+          <label class="student-form-label" for="extend-reason">Official Reason / Authority</label>
+          <input type="text" class="student-form-input" id="extend-reason" placeholder="e.g. Study centre network outage extension" required>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+          <button type="button" class="btn btn-outline-blue" id="btn-cancel-extend">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="font-weight: 700;">Confirm Extension</button>
         </div>
       </form>
     </div>
