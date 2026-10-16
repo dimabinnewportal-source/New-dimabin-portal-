@@ -71,7 +71,9 @@ export const COLLECTIONS = Object.freeze({
   PUBLIC_NOTIFICATIONS: "public_notifications",
   PORTAL_NOTIFICATIONS: "portal_notifications",
   ACTIVITY_LOGS: "hgs_activity_logs",
-  SYSTEM_SETTINGS: "system_settings"
+  SYSTEM_SETTINGS: "system_settings",
+  ACADEMIC_SESSIONS: "academic_sessions",
+  SESSION_ROLLOVERS: "session_rollovers"
 });
 
 // Canonical Admin Identifiers
@@ -4595,6 +4597,563 @@ export async function saveSettingDoc(docId, data) {
   });
 
   return { success: true, docId, data: payload };
+}
+
+// =============================================================================
+// 9B. ACADEMIC SESSION & ROLLOVER MANAGEMENT ENGINE
+// Authoritative multi-portal session publication, draft sessions & audit trails
+// =============================================================================
+
+export const DEFAULT_ACTIVE_SESSION_DOC = Object.freeze({
+  id: "academic_session",
+  currentSession: "2026/2027",
+  currentSemester: "First Semester",
+  activatedAt: "2026-09-01T08:00:00.000Z",
+  activatedBy: ADMIN_CREDENTIALS.ADMIN_ID,
+  activatedByEmail: ADMIN_CREDENTIALS.ADMIN_EMAIL,
+  status: "published"
+});
+
+const DEFAULT_ACADEMIC_SESSIONS = Object.freeze([
+  {
+    id: "2026_2027",
+    session: "2026/2027",
+    semester: "First Semester",
+    status: "active",
+    isCurrent: true,
+    createdAt: "2026-09-01T08:00:00.000Z",
+    activatedAt: "2026-09-01T08:00:00.000Z",
+    activatedBy: ADMIN_CREDENTIALS.ADMIN_ID,
+    notes: "Inaugural Academic Session"
+  }
+]);
+
+const DEFAULT_SESSION_ROLLOVERS = Object.freeze([
+  {
+    id: "rollover_init_2026",
+    previousSession: "2025/2026",
+    newSession: "2026/2027",
+    semester: "First Semester",
+    publishedAt: "2026-09-01T08:00:00.000Z",
+    publishedBy: ADMIN_CREDENTIALS.ADMIN_ID,
+    publishedByEmail: ADMIN_CREDENTIALS.ADMIN_EMAIL,
+    status: "Published",
+    notes: "Institutional Foundation Session Setup",
+    metrics: {
+      studentCount: 28,
+      lecturerCount: 8,
+      courseCount: 12,
+      activeCbtCount: 0,
+      pendingResultsCount: 0
+    }
+  }
+]);
+
+function getCachedActiveSession() {
+  try {
+    const raw = localStorage.getItem("dimabin_active_session");
+    if (raw) return JSON.parse(raw);
+  } catch (_) {}
+  return { ...DEFAULT_ACTIVE_SESSION_DOC };
+}
+
+function setCachedActiveSession(data) {
+  try {
+    localStorage.setItem("dimabin_active_session", JSON.stringify(data));
+  } catch (_) {}
+}
+
+function broadcastSessionChange(sessionData) {
+  try {
+    localStorage.setItem("dimabin_active_session_broadcast", JSON.stringify({ ...sessionData, _ts: Date.now() }));
+  } catch (_) {}
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("dimabin:session_changed", { detail: sessionData }));
+  }
+}
+
+// Cross-tab broadcast listener
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === "dimabin_active_session_broadcast" && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        setCachedActiveSession(parsed);
+        window.dispatchEvent(new CustomEvent("dimabin:session_changed", { detail: parsed }));
+      } catch (_) {}
+    }
+  });
+}
+
+/**
+ * Validates strict academic session format (YYYY/YYYY)
+ * Rule: ending year must be strictly starting year + 1
+ */
+export function validateAcademicSessionFormat(sessionStr) {
+  if (!sessionStr || typeof sessionStr !== "string") {
+    return {
+      valid: false,
+      error: "Academic session cannot be empty. Please enter a valid session (e.g. 2027/2028)."
+    };
+  }
+  const clean = sessionStr.trim();
+  const match = clean.match(/^(\d{4})\/(\d{4})$/);
+  if (!match) {
+    return {
+      valid: false,
+      error: "Invalid session format. Must strictly use 'YYYY/YYYY' format with forward slash (e.g. 2027/2028)."
+    };
+  }
+  const startYear = parseInt(match[1], 10);
+  const endYear = parseInt(match[2], 10);
+
+  if (endYear !== startYear + 1) {
+    return {
+      valid: false,
+      error: `Invalid academic year range (${clean}). The ending year (${endYear}) must be exactly one year after the starting year (${startYear}). Valid example: '${startYear}/${startYear + 1}'.`
+    };
+  }
+  if (startYear < 2020 || startYear > 2099) {
+    return {
+      valid: false,
+      error: "Year is outside acceptable institutional bounds (2020 - 2099)."
+    };
+  }
+
+  return {
+    valid: true,
+    session: `${startYear}/${endYear}`,
+    startYear,
+    endYear
+  };
+}
+
+/**
+ * Real-time listener for the single authoritative active academic session
+ */
+export function subscribeActiveAcademicSession(callback) {
+  if (typeof callback !== "function") return () => {};
+
+  const currentCached = getCachedActiveSession();
+  callback(currentCached);
+
+  const localListener = (evt) => {
+    if (evt.detail) {
+      callback(evt.detail);
+    }
+  };
+  window.addEventListener("dimabin:session_changed", localListener);
+
+  let unsubscribe = () => {};
+  try {
+    const docRef = doc(db, COLLECTIONS.SYSTEM_SETTINGS, "academic_session");
+    unsubscribe = onSnapshot(
+      docRef,
+      (snap) => {
+        if (snap.exists()) {
+          const data = { id: snap.id, ...snap.data() };
+          setCachedActiveSession(data);
+          callback(data);
+        } else {
+          setCachedActiveSession(DEFAULT_ACTIVE_SESSION_DOC);
+          setDoc(docRef, {
+            ...DEFAULT_ACTIVE_SESSION_DOC,
+            updatedAt: serverTimestamp()
+          }, { merge: true }).catch((err) => console.warn("[DIMABIN Session] Seed note:", err.message));
+          callback(DEFAULT_ACTIVE_SESSION_DOC);
+        }
+      },
+      (err) => {
+        console.warn("[DIMABIN Session] onSnapshot error:", err.message);
+        callback(getCachedActiveSession());
+      }
+    );
+  } catch (err) {
+    console.warn("[DIMABIN Session] init error:", err.message);
+  }
+
+  return () => {
+    try { unsubscribe(); } catch (_) {}
+    window.removeEventListener("dimabin:session_changed", localListener);
+  };
+}
+
+/**
+ * Synchronous reader for current active academic session
+ */
+export function getActiveAcademicSession() {
+  return getCachedActiveSession();
+}
+
+/**
+ * Real-time listener for full academic sessions catalogue (active, archived, draft)
+ */
+export function subscribeAcademicSessions(callback) {
+  if (typeof callback !== "function") return () => {};
+
+  let localCache = getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS);
+  if (!localCache || localCache.length === 0) {
+    localCache = [...DEFAULT_ACADEMIC_SESSIONS];
+    setCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS, localCache);
+  }
+  callback(localCache);
+
+  const localListener = () => {
+    callback(getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS) || []);
+  };
+  window.addEventListener(`dimabin:db:${COLLECTIONS.ACADEMIC_SESSIONS}`, localListener);
+
+  let unsubscribe = () => {};
+  try {
+    const collRef = collection(db, COLLECTIONS.ACADEMIC_SESSIONS);
+    unsubscribe = onSnapshot(
+      collRef,
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS, list);
+          callback(list);
+        } else {
+          setCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS, [...DEFAULT_ACADEMIC_SESSIONS]);
+          callback([...DEFAULT_ACADEMIC_SESSIONS]);
+        }
+      },
+      (err) => {
+        console.warn("[DIMABIN Academic Sessions] onSnapshot:", err.message);
+        callback(getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS));
+      }
+    );
+  } catch (err) {
+    console.warn("[DIMABIN Academic Sessions] init:", err.message);
+  }
+
+  return () => {
+    try { unsubscribe(); } catch (_) {}
+    window.removeEventListener(`dimabin:db:${COLLECTIONS.ACADEMIC_SESSIONS}`, localListener);
+  };
+}
+
+/**
+ * Real-time listener for session rollover audit history
+ */
+export function subscribeSessionRollovers(callback) {
+  if (typeof callback !== "function") return () => {};
+
+  let localCache = getCachedCollection(COLLECTIONS.SESSION_ROLLOVERS);
+  if (!localCache || localCache.length === 0) {
+    localCache = [...DEFAULT_SESSION_ROLLOVERS];
+    setCachedCollection(COLLECTIONS.SESSION_ROLLOVERS, localCache);
+  }
+  callback(localCache);
+
+  const localListener = () => {
+    callback(getCachedCollection(COLLECTIONS.SESSION_ROLLOVERS) || []);
+  };
+  window.addEventListener(`dimabin:db:${COLLECTIONS.SESSION_ROLLOVERS}`, localListener);
+
+  let unsubscribe = () => {};
+  try {
+    const collRef = collection(db, COLLECTIONS.SESSION_ROLLOVERS);
+    unsubscribe = onSnapshot(
+      collRef,
+      (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          list.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+          setCachedCollection(COLLECTIONS.SESSION_ROLLOVERS, list);
+          callback(list);
+        } else {
+          setCachedCollection(COLLECTIONS.SESSION_ROLLOVERS, [...DEFAULT_SESSION_ROLLOVERS]);
+          callback([...DEFAULT_SESSION_ROLLOVERS]);
+        }
+      },
+      (err) => {
+        console.warn("[DIMABIN Session Rollovers] onSnapshot:", err.message);
+        callback(getCachedCollection(COLLECTIONS.SESSION_ROLLOVERS));
+      }
+    );
+  } catch (err) {
+    console.warn("[DIMABIN Session Rollovers] init:", err.message);
+  }
+
+  return () => {
+    try { unsubscribe(); } catch (_) {}
+    window.removeEventListener(`dimabin:db:${COLLECTIONS.SESSION_ROLLOVERS}`, localListener);
+  };
+}
+
+/**
+ * Save an upcoming academic session as a draft
+ */
+export async function saveDraftAcademicSession({
+  session,
+  semester = "First Semester",
+  notes = "",
+  createdBy = ADMIN_CREDENTIALS.ADMIN_ID
+}) {
+  const valRes = validateAcademicSessionFormat(session);
+  if (!valRes.valid) {
+    throw new Error(valRes.error);
+  }
+  const normSession = valRes.session;
+  const currentActive = getActiveAcademicSession();
+
+  if (currentActive.currentSession === normSession) {
+    throw new Error(`Academic session "${normSession}" is already the currently active session.`);
+  }
+
+  const existingSessions = getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS) || [];
+  const existing = existingSessions.find((s) => (s.session || "").trim() === normSession);
+  if (existing && existing.status !== "draft") {
+    throw new Error(`Academic session "${normSession}" already exists in institutional records with status "${existing.status}".`);
+  }
+
+  const docId = normSession.replace("/", "_");
+  const record = {
+    id: docId,
+    session: normSession,
+    semester: semester || "First Semester",
+    status: "draft",
+    isCurrent: false,
+    createdAt: new Date().toISOString(),
+    createdBy: createdBy || ADMIN_CREDENTIALS.ADMIN_ID,
+    notes: notes || "Draft upcoming academic session"
+  };
+
+  upsertCachedItem(COLLECTIONS.ACADEMIC_SESSIONS, record);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.ACADEMIC_SESSIONS, docId);
+    await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (err) {
+    console.warn("[DIMABIN Session] Draft save note:", err.message);
+  }
+
+  await logActivity({
+    action: "academic_session_draft_saved",
+    description: `Created draft upcoming academic session [${normSession}] (${semester}) by ${createdBy}.`,
+    targetCollection: COLLECTIONS.ACADEMIC_SESSIONS,
+    targetDocumentId: docId
+  });
+
+  return { success: true, record };
+}
+
+/**
+ * Discard / delete a draft academic session
+ */
+export async function deleteDraftAcademicSession(docId) {
+  const list = getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS) || [];
+  const item = list.find((s) => s.id === docId);
+  if (item && item.status !== "draft") {
+    throw new Error("Cannot delete an active or archived academic session. Only uncommitted draft sessions may be discarded.");
+  }
+
+  const nextList = list.filter((s) => s.id !== docId);
+  setCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS, nextList);
+
+  try {
+    const docRef = doc(db, COLLECTIONS.ACADEMIC_SESSIONS, docId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn("[DIMABIN Session] Draft delete note:", err.message);
+  }
+
+  await logActivity({
+    action: "academic_session_draft_deleted",
+    description: `Discarded draft academic session record [${item?.session || docId}].`,
+    targetCollection: COLLECTIONS.ACADEMIC_SESSIONS,
+    targetDocumentId: docId
+  });
+
+  return { success: true, docId };
+}
+
+/**
+ * Preview proposed session rollover with real-time institutional metrics & warnings
+ */
+export async function previewSessionRollover(proposedSession) {
+  const valRes = validateAcademicSessionFormat(proposedSession);
+  if (!valRes.valid) {
+    throw new Error(valRes.error);
+  }
+  const normSession = valRes.session;
+  const currentActive = getActiveAcademicSession();
+
+  if (currentActive.currentSession === normSession) {
+    throw new Error(`The proposed session "${normSession}" is already the active academic session.`);
+  }
+
+  const students = getCachedCollection(COLLECTIONS.STUDENTS) || [];
+  const lecturers = getCachedCollection(COLLECTIONS.LECTURERS) || [];
+  const courses = getCachedCollection(COLLECTIONS.COURSES) || [];
+  const cbtAssessments = getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || [];
+  const results = getCachedCollection(COLLECTIONS.RESULTS) || [];
+
+  const activeCbtCount = cbtAssessments.filter((a) => a.status === "open" || a.status === "published").length;
+  const pendingResultsCount = results.filter((r) => {
+    const st = (r.status || "").toLowerCase();
+    return st === "submitted" || st === "pending" || st === "draft";
+  }).length;
+
+  const warnings = [];
+  if (activeCbtCount > 0) {
+    warnings.push(`There are currently ${activeCbtCount} active or scheduled CBT assessment(s). They will remain permanently associated with their original creation session.`);
+  }
+  if (pendingResultsCount > 0) {
+    warnings.push(`There are ${pendingResultsCount} unapproved or pending result record(s) under registry review in the current session. They will remain intact under their original session without deletion.`);
+  }
+
+  return {
+    currentSession: currentActive.currentSession || "2026/2027",
+    proposedSession: normSession,
+    currentSemester: currentActive.currentSemester || "First Semester",
+    activatedAt: currentActive.activatedAt,
+    activatedBy: currentActive.activatedBy,
+    studentCount: students.length,
+    lecturerCount: lecturers.length,
+    courseCount: courses.length,
+    activeCbtCount,
+    pendingResultsCount,
+    warnings
+  };
+}
+
+/**
+ * Officially PUBLISH a new Academic Session Rollover
+ * Authoritatively updates Firestore, archives previous session, logs audit trail,
+ * and notifies all portals in real-time.
+ */
+export async function publishSessionRollover({
+  newSession,
+  semester = "First Semester",
+  publishedBy = ADMIN_CREDENTIALS.ADMIN_ID,
+  publishedByEmail = ADMIN_CREDENTIALS.ADMIN_EMAIL,
+  notes = ""
+}) {
+  const valRes = validateAcademicSessionFormat(newSession);
+  if (!valRes.valid) {
+    throw new Error(valRes.error);
+  }
+  const normNewSession = valRes.session;
+  const currentActive = getActiveAcademicSession();
+  const previousSession = currentActive.currentSession || "2026/2027";
+
+  if (normNewSession === previousSession) {
+    throw new Error(`Cannot execute rollover: "${normNewSession}" is already the active academic session.`);
+  }
+
+  const allSessions = getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS) || [];
+  const prevArchived = allSessions.find(
+    (s) => (s.session || "").trim() === normNewSession && s.status === "archived"
+  );
+  if (prevArchived) {
+    throw new Error(`Academic session "${normNewSession}" was previously used and archived in institutional history. Duplicate session reactivation is prevented.`);
+  }
+
+  const preview = await previewSessionRollover(normNewSession);
+  const nowIso = new Date().toISOString();
+  const prevDocId = previousSession.replace("/", "_");
+  const newDocId = normNewSession.replace("/", "_");
+  const rolloverId = `rollover_${Date.now()}`;
+
+  // 1. Archive previous session
+  const prevRecord = {
+    id: prevDocId,
+    session: previousSession,
+    status: "archived",
+    isCurrent: false,
+    archivedAt: nowIso,
+    archivedBy: publishedBy
+  };
+  upsertCachedItem(COLLECTIONS.ACADEMIC_SESSIONS, prevRecord);
+
+  // 2. Activate new session in academic_sessions collection
+  const newSessionRecord = {
+    id: newDocId,
+    session: normNewSession,
+    semester: semester || "First Semester",
+    status: "active",
+    isCurrent: true,
+    activatedAt: nowIso,
+    activatedBy: publishedBy,
+    activatedByEmail: publishedByEmail,
+    notes: notes || `Session rollover from ${previousSession}`
+  };
+  upsertCachedItem(COLLECTIONS.ACADEMIC_SESSIONS, newSessionRecord);
+
+  // 3. Update single authoritative record: system_settings/academic_session
+  const authoritativeDoc = {
+    id: "academic_session",
+    currentSession: normNewSession,
+    currentSemester: semester || "First Semester",
+    previousSession: previousSession,
+    activatedAt: nowIso,
+    activatedBy: publishedBy,
+    activatedByEmail: publishedByEmail,
+    status: "published",
+    updatedAt: nowIso
+  };
+  setCachedActiveSession(authoritativeDoc);
+
+  // 4. Create persistent audit record in session_rollovers
+  const rolloverRecord = {
+    id: rolloverId,
+    previousSession,
+    newSession: normNewSession,
+    semester: semester || "First Semester",
+    publishedAt: nowIso,
+    publishedBy: publishedBy,
+    publishedByEmail: publishedByEmail,
+    status: "Published",
+    notes: notes || `Official institutional session rollover to ${normNewSession}`,
+    metrics: {
+      studentCount: preview.studentCount,
+      lecturerCount: preview.lecturerCount,
+      courseCount: preview.courseCount,
+      activeCbtCount: preview.activeCbtCount,
+      pendingResultsCount: preview.pendingResultsCount
+    }
+  };
+  upsertCachedItem(COLLECTIONS.SESSION_ROLLOVERS, rolloverRecord);
+
+  // 5. Commit to Firestore
+  try {
+    const prevRef = doc(db, COLLECTIONS.ACADEMIC_SESSIONS, prevDocId);
+    await setDoc(prevRef, { ...prevRecord, updatedAt: serverTimestamp() }, { merge: true });
+
+    const newRef = doc(db, COLLECTIONS.ACADEMIC_SESSIONS, newDocId);
+    await setDoc(newRef, { ...newSessionRecord, updatedAt: serverTimestamp() }, { merge: true });
+
+    const authRef = doc(db, COLLECTIONS.SYSTEM_SETTINGS, "academic_session");
+    await setDoc(authRef, { ...authoritativeDoc, updatedAt: serverTimestamp() }, { merge: true });
+
+    const rollRef = doc(db, COLLECTIONS.SESSION_ROLLOVERS, rolloverId);
+    await setDoc(rollRef, { ...rolloverRecord, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (err) {
+    console.warn("[DIMABIN Session Rollover] Firestore transaction note:", err.message);
+  }
+
+  // 6. Log system activity
+  await logActivity({
+    action: "academic_session_rollover_published",
+    description: `Published institutional Academic Session Rollover from [${previousSession}] to [${normNewSession}] (${semester}) by ${publishedBy}.`,
+    targetCollection: COLLECTIONS.SYSTEM_SETTINGS,
+    targetDocumentId: "academic_session"
+  });
+
+  // 7. Real-time broadcast
+  broadcastSessionChange(authoritativeDoc);
+
+  return {
+    success: true,
+    previousSession,
+    newSession: normNewSession,
+    semester,
+    publishedAt: nowIso,
+    publishedBy,
+    rolloverId
+  };
 }
 
 // =============================================================================

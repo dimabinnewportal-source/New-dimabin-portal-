@@ -48,7 +48,9 @@ import {
   updateLecturerSelfProfile,
   sendLecturerPasswordReset,
   formatDateTime,
-  formatDateOnly
+  formatDateOnly,
+  subscribeActiveAcademicSession,
+  getActiveAcademicSession
 } from "./firebase-backend.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -82,6 +84,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const qualification = session.qualification || "B.Th., M.Div.";
   const specialization = session.specialization || "General Biblical Studies";
   const photoUrl = session.photoUrl || "";
+
+  // Active Academic Session Tracking
+  let activeAcademicSession = getActiveAcademicSession()?.currentSession || "2026/2027";
+  let activeAcademicSemester = getActiveAcademicSession()?.currentSemester || "First Semester";
 
   // Derive initials for avatar
   const getInitials = (nameStr) => {
@@ -138,7 +144,8 @@ document.addEventListener("DOMContentLoaded", () => {
   safeSetText("hero-lecturer-id", staffId);
   safeSetText("hero-lecturer-department", `Department: ${dept}`);
   safeSetText("hero-lecturer-centre", `Study Centre: ${centre.split(",")[0]}`);
-  safeSetText("hero-lecturer-session", "Session: 2026/2027");
+  safeSetText("header-active-session", `${activeAcademicSession} ACADEMIC SESSION`);
+  safeSetText("hero-lecturer-session", `Session: ${activeAcademicSession}`);
   safeSetText("hero-academic-status", "Active");
 
   // Legacy & Sidebar bindings
@@ -2739,8 +2746,8 @@ document.addEventListener("DOMContentLoaded", () => {
         courseCode,
         courseTitle: courseObj?.courseTitle || "Theological Study",
         topic,
-        academicSession: "2026/2027",
-        semester: "First Semester",
+        academicSession: activeAcademicSession || "2026/2027",
+        semester: activeAcademicSemester || "First Semester",
         studyCentre,
         instructions,
         startDate: new Date(startDate).toISOString(),
@@ -3494,6 +3501,17 @@ document.addEventListener("DOMContentLoaded", () => {
         <option value="all">All Study Centres</option>
         ${centres.map((c) => `<option value="${c.name}">${c.name}</option>`).join("")}
       `;
+    }
+  });
+
+  // Subscribe to real-time active academic session changes
+  subscribeActiveAcademicSession((sessData) => {
+    if (sessData && sessData.currentSession) {
+      activeAcademicSession = sessData.currentSession;
+      activeAcademicSemester = sessData.currentSemester || "First Semester";
+      safeSetText("header-active-session", `${activeAcademicSession} ACADEMIC SESSION`);
+      safeSetText("hero-lecturer-session", `Session: ${activeAcademicSession}`);
+      refreshAllViews();
     }
   });
 });

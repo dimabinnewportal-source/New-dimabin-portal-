@@ -65,18 +65,27 @@ import {
   subscribeCbtSubmissions,
   extendCbtDeadline,
   closeCbtAssessment,
-  exportCbtResultsCsv
+  exportCbtResultsCsv,
+  validateAcademicSessionFormat,
+  subscribeActiveAcademicSession,
+  getActiveAcademicSession,
+  subscribeAcademicSessions,
+  subscribeSessionRollovers,
+  saveDraftAcademicSession,
+  deleteDraftAcademicSession,
+  previewSessionRollover,
+  publishSessionRollover
 } from "./firebase-backend.js";
 import { printApplicationForm, downloadApplicationPdf } from "./admission-print-pdf.js";
 
 // Canonical Administrator Credentials
-export const ADMIN_CONFIG = Object.freeze({
+export const ADMIN_CONFIG = {
   ADMIN_ID: "DIMABIN/ADM/2026/01",
   ADMIN_EMAIL: "dimabinnewportal@gmail.com",
   ROLE: "SUPER ADMINISTRATOR",
   SESSION: "2026/2027",
   SEMESTER: "First Semester"
-});
+};
 
 /**
  * TASK 11 — FUTURE NOTIFICATION DATA MODELS
@@ -6645,6 +6654,9 @@ export function initResultApproval() {
 
   // Initialize CBT Oversight Engine
   initAdminCbtOversight();
+
+  // Initialize Academic Session Rollover Engine
+  initAcademicSessionRollover();
 }
 
 /**
@@ -7023,6 +7035,559 @@ export function initAdminCbtOversight() {
   });
 }
 
+/**
+ * =============================================================================
+ * SECTION 11C: ACADEMIC SESSION ROLLOVER MANAGEMENT CONTROLLER (ADMIN)
+ * Manual session entry, strict year validation, draft management,
+ * pre-publication impact preview, and authoritative global propagation.
+ * =============================================================================
+ */
+export function initAcademicSessionRollover() {
+  const activeSessionDisplay = document.getElementById("rollover-active-session-display");
+  const activeSemesterBadge = document.getElementById("rollover-active-semester-badge");
+  const activeActivatedAt = document.getElementById("rollover-active-activated-at");
+  const activeActivatedBy = document.getElementById("rollover-active-activated-by");
+
+  const statStudents = document.getElementById("rollover-stat-students");
+  const statLecturers = document.getElementById("rollover-stat-lecturers");
+  const statCourses = document.getElementById("rollover-stat-courses");
+  const statSessionsCount = document.getElementById("rollover-stat-sessions-count");
+
+  const inputNewSession = document.getElementById("admin-input-new-session");
+  const selectNewSemester = document.getElementById("admin-select-new-semester");
+  const inputSessionNotes = document.getElementById("admin-input-session-notes");
+  const formatFeedback = document.getElementById("admin-session-format-feedback");
+  const btnSaveDraft = document.getElementById("btn-save-session-draft");
+  const btnPreviewRollover = document.getElementById("btn-preview-rollover");
+  const btnRefreshData = document.getElementById("btn-refresh-rollover-data");
+  const btnJumpToPlan = document.getElementById("btn-jump-to-plan-session");
+
+  const draftTableCount = document.getElementById("admin-draft-sessions-count");
+  const draftTbody = document.getElementById("admin-draft-sessions-tbody");
+  const historyTableCount = document.getElementById("admin-rollover-history-count");
+  const historyTbody = document.getElementById("admin-rollover-history-tbody");
+  const allSessionsTbody = document.getElementById("admin-all-sessions-tbody");
+
+  // Modal elements
+  const modalPreview = document.getElementById("modal-session-rollover-preview");
+  const previewCurrSession = document.getElementById("preview-curr-session");
+  const previewNewSession = document.getElementById("preview-new-session");
+  const previewNewSemester = document.getElementById("preview-new-semester");
+  const previewCountStudents = document.getElementById("preview-count-students");
+  const previewCountLecturers = document.getElementById("preview-count-lecturers");
+  const previewCountCourses = document.getElementById("preview-count-courses");
+  const previewCountCbt = document.getElementById("preview-count-cbt");
+  const previewCountPending = document.getElementById("preview-count-pending");
+  const previewWarningsContainer = document.getElementById("preview-warnings-container");
+  const checkConfirmRollover = document.getElementById("check-confirm-rollover");
+  const btnConfirmPublish = document.getElementById("btn-confirm-publish-rollover");
+  const btnCancelModal = document.getElementById("btn-cancel-rollover-modal");
+  const btnCloseModal = document.getElementById("btn-close-rollover-modal");
+
+  if (!activeSessionDisplay) {
+    return;
+  }
+
+  let currentActiveSessionData = getActiveAcademicSession();
+  let allSessionsList = [];
+  let rolloverHistoryList = [];
+  let pendingProposedSession = "";
+  let pendingProposedSemester = "First Semester";
+
+  // Helper to sync all admin dashboard badges when active session changes
+  function syncPortalActiveSessionUI(sessionData) {
+    const sessionStr = sessionData?.currentSession || "2026/2027";
+    const semesterStr = sessionData?.currentSemester || "First Semester";
+
+    // 1. Update ADMIN_CONFIG
+    ADMIN_CONFIG.SESSION = sessionStr;
+    ADMIN_CONFIG.SEMESTER = semesterStr;
+
+    // 2. Rollover Section Hero Card
+    if (activeSessionDisplay) activeSessionDisplay.textContent = sessionStr;
+    if (activeSemesterBadge) activeSemesterBadge.textContent = semesterStr;
+    if (activeActivatedAt) activeActivatedAt.textContent = formatDateOnly(sessionData?.activatedAt) || "Active";
+    if (activeActivatedBy) activeActivatedBy.textContent = sessionData?.activatedBy || ADMIN_CONFIG.ADMIN_ID;
+
+    // 3. Admin Topbar / Dashboard Strip Badges
+    const badgeIds = [
+      "dash-academic-session-badge",
+      "app-section-session-text",
+      "student-dir-session-text",
+      "lec-active-session-badge",
+      "courses-active-session-badge",
+      "alloc-active-session-badge",
+      "reg-ctrl-active-session-badge",
+      "reg-offerings-title-sess"
+    ];
+    badgeIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = sessionStr;
+    });
+
+    // 4. Update default inputs if present
+    const addStudentSession = document.getElementById("add-student-session");
+    if (addStudentSession) addStudentSession.value = sessionStr;
+    const admAcademicSession = document.getElementById("adm-academic-session");
+    if (admAcademicSession) admAcademicSession.value = sessionStr;
+
+    // 5. Update dropdown options if needed
+    const dropdownIds = [
+      "filter-courses-session",
+      "alloc-filter-session",
+      "broadsheet-filter-session",
+      "reg-ctrl-session-select"
+    ];
+    dropdownIds.forEach((id) => {
+      const select = document.getElementById(id);
+      if (select) {
+        let hasOpt = Array.from(select.options).some(o => o.value === sessionStr);
+        if (!hasOpt) {
+          const opt = document.createElement("option");
+          opt.value = sessionStr;
+          opt.textContent = sessionStr;
+          select.appendChild(opt);
+        }
+      }
+    });
+  }
+
+  // Live input validation feedback
+  function validateCurrentInput() {
+    const rawVal = inputNewSession?.value || "";
+    if (!rawVal.trim()) {
+      if (formatFeedback) {
+        formatFeedback.style.color = "var(--admin-text-muted)";
+        formatFeedback.textContent = "Format rule: 4-digit start year / next consecutive 4-digit year (e.g. 2027/2028).";
+      }
+      return { valid: false };
+    }
+
+    const check = validateAcademicSessionFormat(rawVal);
+    if (!check.valid) {
+      if (formatFeedback) {
+        formatFeedback.style.color = "#DC2626";
+        formatFeedback.textContent = `⚠️ ${check.error}`;
+      }
+      return { valid: false };
+    }
+
+    if (check.session === (currentActiveSessionData?.currentSession || "2026/2027")) {
+      if (formatFeedback) {
+        formatFeedback.style.color = "#D97706";
+        formatFeedback.textContent = `⚠️ "${check.session}" is already the current active academic session.`;
+      }
+      return { valid: false };
+    }
+
+    const isArchived = allSessionsList.some(s => s.session === check.session && s.status === "archived");
+    if (isArchived) {
+      if (formatFeedback) {
+        formatFeedback.style.color = "#DC2626";
+        formatFeedback.textContent = `⚠️ "${check.session}" already exists in historical archives.`;
+      }
+      return { valid: false };
+    }
+
+    if (formatFeedback) {
+      formatFeedback.style.color = "#16A34A";
+      formatFeedback.textContent = `✓ Valid academic session format: "${check.session}" (Ending year ${check.endYear} is consecutive to ${check.startYear}).`;
+    }
+    return { valid: true, session: check.session };
+  }
+
+  if (inputNewSession) {
+    inputNewSession.addEventListener("input", validateCurrentInput);
+  }
+
+  // Jump button
+  if (btnJumpToPlan) {
+    btnJumpToPlan.addEventListener("click", () => {
+      const card = document.getElementById("card-plan-new-session");
+      if (card) {
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (inputNewSession) inputNewSession.focus();
+      }
+    });
+  }
+
+  // Refresh data button
+  if (btnRefreshData) {
+    btnRefreshData.addEventListener("click", () => {
+      syncPortalActiveSessionUI(currentActiveSessionData);
+      renderAllViews();
+      showAdminToast("Academic session metadata refreshed from institutional database.", "info");
+    });
+  }
+
+  // Save Draft Action
+  if (btnSaveDraft) {
+    btnSaveDraft.addEventListener("click", async () => {
+      const v = validateCurrentInput();
+      if (!v.valid) {
+        showAdminToast(formatFeedback?.textContent || "Please enter a valid session format (e.g. 2027/2028).", "error");
+        return;
+      }
+
+      const session = v.session;
+      const semester = selectNewSemester?.value || "First Semester";
+      const notes = inputSessionNotes?.value || "";
+
+      btnSaveDraft.disabled = true;
+      btnSaveDraft.textContent = "Saving Draft...";
+
+      try {
+        await saveDraftAcademicSession({
+          session,
+          semester,
+          notes,
+          createdBy: ADMIN_CONFIG.ADMIN_ID
+        });
+        showAdminToast(`✓ Draft upcoming session "${session}" saved successfully.`, "success");
+        if (inputNewSession) inputNewSession.value = "";
+        if (inputSessionNotes) inputSessionNotes.value = "";
+        validateCurrentInput();
+      } catch (err) {
+        showAdminToast(`Failed to save draft: ${err.message}`, "error");
+      } finally {
+        btnSaveDraft.disabled = false;
+        btnSaveDraft.textContent = "💾 Save as Draft Session";
+      }
+    });
+  }
+
+  // Trigger Preview from Form
+  if (btnPreviewRollover) {
+    btnPreviewRollover.addEventListener("click", async () => {
+      const v = validateCurrentInput();
+      if (!v.valid) {
+        showAdminToast(formatFeedback?.textContent || "Please enter a valid session format (e.g. 2027/2028).", "error");
+        return;
+      }
+      openPreviewModal(v.session, selectNewSemester?.value || "First Semester");
+    });
+  }
+
+  // Open Preview Modal function
+  async function openPreviewModal(proposedSession, proposedSemester) {
+    pendingProposedSession = proposedSession;
+    pendingProposedSemester = proposedSemester;
+
+    try {
+      const preview = await previewSessionRollover(proposedSession);
+
+      if (previewCurrSession) previewCurrSession.textContent = preview.currentSession;
+      if (previewNewSession) previewNewSession.textContent = proposedSession;
+      if (previewNewSemester) previewNewSemester.textContent = proposedSemester;
+
+      if (previewCountStudents) previewCountStudents.textContent = preview.studentCount;
+      if (previewCountLecturers) previewCountLecturers.textContent = preview.lecturerCount;
+      if (previewCountCourses) previewCountCourses.textContent = preview.courseCount;
+      if (previewCountCbt) previewCountCbt.textContent = preview.activeCbtCount;
+      if (previewCountPending) previewCountPending.textContent = preview.pendingResultsCount;
+
+      if (previewWarningsContainer) {
+        if (preview.warnings && preview.warnings.length > 0) {
+          previewWarningsContainer.innerHTML = preview.warnings.map(w => `
+            <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; padding: 0.65rem 0.85rem; font-size: 0.8125rem; color: #B45309; margin-bottom: 0.4rem; display: flex; align-items: flex-start; gap: 0.5rem;">
+              <span style="font-size: 1rem;">⚠️</span>
+              <div>${w}</div>
+            </div>
+          `).join("");
+          previewWarningsContainer.style.display = "block";
+        } else {
+          previewWarningsContainer.innerHTML = "";
+          previewWarningsContainer.style.display = "none";
+        }
+      }
+
+      // Reset checkbox and publish button
+      if (checkConfirmRollover) checkConfirmRollover.checked = false;
+      if (btnConfirmPublish) {
+        btnConfirmPublish.disabled = true;
+        btnConfirmPublish.textContent = "Confirm & Publish Rollover";
+      }
+
+      if (modalPreview) modalPreview.style.display = "flex";
+    } catch (err) {
+      showAdminToast(`Could not open rollover preview: ${err.message}`, "error");
+    }
+  }
+
+  // Modal Checkbox toggle
+  if (checkConfirmRollover && btnConfirmPublish) {
+    checkConfirmRollover.addEventListener("change", () => {
+      btnConfirmPublish.disabled = !checkConfirmRollover.checked;
+    });
+  }
+
+  // Close modal handlers
+  const closeModal = () => {
+    if (modalPreview) modalPreview.style.display = "none";
+  };
+  if (btnCancelModal) btnCancelModal.addEventListener("click", closeModal);
+  if (btnCloseModal) btnCloseModal.addEventListener("click", closeModal);
+
+  // Modal Confirm & Publish Action
+  if (btnConfirmPublish) {
+    btnConfirmPublish.addEventListener("click", async () => {
+      if (!pendingProposedSession) {
+        showAdminToast("No proposed session selected.", "error");
+        return;
+      }
+      if (!checkConfirmRollover?.checked) {
+        showAdminToast("You must check the certification box to authorize the rollover.", "error");
+        return;
+      }
+
+      btnConfirmPublish.disabled = true;
+      btnConfirmPublish.textContent = "Publishing Institutional Rollover...";
+
+      try {
+        const res = await publishSessionRollover({
+          newSession: pendingProposedSession,
+          semester: pendingProposedSemester,
+          publishedBy: ADMIN_CONFIG.ADMIN_ID,
+          publishedByEmail: ADMIN_CONFIG.ADMIN_EMAIL,
+          notes: inputSessionNotes?.value || ""
+        });
+
+        showAdminToast(`✓ Success! Academic Session "${res.newSession}" is now authoritatively published and active institution-wide.`, "success");
+        closeModal();
+
+        // Clear input form
+        if (inputNewSession) inputNewSession.value = "";
+        if (inputSessionNotes) inputSessionNotes.value = "";
+        validateCurrentInput();
+      } catch (err) {
+        showAdminToast(`Rollover execution failed: ${err.message}`, "error");
+        btnConfirmPublish.disabled = false;
+        btnConfirmPublish.textContent = "Confirm & Publish Rollover";
+      }
+    });
+  }
+
+  // Render Drafts Table
+  function renderDraftsTable() {
+    if (!draftTbody) return;
+    const drafts = allSessionsList.filter(s => s.status === "draft");
+
+    if (draftTableCount) {
+      draftTableCount.textContent = `${drafts.length} Draft${drafts.length === 1 ? "" : "s"}`;
+    }
+
+    if (drafts.length === 0) {
+      draftTbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
+            No upcoming session drafts currently saved. Enter a session above and click "Save as Draft" to pre-plan.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    draftTbody.innerHTML = drafts.map((d, idx) => `
+      <tr>
+        <td style="color: var(--admin-text-muted); font-weight: 700;">${idx + 1}</td>
+        <td><strong style="font-size: 0.9375rem; color: var(--admin-navy); font-family: monospace;">${d.session}</strong></td>
+        <td><span class="session-strip-badge" style="background:#EFF6FF; color:#1D4ED8;">${d.semester || "First Semester"}</span></td>
+        <td><span class="status-pill-badge badge-draft" style="font-weight: 800;">Draft</span></td>
+        <td style="font-size: 0.75rem; color: var(--admin-text-muted);">${formatDateOnly(d.createdAt)}</td>
+        <td style="font-size: 0.75rem; font-family: monospace;">${d.createdBy || ADMIN_CONFIG.ADMIN_ID}</td>
+        <td style="font-size: 0.75rem; color: var(--dark-navy); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${d.notes || ''}">
+          ${d.notes || "—"}
+        </td>
+        <td style="text-align: right; white-space: nowrap;">
+          <button type="button" class="btn-table-action btn-publish-draft" data-session="${d.session}" data-sem="${d.semester || 'First Semester'}" style="color: #2563EB; font-weight: 700;">
+            🚀 Preview &amp; Publish
+          </button>
+          <button type="button" class="btn-table-action btn-delete-draft" data-id="${d.id}" data-session="${d.session}" style="color: #DC2626;">
+            🗑️ Discard
+          </button>
+        </td>
+      </tr>
+    `).join("");
+
+    draftTbody.querySelectorAll(".btn-publish-draft").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const s = btn.getAttribute("data-session");
+        const sem = btn.getAttribute("data-sem") || "First Semester";
+        openPreviewModal(s, sem);
+      });
+    });
+
+    draftTbody.querySelectorAll(".btn-delete-draft").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        const s = btn.getAttribute("data-session");
+        if (!confirm(`Discard draft academic session "${s}"?`)) return;
+        try {
+          await deleteDraftAcademicSession(id);
+          showAdminToast(`Draft session "${s}" discarded.`, "info");
+        } catch (e) {
+          showAdminToast(`Failed to delete draft: ${e.message}`, "error");
+        }
+      });
+    });
+  }
+
+  // Render Rollover History Table
+  function renderHistoryTable() {
+    if (!historyTbody) return;
+
+    if (historyTableCount) {
+      historyTableCount.textContent = `${rolloverHistoryList.length} Record${rolloverHistoryList.length === 1 ? "" : "s"}`;
+    }
+
+    if (rolloverHistoryList.length === 0) {
+      historyTbody.innerHTML = `
+        <tr>
+          <td colspan="10" style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
+            No session rollover operations logged yet.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    historyTbody.innerHTML = rolloverHistoryList.map((r, idx) => {
+      const snap = r.metrics || {};
+      const snapDesc = `${snap.studentCount !== undefined ? snap.studentCount : '—'} Students · ${snap.lecturerCount !== undefined ? snap.lecturerCount : '—'} Faculty · ${snap.courseCount !== undefined ? snap.courseCount : '—'} Courses`;
+      return `
+        <tr>
+          <td style="color: var(--admin-text-muted); font-weight: 700;">${idx + 1}</td>
+          <td><strong style="color: var(--dark-navy); font-family: monospace;">${r.previousSession || '—'}</strong></td>
+          <td style="color: #2563EB; font-weight: 900; text-align: center;">➔</td>
+          <td><strong style="color: #16A34A; font-family: monospace; font-size: 0.9375rem;">${r.newSession}</strong></td>
+          <td><span class="session-strip-badge" style="background:#EFF6FF; color:#1D4ED8;">${r.semester || "First Semester"}</span></td>
+          <td style="font-size: 0.75rem; white-space: nowrap; color: var(--admin-text-muted);">
+            ${r.publishedAt ? new Date(r.publishedAt).toLocaleString("en-NG", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+          </td>
+          <td>
+            <div style="font-size: 0.78rem; font-family: monospace; font-weight: 700; color: var(--admin-navy);">${r.publishedBy || ADMIN_CONFIG.ADMIN_ID}</div>
+            <div style="font-size: 0.72rem; color: var(--admin-text-muted);">${r.publishedByEmail || ADMIN_CONFIG.ADMIN_EMAIL}</div>
+          </td>
+          <td style="text-align: center; font-size: 0.75rem; color: var(--dark-navy); white-space: nowrap;">
+            <span class="session-strip-badge" style="background: #F8FAFC; border-color: #CBD5E1;">
+              ${snapDesc}
+            </span>
+          </td>
+          <td style="text-align: center;">
+            <span class="status-pill-badge badge-green" style="font-weight: 800;">Published</span>
+          </td>
+          <td style="text-align: center;">
+            <button type="button" class="btn-table-action btn-view-rollover-details" data-id="${r.id}" style="color: #2563EB;">
+              👁️ Audit
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    historyTbody.querySelectorAll(".btn-view-rollover-details").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const item = rolloverHistoryList.find(x => x.id === id);
+        if (!item) return;
+        const snap = item.metrics || {};
+        alert(
+          `Official Academic Session Rollover Audit Record\n\n` +
+          `Transition: ${item.previousSession} ➔ ${item.newSession}\n` +
+          `Semester: ${item.semester || "First Semester"}\n` +
+          `Published At: ${item.publishedAt ? new Date(item.publishedAt).toLocaleString() : "N/A"}\n` +
+          `Authorized Administrator: ${item.publishedBy} (${item.publishedByEmail})\n` +
+          `Status: ${item.status || "Published"}\n` +
+          `Official Notes: ${item.notes || "None"}\n\n` +
+          `Historical Preservation Snapshot:\n` +
+          `• Enrolled Students Retained: ${snap.studentCount || 0}\n` +
+          `• Faculty Lecturers Retained: ${snap.lecturerCount || 0}\n` +
+          `• Courses Catalogue Retained: ${snap.courseCount || 0}\n` +
+          `• Active CBT Tests at Rollover: ${snap.activeCbtCount || 0}\n` +
+          `• Pending Results at Rollover: ${snap.pendingResultsCount || 0}`
+        );
+      });
+    });
+  }
+
+  // Render All Sessions Registry Table
+  function renderAllSessionsTable() {
+    if (!allSessionsTbody) return;
+
+    if (allSessionsList.length === 0) {
+      allSessionsTbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
+            No session records found.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    allSessionsTbody.innerHTML = allSessionsList.map((s, idx) => {
+      const isCur = s.isCurrent || (s.session === (currentActiveSessionData?.currentSession || "2026/2027") && s.status !== "archived");
+      let stateBadge = `<span class="status-pill-badge badge-draft">Draft</span>`;
+      if (isCur) {
+        stateBadge = `<span class="status-pill-badge badge-green" style="font-weight: 800;">🟢 Current Active</span>`;
+      } else if (s.status === "archived") {
+        stateBadge = `<span class="status-pill-badge badge-blue">🔒 Archived</span>`;
+      }
+
+      return `
+        <tr>
+          <td style="color: var(--admin-text-muted); font-weight: 700;">${idx + 1}</td>
+          <td><strong style="font-size: 0.9375rem; color: var(--admin-navy); font-family: monospace;">${s.session}</strong></td>
+          <td><span class="session-strip-badge">${s.semester || "First Semester"}</span></td>
+          <td>${stateBadge}</td>
+          <td style="font-size: 0.75rem; color: var(--admin-text-muted);">${formatDateOnly(s.activatedAt || s.createdAt)}</td>
+          <td style="font-size: 0.75rem; font-family: monospace;">${s.activatedBy || s.createdBy || "Academic Registry"}</td>
+          <td style="font-size: 0.75rem; color: var(--dark-navy);">${s.notes || "—"}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function renderAllViews() {
+    renderDraftsTable();
+    renderHistoryTable();
+    renderAllSessionsTable();
+  }
+
+  // Real-time Subscriptions
+  subscribeActiveAcademicSession((activeData) => {
+    currentActiveSessionData = activeData;
+    syncPortalActiveSessionUI(activeData);
+    renderAllViews();
+  });
+
+  subscribeAcademicSessions((sessions) => {
+    allSessionsList = sessions || [];
+    if (statSessionsCount) {
+      statSessionsCount.textContent = allSessionsList.length;
+    }
+    renderAllViews();
+  });
+
+  subscribeSessionRollovers((rollovers) => {
+    rolloverHistoryList = rollovers || [];
+    renderAllViews();
+  });
+
+  // Pull Telemetry for Retained Stats
+  subscribeStudents((students) => {
+    if (statStudents) statStudents.textContent = (students || []).length;
+  });
+
+  subscribeLecturers((lecturers) => {
+    if (statLecturers) statLecturers.textContent = (lecturers || []).length;
+  });
+
+  subscribeCourses((courses) => {
+    if (statCourses) statCourses.textContent = (courses || []).length;
+  });
+}
+
 // Auto-run on DOM ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initDashboard);
@@ -7046,6 +7611,7 @@ if (typeof window !== "undefined") {
     initStudyCentreNavAndWorkspaces,
     initStudentDirectoryManagement,
     initAdminCbtOversight,
+    initAcademicSessionRollover,
     populateStudyCentreSelects,
     showAdminToast
   });

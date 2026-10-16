@@ -32,7 +32,9 @@ import {
   subscribeCbtSubmissions,
   startCbtAttempt,
   saveCbtProgress,
-  submitCbtAttempt
+  submitCbtAttempt,
+  subscribeActiveAcademicSession,
+  getActiveAcademicSession
 } from "./firebase-backend.js";
 
 let activeStudentProfile = null;
@@ -106,7 +108,8 @@ function renderStudentProfile(profile) {
   const programme = profile.programme || "Diploma in Theology (Dipl.Th.)";
   const department = profile.department || "Theological Studies";
   const level = profile.level || "Diploma I";
-  const session = profile.academicSession || "2026/2027";
+  const activeSessData = getActiveAcademicSession();
+  const session = activeSessData?.currentSession || profile.academicSession || "2026/2027";
   const studyCentre = profile.studyCentre || "Official Study Centre";
   const email = profile.email || "";
   const phone = profile.phone || "N/A";
@@ -121,6 +124,8 @@ function renderStudentProfile(profile) {
     .join("") || "ST";
 
   // Top Header
+  const headerActiveSession = document.getElementById("header-active-session");
+  if (headerActiveSession) headerActiveSession.textContent = `${session} ACADEMIC SESSION`;
   const headerAvatar = document.getElementById("header-student-avatar");
   const headerName = document.getElementById("header-student-name");
   const headerRole = document.getElementById("header-student-role");
@@ -2114,6 +2119,21 @@ export async function initStudentDashboard() {
   const sidebarLogout = document.getElementById("sidebar-logout-btn");
   if (navLogout) navLogout.addEventListener("click", studentLogout);
   if (sidebarLogout) sidebarLogout.addEventListener("click", studentLogout);
+
+  // 6. Real-time authoritative session synchronization
+  subscribeActiveAcademicSession((sessData) => {
+    if (sessData && sessData.currentSession) {
+      const activeSess = sessData.currentSession;
+      const headerActive = document.getElementById("header-active-session");
+      if (headerActive) headerActive.textContent = `${activeSess} ACADEMIC SESSION`;
+      const heroSess = document.getElementById("hero-student-session");
+      if (heroSess) heroSess.textContent = `Session: ${activeSess}`;
+      const regBadge = document.getElementById("student-reg-session-badge");
+      if (regBadge) regBadge.textContent = activeSess;
+      const regCard = document.getElementById("reg-card-session");
+      if (regCard) regCard.textContent = activeSess;
+    }
+  });
 }
 
 // Global exposure for inline triggers
