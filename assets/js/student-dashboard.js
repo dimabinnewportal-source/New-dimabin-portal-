@@ -36,6 +36,11 @@ import {
   subscribeActiveAcademicSession,
   getActiveAcademicSession
 } from "./firebase-backend.js";
+import {
+  mountPrintableRegistrationSlip,
+  printCourseRegistrationSlip,
+  downloadCourseRegistrationPdf
+} from "./course-reg-print-pdf.js";
 
 let activeStudentProfile = null;
 
@@ -639,20 +644,38 @@ function initStudentCourseRegistration(studentProfile, userUid) {
       if (slipCoursesTbody) {
         const courses = Array.isArray(currentReg.courses) ? currentReg.courses : [];
         if (courses.length === 0) {
-          slipCoursesTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--student-text-muted);">No enrolled courses recorded.</td></tr>`;
+          slipCoursesTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--student-text-muted); padding: 1.5rem;">No enrolled courses recorded.</td></tr>`;
         } else {
+          let calculatedTotalUnits = 0;
           slipCoursesTbody.innerHTML = courses
-            .map((c) => `
-              <tr>
-                <td><strong style="color: var(--student-blue);">${c.courseCode}</strong></td>
-                <td><strong>${c.courseTitle}</strong></td>
-                <td style="text-align: center;"><span class="status-pill-badge badge-blue">${c.creditUnits} Units</span></td>
-                <td>${c.lecturerName || "To be announced (TBA)"}</td>
-              </tr>
-            `)
+            .map((c, idx) => {
+              const units = parseInt(c.creditUnits !== undefined ? c.creditUnits : (c.creditUnit || 3), 10) || 3;
+              calculatedTotalUnits += units;
+              return `
+                <tr>
+                  <td style="text-align: center; color: var(--student-text-muted); font-weight: 700;">${idx + 1}</td>
+                  <td><strong style="color: var(--student-blue); font-family: monospace;">${c.courseCode}</strong></td>
+                  <td><strong>${c.courseTitle}</strong></td>
+                  <td style="text-align: center;"><span class="status-pill-badge badge-blue">${units} Units</span></td>
+                  <td>${c.lecturerName || "To be announced (TBA)"}</td>
+                </tr>
+              `;
+            })
             .join("");
+
+          if (slipTotalUnits) {
+            slipTotalUnits.textContent = `${calculatedTotalUnits} Units`;
+          }
         }
       }
+
+      const slipCandidateSigName = document.getElementById("slip-candidate-sig-name");
+      if (slipCandidateSigName) {
+        slipCandidateSigName.textContent = `${currentReg.studentName || studentProfile.fullName} (${currentReg.studentId || currentReg.admissionNumber || studentProfile.studentId || "Student"})`;
+      }
+
+      // Automatically keep the isolated A4 print container synchronized
+      mountPrintableRegistrationSlip(currentReg, studentProfile);
 
       // Configure modify button
       if (modifyBtn) {
@@ -667,9 +690,27 @@ function initStudentCourseRegistration(studentProfile, userUid) {
         }
       }
 
+      // Update overview dashboard card badge if present
+      const regCardBadge = document.getElementById("reg-card-badge");
+      if (regCardBadge) {
+        regCardBadge.className = `status-pill-badge ${statusBadgeClass}`;
+        regCardBadge.textContent = statusLabel;
+      }
+
     } else {
       // Student has NOT registered (or is actively editing)
       if (slipPane) slipPane.style.display = "none";
+
+      const regCardBadge = document.getElementById("reg-card-badge");
+      if (regCardBadge) {
+        if (isOpen) {
+          regCardBadge.className = "status-pill-badge badge-green";
+          regCardBadge.textContent = "Registration Open";
+        } else {
+          regCardBadge.className = "status-pill-badge badge-gold";
+          regCardBadge.textContent = "Registration Closed";
+        }
+      }
 
       if (!isOpen) {
         // Closed state
@@ -933,6 +974,63 @@ function initStudentCourseRegistration(studentProfile, userUid) {
         submitBtn.disabled = false;
         if (submitBtnText) submitBtnText.textContent = "CONFIRM & SUBMIT COURSE REGISTRATION";
       }
+    });
+  }
+
+  // Download Official PDF Slip Button
+  const downloadSlipBtn = document.getElementById("btn-download-reg-slip");
+  const downloadSlipText = document.getElementById("btn-download-reg-slip-text");
+  if (downloadSlipBtn) {
+    downloadSlipBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const currentReg = registrationsList.find((r) => {
+        const isUser = r.studentUid === uid || r.userId === uid || (studentProfile.studentId && (r.studentId === studentProfile.studentId || r.admissionNumber === studentProfile.studentId));
+        const matchSess = (r.academicSession || "2026/2027").trim() === session;
+        const matchSem = (r.semester || "First Semester").trim() === activeSemester;
+        return isUser && matchSess && matchSem;
+      });
+
+      if (!currentReg) {
+        alert("No confirmed course registration found for this semester to download.");
+        return;
+      }
+
+      downloadSlipBtn.disabled = true;
+      const originalText = downloadSlipText ? downloadSlipText.textContent : "Download Official PDF";
+      if (downloadSlipText) downloadSlipText.textContent = "Generating A4 PDF...";
+
+      try {
+        await downloadCourseRegistrationPdf(currentReg, studentProfile, (statusMsg) => {
+          if (downloadSlipText) downloadSlipText.textContent = statusMsg;
+        });
+      } catch (err) {
+        console.error("[Course Reg PDF Download Error]:", err);
+        alert(`PDF generation note: ${err.message}. You can also use the 'Print Registration Slip' button to Save as PDF.`);
+      } finally {
+        downloadSlipBtn.disabled = false;
+        if (downloadSlipText) downloadSlipText.textContent = originalText;
+      }
+    });
+  }
+
+  // Print Registration Slip Button
+  const printSlipBtn = document.getElementById("btn-print-reg-slip");
+  if (printSlipBtn) {
+    printSlipBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const currentReg = registrationsList.find((r) => {
+        const isUser = r.studentUid === uid || r.userId === uid || (studentProfile.studentId && (r.studentId === studentProfile.studentId || r.admissionNumber === studentProfile.studentId));
+        const matchSess = (r.academicSession || "2026/2027").trim() === session;
+        const matchSem = (r.semester || "First Semester").trim() === activeSemester;
+        return isUser && matchSess && matchSem;
+      });
+
+      if (!currentReg) {
+        alert("No confirmed course registration found for this semester to print.");
+        return;
+      }
+
+      printCourseRegistrationSlip(currentReg, studentProfile);
     });
   }
 
@@ -2132,6 +2230,11 @@ export async function initStudentDashboard() {
       if (regBadge) regBadge.textContent = activeSess;
       const regCard = document.getElementById("reg-card-session");
       if (regCard) regCard.textContent = activeSess;
+      const activeSem = sessData.currentSemester || "First Semester";
+      const regCardSem = document.getElementById("reg-card-semester");
+      if (regCardSem) regCardSem.textContent = activeSem;
+      const regCardSub = document.getElementById("card-reg-subtitle");
+      if (regCardSub) regCardSub.textContent = `${activeSem} ${activeSess}`;
     }
   });
 }

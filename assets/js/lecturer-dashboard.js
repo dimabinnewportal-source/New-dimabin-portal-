@@ -3511,6 +3511,9 @@ document.addEventListener("DOMContentLoaded", () => {
       activeAcademicSemester = sessData.currentSemester || "First Semester";
       safeSetText("header-active-session", `${activeAcademicSession} ACADEMIC SESSION`);
       safeSetText("hero-lecturer-session", `Session: ${activeAcademicSession}`);
+      safeSetText("card-academic-session", activeAcademicSession);
+      safeSetText("card-academic-semester", `${activeAcademicSemester} Active`);
+      safeSetText("gradebook-academic-term-badge", `${activeAcademicSession} · ${activeAcademicSemester}`);
       refreshAllViews();
     }
   });

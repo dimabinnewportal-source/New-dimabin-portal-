@@ -7125,6 +7125,25 @@ export function initAcademicSessionRollover() {
       if (el) el.textContent = sessionStr;
     });
 
+    const semBadgeIds = [
+      "dash-academic-semester-badge",
+      "courses-active-semester-badge",
+      "alloc-active-semester-badge",
+      "reg-ctrl-active-semester-badge",
+      "rollover-active-semester-badge",
+      "reg-offerings-title-sem"
+    ];
+    semBadgeIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = semesterStr;
+    });
+
+    const regStatusSemText = document.getElementById("reg-ctrl-status-sem-text");
+    if (regStatusSemText) regStatusSemText.textContent = `${semesterStr} (${sessionStr})`;
+
+    const regSemesterSelect = document.getElementById("reg-ctrl-semester-select");
+    if (regSemesterSelect) regSemesterSelect.value = semesterStr;
+
     // 4. Update default inputs if present
     const addStudentSession = document.getElementById("add-student-session");
     if (addStudentSession) addStudentSession.value = sessionStr;
@@ -7172,12 +7191,24 @@ export function initAcademicSessionRollover() {
       return { valid: false };
     }
 
-    if (check.session === (currentActiveSessionData?.currentSession || "2026/2027")) {
+    const selectedSem = selectNewSemester?.value || "First Semester";
+    const currSess = currentActiveSessionData?.currentSession || "2026/2027";
+    const currSem = currentActiveSessionData?.currentSemester || "First Semester";
+
+    if (check.session === currSess && selectedSem === currSem) {
       if (formatFeedback) {
         formatFeedback.style.color = "#D97706";
-        formatFeedback.textContent = `⚠️ "${check.session}" is already the current active academic session.`;
+        formatFeedback.textContent = `⚠️ "${check.session}" (${currSem}) is already the active academic session and semester.`;
       }
       return { valid: false };
+    }
+
+    if (check.session === currSess && selectedSem !== currSem) {
+      if (formatFeedback) {
+        formatFeedback.style.color = "#2563EB";
+        formatFeedback.textContent = `ℹ️ In-Session Semester Transition: Switching active semester within "${check.session}" from ${currSem} to ${selectedSem}.`;
+      }
+      return { valid: true, session: check.session, isSemesterTransition: true };
     }
 
     const isArchived = allSessionsList.some(s => s.session === check.session && s.status === "archived");
@@ -7191,13 +7222,16 @@ export function initAcademicSessionRollover() {
 
     if (formatFeedback) {
       formatFeedback.style.color = "#16A34A";
-      formatFeedback.textContent = `✓ Valid academic session format: "${check.session}" (Ending year ${check.endYear} is consecutive to ${check.startYear}).`;
+      formatFeedback.textContent = `✓ Valid academic session rollover: "${check.session}" (${selectedSem}) — will roll over from "${currSess}".`;
     }
-    return { valid: true, session: check.session };
+    return { valid: true, session: check.session, isSemesterTransition: false };
   }
 
   if (inputNewSession) {
     inputNewSession.addEventListener("input", validateCurrentInput);
+  }
+  if (selectNewSemester) {
+    selectNewSemester.addEventListener("change", validateCurrentInput);
   }
 
   // Jump button
@@ -7243,7 +7277,7 @@ export function initAcademicSessionRollover() {
           notes,
           createdBy: ADMIN_CONFIG.ADMIN_ID
         });
-        showAdminToast(`✓ Draft upcoming session "${session}" saved successfully.`, "success");
+        showAdminToast(`✓ Draft upcoming session "${session}" (${semester}) saved successfully.`, "success");
         if (inputNewSession) inputNewSession.value = "";
         if (inputSessionNotes) inputSessionNotes.value = "";
         validateCurrentInput();
@@ -7274,9 +7308,9 @@ export function initAcademicSessionRollover() {
     pendingProposedSemester = proposedSemester;
 
     try {
-      const preview = await previewSessionRollover(proposedSession);
+      const preview = await previewSessionRollover(proposedSession, proposedSemester);
 
-      if (previewCurrSession) previewCurrSession.textContent = preview.currentSession;
+      if (previewCurrSession) previewCurrSession.textContent = `${preview.currentSession} (${preview.currentSemester})`;
       if (previewNewSession) previewNewSession.textContent = proposedSession;
       if (previewNewSemester) previewNewSemester.textContent = proposedSemester;
 
@@ -7305,7 +7339,7 @@ export function initAcademicSessionRollover() {
       if (checkConfirmRollover) checkConfirmRollover.checked = false;
       if (btnConfirmPublish) {
         btnConfirmPublish.disabled = true;
-        btnConfirmPublish.textContent = "Confirm & Publish Rollover";
+        btnConfirmPublish.textContent = preview.isSemesterTransition ? "Confirm & Activate Semester" : "Confirm & Publish Rollover";
       }
 
       if (modalPreview) modalPreview.style.display = "flex";

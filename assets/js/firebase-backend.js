@@ -4898,17 +4898,18 @@ export async function saveDraftAcademicSession({
   const normSession = valRes.session;
   const currentActive = getActiveAcademicSession();
 
-  if (currentActive.currentSession === normSession) {
-    throw new Error(`Academic session "${normSession}" is already the currently active session.`);
+  if (currentActive.currentSession === normSession && currentActive.currentSemester === semester) {
+    throw new Error(`Academic session "${normSession}" (${semester}) is already the currently active session and semester.`);
   }
 
   const existingSessions = getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS) || [];
-  const existing = existingSessions.find((s) => (s.session || "").trim() === normSession);
+  const semKey = (semester || "First Semester").trim();
+  const existing = existingSessions.find((s) => (s.session || "").trim() === normSession && (s.semester || "First Semester").trim() === semKey);
   if (existing && existing.status !== "draft") {
-    throw new Error(`Academic session "${normSession}" already exists in institutional records with status "${existing.status}".`);
+    throw new Error(`Academic session "${normSession}" (${semester}) already exists in institutional records with status "${existing.status}".`);
   }
 
-  const docId = normSession.replace("/", "_");
+  const docId = `draft_${normSession.replace("/", "_")}_${semKey.replace(/\s+/g, "_").toLowerCase()}`;
   const record = {
     id: docId,
     session: normSession,
@@ -4917,7 +4918,7 @@ export async function saveDraftAcademicSession({
     isCurrent: false,
     createdAt: new Date().toISOString(),
     createdBy: createdBy || ADMIN_CREDENTIALS.ADMIN_ID,
-    notes: notes || "Draft upcoming academic session"
+    notes: notes || `Draft upcoming academic session (${semester})`
   };
 
   upsertCachedItem(COLLECTIONS.ACADEMIC_SESSIONS, record);
@@ -4972,7 +4973,7 @@ export async function deleteDraftAcademicSession(docId) {
 /**
  * Preview proposed session rollover with real-time institutional metrics & warnings
  */
-export async function previewSessionRollover(proposedSession) {
+export async function previewSessionRollover(proposedSession, proposedSemester = "First Semester") {
   const valRes = validateAcademicSessionFormat(proposedSession);
   if (!valRes.valid) {
     throw new Error(valRes.error);
@@ -4980,8 +4981,8 @@ export async function previewSessionRollover(proposedSession) {
   const normSession = valRes.session;
   const currentActive = getActiveAcademicSession();
 
-  if (currentActive.currentSession === normSession) {
-    throw new Error(`The proposed session "${normSession}" is already the active academic session.`);
+  if (currentActive.currentSession === normSession && currentActive.currentSemester === proposedSemester) {
+    throw new Error(`"${normSession}" (${proposedSemester}) is already the active academic session and semester.`);
   }
 
   const students = getCachedCollection(COLLECTIONS.STUDENTS) || [];
@@ -4990,24 +4991,38 @@ export async function previewSessionRollover(proposedSession) {
   const cbtAssessments = getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || [];
   const results = getCachedCollection(COLLECTIONS.RESULTS) || [];
 
-  const activeCbtCount = cbtAssessments.filter((a) => a.status === "open" || a.status === "published").length;
+  const isSemesterTransition = (currentActive.currentSession === normSession);
+
+  const activeCbtCount = cbtAssessments.filter((a) => {
+    const isCurrentPeriod = (a.academicSession || "2026/2027") === currentActive.currentSession;
+    return isCurrentPeriod && (a.status === "open" || a.status === "published");
+  }).length;
+
   const pendingResultsCount = results.filter((r) => {
+    const isCurrentPeriod = (r.academicSession || "2026/2027") === currentActive.currentSession;
     const st = (r.status || "").toLowerCase();
-    return st === "submitted" || st === "pending" || st === "draft";
+    return isCurrentPeriod && (st === "submitted" || st === "pending" || st === "draft");
   }).length;
 
   const warnings = [];
-  if (activeCbtCount > 0) {
-    warnings.push(`There are currently ${activeCbtCount} active or scheduled CBT assessment(s). They will remain permanently associated with their original creation session.`);
-  }
-  if (pendingResultsCount > 0) {
-    warnings.push(`There are ${pendingResultsCount} unapproved or pending result record(s) under registry review in the current session. They will remain intact under their original session without deletion.`);
+  if (isSemesterTransition) {
+    warnings.push(`In-Session Semester Transition: You are updating the active semester from ${currentActive.currentSemester || 'First Semester'} to ${proposedSemester} within session ${normSession}. All courses, registrations, CBT attempts, and examination grades for ${currentActive.currentSemester || 'First Semester'} remain permanently intact and archived.`);
+  } else {
+    warnings.push(`Academic Session Rollover: You are transitioning from session ${currentActive.currentSession} (${currentActive.currentSemester || 'First Semester'}) to ${normSession} (${proposedSemester}). Previous session records will be archived.`);
+    if (activeCbtCount > 0) {
+      warnings.push(`There are currently ${activeCbtCount} active or scheduled CBT assessment(s) in session ${currentActive.currentSession}. They will remain permanently associated with their original creation session.`);
+    }
+    if (pendingResultsCount > 0) {
+      warnings.push(`There are ${pendingResultsCount} unapproved or pending result record(s) under registry review in ${currentActive.currentSession}. They will remain intact without deletion.`);
+    }
   }
 
   return {
     currentSession: currentActive.currentSession || "2026/2027",
     proposedSession: normSession,
     currentSemester: currentActive.currentSemester || "First Semester",
+    proposedSemester: proposedSemester,
+    isSemesterTransition,
     activatedAt: currentActive.activatedAt,
     activatedBy: currentActive.activatedBy,
     studentCount: students.length,
@@ -5021,8 +5036,10 @@ export async function previewSessionRollover(proposedSession) {
 
 /**
  * Officially PUBLISH a new Academic Session Rollover
- * Authoritatively updates Firestore, archives previous session, logs audit trail,
- * and notifies all portals in real-time.
+ * Supports transitions between all three semesters within the same academic session,
+ * as well as full new academic session rollovers.
+ * Authoritatively updates Firestore, archives previous session when appropriate,
+ * logs audit trail, and notifies all portals in real-time.
  */
 export async function publishSessionRollover({
   newSession,
@@ -5038,37 +5055,49 @@ export async function publishSessionRollover({
   const normNewSession = valRes.session;
   const currentActive = getActiveAcademicSession();
   const previousSession = currentActive.currentSession || "2026/2027";
+  const previousSemester = currentActive.currentSemester || "First Semester";
 
-  if (normNewSession === previousSession) {
-    throw new Error(`Cannot execute rollover: "${normNewSession}" is already the active academic session.`);
+  if (normNewSession === previousSession && semester === previousSemester) {
+    throw new Error(`Cannot execute rollover: "${normNewSession}" (${semester}) is already the active academic session and semester.`);
   }
 
-  const allSessions = getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS) || [];
-  const prevArchived = allSessions.find(
-    (s) => (s.session || "").trim() === normNewSession && s.status === "archived"
-  );
-  if (prevArchived) {
-    throw new Error(`Academic session "${normNewSession}" was previously used and archived in institutional history. Duplicate session reactivation is prevented.`);
+  const isSemesterTransition = (normNewSession === previousSession);
+
+  if (!isSemesterTransition) {
+    const allSessions = getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS) || [];
+    const prevArchived = allSessions.find(
+      (s) => (s.session || "").trim() === normNewSession && s.status === "archived"
+    );
+    if (prevArchived) {
+      throw new Error(`Academic session "${normNewSession}" was previously used and archived in institutional history. Duplicate session reactivation is prevented.`);
+    }
   }
 
-  const preview = await previewSessionRollover(normNewSession);
+  const preview = await previewSessionRollover(normNewSession, semester);
   const nowIso = new Date().toISOString();
   const prevDocId = previousSession.replace("/", "_");
   const newDocId = normNewSession.replace("/", "_");
   const rolloverId = `rollover_${Date.now()}`;
 
-  // 1. Archive previous session
-  const prevRecord = {
-    id: prevDocId,
-    session: previousSession,
-    status: "archived",
-    isCurrent: false,
-    archivedAt: nowIso,
-    archivedBy: publishedBy
-  };
-  upsertCachedItem(COLLECTIONS.ACADEMIC_SESSIONS, prevRecord);
+  // 1. If full session rollover: archive previous session in academic_sessions collection
+  if (!isSemesterTransition) {
+    const prevRecord = {
+      id: prevDocId,
+      session: previousSession,
+      semester: previousSemester,
+      status: "archived",
+      isCurrent: false,
+      archivedAt: nowIso,
+      archivedBy: publishedBy
+    };
+    upsertCachedItem(COLLECTIONS.ACADEMIC_SESSIONS, prevRecord);
+    try {
+      const prevRef = doc(db, COLLECTIONS.ACADEMIC_SESSIONS, prevDocId);
+      await setDoc(prevRef, { ...prevRecord, updatedAt: serverTimestamp() }, { merge: true });
+    } catch (_) {}
+  }
 
-  // 2. Activate new session in academic_sessions collection
+  // 2. Activate session record in academic_sessions collection
   const newSessionRecord = {
     id: newDocId,
     session: normNewSession,
@@ -5078,16 +5107,28 @@ export async function publishSessionRollover({
     activatedAt: nowIso,
     activatedBy: publishedBy,
     activatedByEmail: publishedByEmail,
-    notes: notes || `Session rollover from ${previousSession}`
+    lastTransitionType: isSemesterTransition ? "semester_transition" : "session_rollover",
+    notes: notes || (isSemesterTransition ? `Semester transition to ${semester} in ${normNewSession}` : `Session rollover from ${previousSession}`)
   };
   upsertCachedItem(COLLECTIONS.ACADEMIC_SESSIONS, newSessionRecord);
 
-  // 3. Update single authoritative record: system_settings/academic_session
+  // 3. Clean up any draft matching this session and semester
+  const allSessionsCached = getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS) || [];
+  const matchingDrafts = allSessionsCached.filter(s => s.status === "draft" && s.session === normNewSession && (!s.semester || s.semester === semester));
+  matchingDrafts.forEach(d => {
+    try {
+      deleteDraftAcademicSession(d.id);
+    } catch (_) {}
+  });
+
+  // 4. Update single authoritative record: system_settings/academic_session
   const authoritativeDoc = {
     id: "academic_session",
     currentSession: normNewSession,
     currentSemester: semester || "First Semester",
     previousSession: previousSession,
+    previousSemester: previousSemester,
+    transitionType: isSemesterTransition ? "semester_transition" : "session_rollover",
     activatedAt: nowIso,
     activatedBy: publishedBy,
     activatedByEmail: publishedByEmail,
@@ -5096,17 +5137,19 @@ export async function publishSessionRollover({
   };
   setCachedActiveSession(authoritativeDoc);
 
-  // 4. Create persistent audit record in session_rollovers
+  // 5. Create persistent audit record in session_rollovers
   const rolloverRecord = {
     id: rolloverId,
     previousSession,
+    previousSemester,
     newSession: normNewSession,
     semester: semester || "First Semester",
+    type: isSemesterTransition ? "Semester Rollover" : "Session Rollover",
     publishedAt: nowIso,
     publishedBy: publishedBy,
     publishedByEmail: publishedByEmail,
     status: "Published",
-    notes: notes || `Official institutional session rollover to ${normNewSession}`,
+    notes: notes || (isSemesterTransition ? `In-session transition to ${semester} within ${normNewSession}` : `Official institutional session rollover from ${previousSession} to ${normNewSession}`),
     metrics: {
       studentCount: preview.studentCount,
       lecturerCount: preview.lecturerCount,
@@ -5117,11 +5160,8 @@ export async function publishSessionRollover({
   };
   upsertCachedItem(COLLECTIONS.SESSION_ROLLOVERS, rolloverRecord);
 
-  // 5. Commit to Firestore
+  // 6. Commit to Firestore
   try {
-    const prevRef = doc(db, COLLECTIONS.ACADEMIC_SESSIONS, prevDocId);
-    await setDoc(prevRef, { ...prevRecord, updatedAt: serverTimestamp() }, { merge: true });
-
     const newRef = doc(db, COLLECTIONS.ACADEMIC_SESSIONS, newDocId);
     await setDoc(newRef, { ...newSessionRecord, updatedAt: serverTimestamp() }, { merge: true });
 
@@ -5134,20 +5174,23 @@ export async function publishSessionRollover({
     console.warn("[DIMABIN Session Rollover] Firestore transaction note:", err.message);
   }
 
-  // 6. Log system activity
+  // 7. Log system activity
   await logActivity({
-    action: "academic_session_rollover_published",
-    description: `Published institutional Academic Session Rollover from [${previousSession}] to [${normNewSession}] (${semester}) by ${publishedBy}.`,
+    action: isSemesterTransition ? "academic_semester_rollover_published" : "academic_session_rollover_published",
+    description: isSemesterTransition
+      ? `Activated [${semester}] within Academic Session [${normNewSession}] by ${publishedBy}.`
+      : `Published institutional Academic Session Rollover from [${previousSession}] to [${normNewSession}] (${semester}) by ${publishedBy}.`,
     targetCollection: COLLECTIONS.SYSTEM_SETTINGS,
     targetDocumentId: "academic_session"
   });
 
-  // 7. Real-time broadcast
+  // 8. Real-time broadcast
   broadcastSessionChange(authoritativeDoc);
 
   return {
     success: true,
     previousSession,
+    previousSemester,
     newSession: normNewSession,
     semester,
     publishedAt: nowIso,

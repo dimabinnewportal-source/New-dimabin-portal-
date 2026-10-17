@@ -398,7 +398,7 @@
               </div>
               <div class="session-strip-item">
                 <span class="session-strip-label">CURRENT SEMESTER:</span>
-                <span class="session-strip-badge">First Semester</span>
+                <span class="session-strip-badge" id="dash-academic-semester-badge">First Semester</span>
               </div>
               <div class="session-strip-item">
                 <span class="session-strip-label">ADMISSIONS INTAKE:</span>
@@ -3640,9 +3640,10 @@
                     <select class="portal-form-input" id="admin-select-new-semester" style="width: 100%; font-size: 0.9375rem; font-weight: 600;">
                       <option value="First Semester" selected>First Semester</option>
                       <option value="Second Semester">Second Semester</option>
+                      <option value="Third Semester">Third Semester</option>
                     </select>
                     <span style="font-size: 0.75rem; color: var(--admin-text-muted); display: block; margin-top: 0.35rem;">
-                      The initial semester of academic operations in the new session.
+                      Select First, Second, or Third Semester. Supports in-session transitions or new session starts.
                     </span>
                   </div>
                 </div>

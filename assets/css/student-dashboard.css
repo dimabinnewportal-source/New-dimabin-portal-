@@ -1158,3 +1158,76 @@ button, input, select, textarea {
   height: 10px;
   border-radius: 3px;
 }
+
+/* ==========================================================================
+   OFFICIAL COURSE REGISTRATION SLIP — A4 PRINT MEDIA RULES
+   Strict 1-Page A4 Sheet (210 × 297 mm) Portrait Orientation
+   ========================================================================== */
+@page {
+  size: A4 portrait;
+  margin: 8mm 10mm;
+}
+
+@media print {
+  html, body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    font-size: 10.5pt !important;
+  }
+
+  /* Hide entire website portal layout */
+  body > *:not(#dimabin-reg-print-root) {
+    display: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* Show only the isolated A4 print container */
+  #dimabin-reg-print-root {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    visibility: visible !important;
+  }
+
+  #dimabin-reg-print-root,
+  #dimabin-reg-print-root * {
+    visibility: visible !important;
+  }
+
+  .dimabin-reg-a4-sheet {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-after: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .reg-courses-table {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .reg-endorsement-section {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
