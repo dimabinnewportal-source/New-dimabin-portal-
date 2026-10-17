@@ -74,7 +74,9 @@ import {
   saveDraftAcademicSession,
   deleteDraftAcademicSession,
   previewSessionRollover,
-  publishSessionRollover
+  publishSessionRollover,
+  getSemesterDetails,
+  getThreeSemestersForSession
 } from "./firebase-backend.js";
 import { printApplicationForm, downloadApplicationPdf } from "./admission-print-pdf.js";
 
@@ -7582,7 +7584,285 @@ export function initAcademicSessionRollover() {
     }).join("");
   }
 
+  // ===========================================================================
+  // SEMESTER MANAGEMENT & THREE-SEMESTER CONTROLS
+  // Supports First, Second, and Third Semester status, inspection, and rollovers
+  // ===========================================================================
+  const selectSemesterScopeSession = document.getElementById("select-semester-scope-session");
+  const modalSemesterDetails = document.getElementById("modal-semester-details");
+  const btnCloseSemDetails = document.getElementById("btn-close-sem-details");
+  const btnCloseSemDetailsX = document.getElementById("btn-close-sem-details-x");
+
+  let currentScopeSession = "";
+
+  function getEffectiveScopeSession() {
+    if (currentScopeSession && currentScopeSession.trim()) {
+      return currentScopeSession.trim();
+    }
+    return (currentActiveSessionData?.currentSession || "2026/2027").trim();
+  }
+
+  function renderSemesterScopeOptions() {
+    if (!selectSemesterScopeSession) return;
+    const activeSess = (currentActiveSessionData?.currentSession || "2026/2027").trim();
+    
+    // Collect distinct sessions from active session and allSessionsList
+    const sessionSet = new Set();
+    sessionSet.add(activeSess);
+    allSessionsList.forEach(s => {
+      if (s.session && s.session.trim()) sessionSet.add(s.session.trim());
+    });
+
+    const sessions = Array.from(sessionSet);
+    const prevVal = selectSemesterScopeSession.value || currentScopeSession || activeSess;
+
+    selectSemesterScopeSession.innerHTML = sessions.map(sess => {
+      const isAct = sess === activeSess;
+      return `<option value="${sess}" ${sess === prevVal ? "selected" : ""}>${sess}${isAct ? " (Active)" : ""}</option>`;
+    }).join("");
+
+    if (!currentScopeSession || !sessionSet.has(currentScopeSession)) {
+      currentScopeSession = activeSess;
+      selectSemesterScopeSession.value = activeSess;
+    }
+  }
+
+  if (selectSemesterScopeSession) {
+    selectSemesterScopeSession.addEventListener("change", () => {
+      currentScopeSession = selectSemesterScopeSession.value;
+      renderSemesterCards();
+    });
+  }
+
+  function renderSemesterCards() {
+    const scopeSession = getEffectiveScopeSession();
+    const semConfigs = [
+      { name: "First Semester", num: 1, cardId: "card-sem-first", prefix: "sem1" },
+      { name: "Second Semester", num: 2, cardId: "card-sem-second", prefix: "sem2" },
+      { name: "Third Semester", num: 3, cardId: "card-sem-third", prefix: "sem3" }
+    ];
+
+    semConfigs.forEach(({ name, cardId, prefix }) => {
+      const details = getSemesterDetails(scopeSession, name);
+      const cardEl = document.getElementById(cardId);
+      const sessLabel = document.getElementById(`${prefix}-card-session`);
+      const statusBadge = document.getElementById(`${prefix}-status-badge`);
+      const activatedAtEl = document.getElementById(`${prefix}-activated-at`);
+      const totalRecordsEl = document.getElementById(`${prefix}-total-records`);
+      const breakdownEl = document.getElementById(`${prefix}-breakdown-text`);
+      const actionContainer = document.getElementById(`${prefix}-action-container`);
+
+      if (sessLabel) sessLabel.textContent = `Session: ${scopeSession}`;
+      if (totalRecordsEl) totalRecordsEl.textContent = `${details.totalRecords} Records`;
+      if (breakdownEl) {
+        breakdownEl.textContent = `Courses: ${details.coursesCount} · Allocs: ${details.allocationsCount} · Regs: ${details.registrationsCount}`;
+      }
+
+      if (statusBadge) {
+        if (details.status === "current") {
+          statusBadge.className = "sem-status-badge status-pill-badge badge-green";
+          statusBadge.style.fontWeight = "800";
+          statusBadge.textContent = "CURRENT ACTIVE";
+        } else if (details.status === "completed") {
+          statusBadge.className = "sem-status-badge status-pill-badge badge-blue";
+          statusBadge.style.fontWeight = "700";
+          statusBadge.textContent = "COMPLETED";
+        } else {
+          statusBadge.className = "sem-status-badge status-pill-badge badge-gold";
+          statusBadge.style.fontWeight = "700";
+          statusBadge.textContent = "UPCOMING";
+        }
+      }
+
+      if (activatedAtEl) {
+        if (details.status === "current") {
+          activatedAtEl.textContent = details.activatedAt ? formatDateOnly(details.activatedAt) : "Active Now";
+          activatedAtEl.style.color = "#15803D";
+        } else if (details.status === "completed") {
+          activatedAtEl.textContent = details.activatedAt ? formatDateOnly(details.activatedAt) : "Concluded";
+          activatedAtEl.style.color = "var(--admin-text-muted)";
+        } else {
+          activatedAtEl.textContent = "Pending Activation";
+          activatedAtEl.style.color = "var(--admin-text-muted)";
+        }
+      }
+
+      if (cardEl) {
+        if (details.status === "current") {
+          cardEl.style.borderColor = "#10B981";
+          cardEl.style.borderWidth = "2px";
+          cardEl.style.boxShadow = "0 4px 14px rgba(16, 185, 129, 0.15)";
+        } else {
+          cardEl.style.borderColor = "#CBD5E1";
+          cardEl.style.borderWidth = "1.5px";
+          cardEl.style.boxShadow = "var(--admin-shadow-sm)";
+        }
+      }
+
+      if (actionContainer) {
+        if (details.status === "current") {
+          actionContainer.innerHTML = `
+            <button type="button" class="btn-admin-primary" disabled style="width: 100%; padding: 0.55rem 0.75rem; font-size: 0.8125rem; font-weight: 800; background: #DCFCE7; color: #15803D; border-color: #86EFAC; cursor: default;">
+              🟢 Active
+            </button>
+          `;
+        } else if (details.status === "upcoming") {
+          actionContainer.innerHTML = `
+            <button type="button" class="btn-admin-primary btn-rollover-sem-action" data-sem="${name}" data-session="${scopeSession}" style="width: 100%; padding: 0.55rem 0.75rem; font-size: 0.8125rem; font-weight: 800;">
+              🚀 Roll Over / Activate
+            </button>
+          `;
+        } else {
+          actionContainer.innerHTML = `
+            <button type="button" class="btn-admin-secondary btn-rollover-sem-action" data-sem="${name}" data-session="${scopeSession}" style="width: 100%; padding: 0.55rem 0.75rem; font-size: 0.8125rem; font-weight: 700; color: #2563EB;">
+              🔄 Re-activate
+            </button>
+          `;
+        }
+      }
+    });
+
+    // Attach click listeners for rollover actions on cards
+    document.querySelectorAll(".btn-rollover-sem-action").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sem = btn.getAttribute("data-sem");
+        const sess = btn.getAttribute("data-session") || getEffectiveScopeSession();
+        openPreviewModal(sess, sem);
+      });
+    });
+  }
+
+  function openSemesterDetailsModal(semesterName, sessionOverride) {
+    const scopeSession = sessionOverride || getEffectiveScopeSession();
+    const details = getSemesterDetails(scopeSession, semesterName);
+
+    const titleEl = document.getElementById("sem-modal-title");
+    const nameEl = document.getElementById("sem-modal-name");
+    const sessBadge = document.getElementById("sem-modal-session-badge");
+    const statusBadge = document.getElementById("sem-modal-status-badge");
+    const totalDisplay = document.getElementById("sem-modal-total-records-display");
+    const statusText = document.getElementById("sem-modal-status-text");
+    const activatedAt = document.getElementById("sem-modal-activated-at");
+    const completedAt = document.getElementById("sem-modal-completed-at");
+    const authorizedBy = document.getElementById("sem-modal-authorized-by");
+
+    const countCourses = document.getElementById("sem-modal-count-courses");
+    const countAllocs = document.getElementById("sem-modal-count-allocs");
+    const countRegs = document.getElementById("sem-modal-count-regs");
+    const countCbt = document.getElementById("sem-modal-count-cbt");
+    const countResults = document.getElementById("sem-modal-count-results");
+
+    const pendingBanner = document.getElementById("sem-modal-pending-banner");
+    const pendingText = document.getElementById("sem-modal-pending-text");
+    const notesEl = document.getElementById("sem-modal-notes");
+    const actionContainer = document.getElementById("sem-modal-action-btn-container");
+
+    if (titleEl) titleEl.textContent = `${semesterName} Academic Overview`;
+    if (nameEl) nameEl.textContent = semesterName;
+    if (sessBadge) sessBadge.textContent = `Session: ${scopeSession}`;
+    if (totalDisplay) totalDisplay.textContent = details.totalRecords;
+
+    if (statusBadge) {
+      if (details.status === "current") {
+        statusBadge.className = "status-pill-badge badge-green";
+        statusBadge.textContent = "CURRENT ACTIVE";
+      } else if (details.status === "completed") {
+        statusBadge.className = "status-pill-badge badge-blue";
+        statusBadge.textContent = "COMPLETED";
+      } else {
+        statusBadge.className = "status-pill-badge badge-gold";
+        statusBadge.textContent = "UPCOMING";
+      }
+    }
+
+    if (statusText) {
+      statusText.textContent = details.status === "current"
+        ? "Active / Governing Institution-Wide"
+        : details.status === "completed"
+        ? "Concluded / Archived Historical Record"
+        : "Upcoming / Pending Activation";
+    }
+
+    if (activatedAt) {
+      activatedAt.textContent = details.activatedAt ? formatDateOnly(details.activatedAt) : (details.status === "current" ? "Active Now" : "Pending Activation");
+    }
+
+    if (completedAt) {
+      completedAt.textContent = details.status === "completed" ? "Concluded" : (details.status === "current" ? "In Progress" : "Not Started");
+    }
+
+    if (authorizedBy) {
+      authorizedBy.textContent = details.activatedBy || ADMIN_CONFIG.ADMIN_ID;
+    }
+
+    if (countCourses) countCourses.textContent = details.coursesCount;
+    if (countAllocs) countAllocs.textContent = details.allocationsCount;
+    if (countRegs) countRegs.textContent = details.registrationsCount;
+    if (countCbt) countCbt.textContent = details.cbtCount;
+    if (countResults) countResults.textContent = details.resultsCount;
+
+    if (pendingBanner && pendingText) {
+      if (details.totalPendingActivities > 0) {
+        pendingBanner.style.display = "block";
+        pendingText.innerHTML = `
+          • <strong>${details.openCbtCount}</strong> open/active CBT assessment(s)<br>
+          • <strong>${details.pendingResultsCount}</strong> pending examination result submission(s)<br>
+          • <strong>${details.pendingRegsCount}</strong> pending course registration approval(s)
+        `;
+      } else {
+        pendingBanner.style.display = "none";
+        pendingText.innerHTML = "";
+      }
+    }
+
+    if (notesEl) {
+      notesEl.textContent = `Official institutional academic governance records for ${semesterName} within ${scopeSession}. All course offerings, lecturer assignments, and examination entries remain permanently tracked under this term.`;
+    }
+
+    if (actionContainer) {
+      if (details.status === "current") {
+        actionContainer.innerHTML = `
+          <span class="session-strip-badge" style="background: #DCFCE7; color: #15803D; font-weight: 800; padding: 0.55rem 1rem;">
+            🟢 Currently Active Semester
+          </span>
+        `;
+      } else {
+        actionContainer.innerHTML = `
+          <button type="button" class="btn-admin-primary" id="btn-sem-modal-rollover-action" style="font-weight: 800; padding: 0.6rem 1.25rem;">
+            🚀 Roll Over &amp; Activate ${semesterName}
+          </button>
+        `;
+        const actionBtn = document.getElementById("btn-sem-modal-rollover-action");
+        if (actionBtn) {
+          actionBtn.addEventListener("click", () => {
+            if (modalSemesterDetails) modalSemesterDetails.style.display = "none";
+            openPreviewModal(scopeSession, semesterName);
+          });
+        }
+      }
+    }
+
+    if (modalSemesterDetails) modalSemesterDetails.style.display = "flex";
+  }
+
+  // Modal close handlers
+  const closeSemDetailsModal = () => {
+    if (modalSemesterDetails) modalSemesterDetails.style.display = "none";
+  };
+  if (btnCloseSemDetails) btnCloseSemDetails.addEventListener("click", closeSemDetailsModal);
+  if (btnCloseSemDetailsX) btnCloseSemDetailsX.addEventListener("click", closeSemDetailsModal);
+
+  // View details buttons on cards
+  document.querySelectorAll(".btn-view-sem-details").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const semName = btn.getAttribute("data-sem") || "First Semester";
+      openSemesterDetailsModal(semName, getEffectiveScopeSession());
+    });
+  });
+
   function renderAllViews() {
+    renderSemesterScopeOptions();
+    renderSemesterCards();
     renderDraftsTable();
     renderHistoryTable();
     renderAllSessionsTable();

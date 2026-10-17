@@ -4972,6 +4972,109 @@ export async function deleteDraftAcademicSession(docId) {
 
 /**
  * Preview proposed session rollover with real-time institutional metrics & warnings
+/**
+ * Detailed real-time metadata, record counts, and status for a specific semester
+ */
+export function getSemesterDetails(session, semester) {
+  const normSession = (session || "2026/2027").trim();
+  const normSem = (semester || "First Semester").trim();
+  const activeDoc = getActiveAcademicSession();
+  const allSessions = getCachedCollection(COLLECTIONS.ACADEMIC_SESSIONS) || [];
+  const isCurrentSession = (activeDoc?.currentSession || "2026/2027") === normSession;
+  const isArchivedSession = allSessions.some(s => (s.session || "").trim() === normSession && s.status === "archived");
+
+  const SEMESTER_ORDER = ["First Semester", "Second Semester", "Third Semester"];
+  const thisSemIndex = SEMESTER_ORDER.indexOf(normSem);
+  const activeSemIndex = SEMESTER_ORDER.indexOf(activeDoc?.currentSemester || "First Semester");
+
+  let status = "upcoming";
+  if (isCurrentSession) {
+    if (activeDoc?.currentSemester === normSem) {
+      status = "current";
+    } else if (thisSemIndex < activeSemIndex && thisSemIndex !== -1) {
+      status = "completed";
+    } else {
+      status = "upcoming";
+    }
+  } else if (isArchivedSession) {
+    status = "completed";
+  } else {
+    // Draft or future session
+    status = "upcoming";
+  }
+
+  // Associated academic records
+  const courses = getCachedCollection(COLLECTIONS.COURSES) || [];
+  const allocs = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+  const regs = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  const results = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const cbts = getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || [];
+
+  const matchedCourses = courses.filter(c => (c.academicSession || "2026/2027").trim() === normSession && (c.semester || "First Semester").trim() === normSem);
+  const matchedAllocs = allocs.filter(a => (a.academicSession || "2026/2027").trim() === normSession && (a.semester || "First Semester").trim() === normSem && a.status !== "ended");
+  const matchedRegs = regs.filter(r => (r.academicSession || "2026/2027").trim() === normSession && (r.semester || "First Semester").trim() === normSem);
+  const matchedResults = results.filter(r => (r.academicSession || "2026/2027").trim() === normSession && (r.semester || "First Semester").trim() === normSem);
+  const matchedCbts = cbts.filter(c => (c.academicSession || "2026/2027").trim() === normSession && (c.semester || "First Semester").trim() === normSem);
+
+  const openCbts = matchedCbts.filter(c => c.status === "open" || c.status === "published");
+  const pendingResults = matchedResults.filter(r => {
+    const st = (r.status || "").toLowerCase();
+    return st === "submitted" || st === "pending" || st === "draft";
+  });
+  const pendingRegs = matchedRegs.filter(r => {
+    const st = (r.status || "").toLowerCase();
+    return st === "submitted" || st === "resubmitted";
+  });
+
+  let activatedAt = null;
+  let activatedBy = null;
+  if (status === "current") {
+    activatedAt = activeDoc?.activatedAt || null;
+    activatedBy = activeDoc?.activatedBy || ADMIN_CREDENTIALS.ADMIN_ID;
+  } else if (activeDoc?.semesterHistory && activeDoc.semesterHistory[normSem]) {
+    activatedAt = activeDoc.semesterHistory[normSem].activatedAt || null;
+    activatedBy = activeDoc.semesterHistory[normSem].activatedBy || null;
+  }
+
+  return {
+    session: normSession,
+    semester: normSem,
+    status,
+    activatedAt,
+    activatedBy,
+    coursesCount: matchedCourses.length,
+    allocationsCount: matchedAllocs.length,
+    registrationsCount: matchedRegs.length,
+    resultsCount: matchedResults.length,
+    cbtCount: matchedCbts.length,
+    totalRecords: matchedCourses.length + matchedAllocs.length + matchedRegs.length + matchedResults.length + matchedCbts.length,
+    openCbtCount: openCbts.length,
+    pendingResultsCount: pendingResults.length,
+    pendingRegsCount: pendingRegs.length,
+    totalPendingActivities: openCbts.length + pendingResults.length + pendingRegs.length,
+    coursesList: matchedCourses,
+    allocationsList: matchedAllocs,
+    cbtList: matchedCbts,
+    resultsSummary: {
+      total: matchedResults.length,
+      approved: matchedResults.filter(r => (r.status || "").toLowerCase() === "approved").length,
+      pending: pendingResults.length
+    }
+  };
+}
+
+/**
+ * Returns structured metadata and records for First, Second, and Third Semester
+ */
+export function getThreeSemestersForSession(session) {
+  const normSession = (session || getActiveAcademicSession()?.currentSession || "2026/2027").trim();
+  return ["First Semester", "Second Semester", "Third Semester"].map(sem => {
+    return getSemesterDetails(normSession, sem);
+  });
+}
+
+/**
+ * Preview proposed session rollover with real-time institutional metrics & warnings
  */
 export async function previewSessionRollover(proposedSession, proposedSemester = "First Semester") {
   const valRes = validateAcademicSessionFormat(proposedSession);
@@ -4990,30 +5093,57 @@ export async function previewSessionRollover(proposedSession, proposedSemester =
   const courses = getCachedCollection(COLLECTIONS.COURSES) || [];
   const cbtAssessments = getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || [];
   const results = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const registrations = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
 
   const isSemesterTransition = (currentActive.currentSession === normSession);
 
+  // Active / open CBT tests
   const activeCbtCount = cbtAssessments.filter((a) => {
-    const isCurrentPeriod = (a.academicSession || "2026/2027") === currentActive.currentSession;
-    return isCurrentPeriod && (a.status === "open" || a.status === "published");
+    const matchSess = (a.academicSession || "2026/2027") === currentActive.currentSession;
+    const matchSem = isSemesterTransition ? (a.semester === currentActive.currentSemester) : true;
+    return matchSess && matchSem && (a.status === "open" || a.status === "published");
   }).length;
 
+  // Pending results
   const pendingResultsCount = results.filter((r) => {
-    const isCurrentPeriod = (r.academicSession || "2026/2027") === currentActive.currentSession;
+    const matchSess = (r.academicSession || "2026/2027") === currentActive.currentSession;
+    const matchSem = isSemesterTransition ? (r.semester === currentActive.currentSemester) : true;
     const st = (r.status || "").toLowerCase();
-    return isCurrentPeriod && (st === "submitted" || st === "pending" || st === "draft");
+    return matchSess && matchSem && (st === "submitted" || st === "pending" || st === "draft");
+  }).length;
+
+  // Pending registrations
+  const pendingRegsCount = registrations.filter((r) => {
+    const matchSess = (r.academicSession || "2026/2027") === currentActive.currentSession;
+    const matchSem = isSemesterTransition ? (r.semester === currentActive.currentSemester) : true;
+    const st = (r.status || "").toLowerCase();
+    return matchSess && matchSem && (st === "submitted" || st === "resubmitted");
   }).length;
 
   const warnings = [];
   if (isSemesterTransition) {
-    warnings.push(`In-Session Semester Transition: You are updating the active semester from ${currentActive.currentSemester || 'First Semester'} to ${proposedSemester} within session ${normSession}. All courses, registrations, CBT attempts, and examination grades for ${currentActive.currentSemester || 'First Semester'} remain permanently intact and archived.`);
-  } else {
-    warnings.push(`Academic Session Rollover: You are transitioning from session ${currentActive.currentSession} (${currentActive.currentSemester || 'First Semester'}) to ${normSession} (${proposedSemester}). Previous session records will be archived.`);
+    warnings.push(`In-Session Semester Transition: You are updating the active semester from "${currentActive.currentSemester || 'First Semester'}" to "${proposedSemester}" within session "${normSession}". The academic session number remains unchanged.`);
+    warnings.push(`Historical Preservation: All courses, registrations, lecturer allocations, CBT attempts, and examination grades for ${currentActive.currentSemester || 'First Semester'} remain permanently intact and archived.`);
     if (activeCbtCount > 0) {
-      warnings.push(`There are currently ${activeCbtCount} active or scheduled CBT assessment(s) in session ${currentActive.currentSession}. They will remain permanently associated with their original creation session.`);
+      warnings.push(`⚠️ Active CBT Assessments: There are currently ${activeCbtCount} open/scheduled CBT assessment(s) in ${currentActive.currentSemester || 'First Semester'}. Candidates writing tests should finish before transitioning.`);
     }
     if (pendingResultsCount > 0) {
-      warnings.push(`There are ${pendingResultsCount} unapproved or pending result record(s) under registry review in ${currentActive.currentSession}. They will remain intact without deletion.`);
+      warnings.push(`⚠️ Pending Examination Results: There are ${pendingResultsCount} unapproved or pending result record(s) under registry review in ${currentActive.currentSemester || 'First Semester'}. They will remain intact for review.`);
+    }
+    if (pendingRegsCount > 0) {
+      warnings.push(`⚠️ Unprocessed Registrations: There are ${pendingRegsCount} student course registration(s) currently awaiting approval in ${currentActive.currentSemester || 'First Semester'}.`);
+    }
+  } else {
+    warnings.push(`Academic Session Rollover: You are transitioning from session "${currentActive.currentSession}" (${currentActive.currentSemester || 'First Semester'}) to new session "${normSession}" (${proposedSemester}). Previous session records will be archived.`);
+    warnings.push(`Historical Preservation: All student accounts, matriculation numbers, lecturer credentials, and historical records remain fully preserved.`);
+    if (activeCbtCount > 0) {
+      warnings.push(`⚠️ Active CBT Assessments: There are currently ${activeCbtCount} active or scheduled CBT assessment(s) in session ${currentActive.currentSession}. They will remain permanently associated with their original creation session.`);
+    }
+    if (pendingResultsCount > 0) {
+      warnings.push(`⚠️ Pending Examination Results: There are ${pendingResultsCount} unapproved or pending result record(s) under registry review in ${currentActive.currentSession}. They will remain intact without deletion.`);
+    }
+    if (pendingRegsCount > 0) {
+      warnings.push(`⚠️ Unprocessed Registrations: There are ${pendingRegsCount} student registration(s) in session ${currentActive.currentSession}.`);
     }
   }
 
@@ -5030,15 +5160,16 @@ export async function previewSessionRollover(proposedSession, proposedSemester =
     courseCount: courses.length,
     activeCbtCount,
     pendingResultsCount,
+    pendingRegsCount,
     warnings
   };
 }
 
 /**
- * Officially PUBLISH a new Academic Session Rollover
+ * Officially PUBLISH a new Academic Session Rollover or In-Session Semester Transition
  * Supports transitions between all three semesters within the same academic session,
  * as well as full new academic session rollovers.
- * Authoritatively updates Firestore, archives previous session when appropriate,
+ * Authoritatively updates Firestore, archives previous session/semester when appropriate,
  * logs audit trail, and notifies all portals in real-time.
  */
 export async function publishSessionRollover({
@@ -5079,6 +5210,69 @@ export async function publishSessionRollover({
   const newDocId = normNewSession.replace("/", "_");
   const rolloverId = `rollover_${Date.now()}`;
 
+  // Concurrency tracking
+  const currentVersion = currentActive.version || 1;
+  const newVersion = currentVersion + 1;
+
+  // Update semester lifecycle tracking
+  const existingHistory = currentActive.semesterHistory || {
+    "First Semester": {
+      status: "current",
+      activatedAt: currentActive.activatedAt || "2026-09-01T08:00:00.000Z",
+      activatedBy: currentActive.activatedBy || publishedBy,
+      completedAt: null
+    },
+    "Second Semester": {
+      status: "upcoming",
+      activatedAt: null,
+      completedAt: null
+    },
+    "Third Semester": {
+      status: "upcoming",
+      activatedAt: null,
+      completedAt: null
+    }
+  };
+
+  const updatedSemesterHistory = { ...existingHistory };
+  if (isSemesterTransition) {
+    // Mark previous semester as completed
+    if (updatedSemesterHistory[previousSemester]) {
+      updatedSemesterHistory[previousSemester] = {
+        ...updatedSemesterHistory[previousSemester],
+        status: "completed",
+        completedAt: nowIso
+      };
+    }
+    // Mark target semester as current
+    updatedSemesterHistory[semester] = {
+      status: "current",
+      activatedAt: nowIso,
+      activatedBy: publishedBy,
+      completedAt: null
+    };
+  } else {
+    // Brand new academic session: previous session complete, reset target session semesters
+    updatedSemesterHistory["First Semester"] = {
+      status: semester === "First Semester" ? "current" : "upcoming",
+      activatedAt: semester === "First Semester" ? nowIso : null,
+      activatedBy: publishedBy,
+      completedAt: null
+    };
+    updatedSemesterHistory["Second Semester"] = {
+      status: semester === "Second Semester" ? "current" : "upcoming",
+      activatedAt: semester === "Second Semester" ? nowIso : null,
+      activatedBy: publishedBy,
+      completedAt: null
+    };
+    updatedSemesterHistory["Third Semester"] = {
+      status: semester === "Third Semester" ? "current" : "upcoming",
+      activatedAt: semester === "Third Semester" ? nowIso : null,
+      activatedBy: publishedBy,
+      completedAt: null
+    };
+  }
+
   // 1. If full session rollover: archive previous session in academic_sessions collection
   if (!isSemesterTransition) {
     const prevRecord = {
@@ -5108,7 +5302,7 @@ export async function publishSessionRollover({
     activatedBy: publishedBy,
     activatedByEmail: publishedByEmail,
     lastTransitionType: isSemesterTransition ? "semester_transition" : "session_rollover",
-    notes: notes || (isSemesterTransition ? `Semester transition to ${semester} in ${normNewSession}` : `Session rollover from ${previousSession}`)
+    notes: notes || (isSemesterTransition ? `In-session semester transition to ${semester} in ${normNewSession}` : `Session rollover from ${previousSession}`)
   };
   upsertCachedItem(COLLECTIONS.ACADEMIC_SESSIONS, newSessionRecord);
 
@@ -5133,6 +5327,8 @@ export async function publishSessionRollover({
     activatedBy: publishedBy,
     activatedByEmail: publishedByEmail,
     status: "published",
+    version: newVersion,
+    semesterHistory: updatedSemesterHistory,
     updatedAt: nowIso
   };
   setCachedActiveSession(authoritativeDoc);
@@ -5142,20 +5338,23 @@ export async function publishSessionRollover({
     id: rolloverId,
     previousSession,
     previousSemester,
+    previousStatus: "Current",
     newSession: normNewSession,
-    semester: semester || "First Semester",
-    type: isSemesterTransition ? "Semester Rollover" : "Session Rollover",
+    newSemester: semester || "First Semester",
+    newStatus: "Current",
+    transitionType: isSemesterTransition ? "Semester Rollover" : "Session Rollover",
     publishedAt: nowIso,
     publishedBy: publishedBy,
     publishedByEmail: publishedByEmail,
     status: "Published",
-    notes: notes || (isSemesterTransition ? `In-session transition to ${semester} within ${normNewSession}` : `Official institutional session rollover from ${previousSession} to ${normNewSession}`),
+    notes: notes || (isSemesterTransition ? `In-session transition from ${previousSemester} to ${semester} within ${normNewSession}` : `Official institutional session rollover from ${previousSession} to ${normNewSession}`),
     metrics: {
       studentCount: preview.studentCount,
       lecturerCount: preview.lecturerCount,
       courseCount: preview.courseCount,
       activeCbtCount: preview.activeCbtCount,
-      pendingResultsCount: preview.pendingResultsCount
+      pendingResultsCount: preview.pendingResultsCount,
+      pendingRegsCount: preview.pendingRegsCount || 0
     }
   };
   upsertCachedItem(COLLECTIONS.SESSION_ROLLOVERS, rolloverRecord);
@@ -5197,6 +5396,27 @@ export async function publishSessionRollover({
     publishedBy,
     rolloverId
   };
+}
+
+/**
+ * Dedicated helper for in-session semester rollover
+ */
+export async function publishSemesterRollover({
+  session,
+  targetSemester,
+  notes = "",
+  publishedBy = ADMIN_CREDENTIALS.ADMIN_ID,
+  publishedByEmail = ADMIN_CREDENTIALS.ADMIN_EMAIL
+}) {
+  const currentActive = getActiveAcademicSession();
+  const currentSession = session || currentActive.currentSession || "2026/2027";
+  return publishSessionRollover({
+    newSession: currentSession,
+    semester: targetSemester,
+    notes,
+    publishedBy,
+    publishedByEmail
+  });
 }
 
 // =============================================================================

@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is an Administrator
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == "dimabinnewportal@gmail.com" ||
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"
+      );
+    }
+
+    // System Settings & Active Academic Session
+    match /system_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Academic Sessions Registry
+    match /academic_sessions/{sessionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Session Rollover Audit History
+    match /session_rollovers/{rolloverId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Activity Logs
+    match /hgs_activity_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Courses & Curriculum Catalogue
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Course Allocations
+    match /course_allocations/{allocId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Course Registrations
+    match /course_registrations/{regId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.studentUid == request.auth.uid);
+    }
+
+    // Examination & CA Results
+    match /results/{resultId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || (isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "lecturer");
+    }
+
+    // CBT Assessments & Quizzes
+    match /cbt_assessments/{asmtId} {
+      allow read: if true;
+      allow write: if isAdmin() || (isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "lecturer");
+    }
+
+    // CBT Submissions & Attempts
+    match /cbt_submissions/{subId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Users & Roles
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+    }
+
+    // Study Centres
+    match /studyCentres/{centreId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
