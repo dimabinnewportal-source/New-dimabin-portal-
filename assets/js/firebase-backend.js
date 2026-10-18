@@ -1341,10 +1341,15 @@ export async function deleteLecturer(lecturerId) {
   return { success: true, id: targetId };
 }
 
-export function getLecturerAssignments(lecturerStaffId) {
+export function getLecturerAssignments(lecturerStaffId, { session = null, semester = null } = {}) {
   if (!lecturerStaffId) return [];
   const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
-  return allocations.filter((a) => (a.lecturerId || "").trim().toLowerCase() === lecturerStaffId.trim().toLowerCase());
+  return allocations.filter((a) => {
+    const matchLecturer = (a.lecturerId || "").trim().toLowerCase() === lecturerStaffId.trim().toLowerCase();
+    const matchSess = !session || (a.academicSession || "").trim() === session.trim();
+    const matchSem = !semester || (a.semester || "").trim() === semester.trim();
+    return matchLecturer && matchSess && matchSem;
+  });
 }
 
 /**
@@ -3664,29 +3669,19 @@ export async function saveLecturerGradeRecord(gradeData) {
     updatedAt: nowIso
   };
 
-  let resultId;
-  if (existing) {
-    resultId = existing.id;
-    upsertCachedItem(COLLECTIONS.RESULTS, { id: resultId, ...recordPayload });
-    try {
-      const docRef = doc(db, COLLECTIONS.RESULTS, resultId);
-      await updateDoc(docRef, { ...recordPayload, updatedAt: serverTimestamp() });
-    } catch (err) {
-      console.warn(`[DIMABIN Results] Update note: ${err.message}`);
-    }
-  } else {
-    resultId = `res_${matricNumber.replace(/[^A-Za-z0-9]/g, "_")}_${courseCode.replace(/[^A-Za-z0-9]/g, "_")}_${Date.now()}`;
-    upsertCachedItem(COLLECTIONS.RESULTS, { id: resultId, ...recordPayload, createdAt: nowIso });
-    try {
-      const docRef = await addDoc(collection(db, COLLECTIONS.RESULTS), {
-        ...recordPayload,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-      resultId = docRef.id;
-    } catch (err) {
-      console.warn(`[DIMABIN Results] Add note: ${err.message}`);
-    }
+  const stableResultId = `res_${matricNumber.replace(/[^A-Za-z0-9]/g, "_")}_${courseCode.replace(/[^A-Za-z0-9]/g, "_")}_${session.replace(/[^0-9]/g, "_")}_${semester.replace(/\s+/g, "_")}`;
+  const resultId = existing ? existing.id : stableResultId;
+
+  upsertCachedItem(COLLECTIONS.RESULTS, { id: resultId, ...recordPayload, createdAt: existing?.createdAt || nowIso });
+  try {
+    const docRef = doc(db, COLLECTIONS.RESULTS, resultId);
+    await setDoc(docRef, {
+      ...recordPayload,
+      createdAt: existing?.createdAt || serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.warn(`[DIMABIN Results] Save note: ${err.message}`);
   }
 
   await logActivity({
@@ -6090,6 +6085,8 @@ export async function startCbtAttempt({ studentId, studentName, matricNumber, st
     assessmentType: assessment.type,
     courseCode: assessment.courseCode,
     courseTitle: assessment.courseTitle,
+    academicSession: assessment.academicSession || "2026/2027",
+    semester: assessment.semester || "First Semester",
     studentId: studentId || normMatric,
     studentName: studentName || "Candidate",
     matricNumber: normMatric,
@@ -6451,4 +6448,495 @@ export function exportCbtResultsCsv(assessmentId) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+/**
+ * =========================================================================
+ * PHASE 2: SEMESTER-SPECIFIC DATABASE STRUCTURE & HISTORICAL PRESERVATION
+ * Multi-semester academic record retrieval, student transcripts, and migration
+ * =========================================================================
+ */
+
+/**
+ * Retrieve ALL course registrations for a student across all academic sessions & semesters
+ * Sorted chronologically so students can review, download, and print past slips.
+ */
+export function getStudentAllCourseRegistrations(studentIdentifier) {
+  if (!studentIdentifier) return [];
+  const list = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  const norm = String(studentIdentifier).trim().toLowerCase();
+
+  const matched = list.filter((r) => {
+    const mUid = (r.studentUid || r.userId || "").trim().toLowerCase();
+    const mMatric = (r.studentId || r.admissionNumber || "").trim().toLowerCase();
+    return mUid === norm || mMatric === norm;
+  });
+
+  return matched.sort((a, b) => {
+    const timeA = new Date(a.submittedAt || a.updatedAt || a.createdAt || 0).getTime();
+    const timeB = new Date(b.submittedAt || b.updatedAt || b.createdAt || 0).getTime();
+    return timeB - timeA;
+  });
+}
+
+/**
+ * Retrieve course registrations for a student within a specific academic session
+ */
+export function getStudentCourseRegistrationsBySession(studentIdentifier, session) {
+  const all = getStudentAllCourseRegistrations(studentIdentifier);
+  if (!session) return all;
+  const normSess = session.trim();
+  return all.filter((r) => (r.academicSession || "").trim() === normSess);
+}
+
+/**
+ * Retrieve student CBT attempts / test submissions across semesters
+ * Filterable by academic session, semester, and courseCode.
+ */
+export function getStudentCbtAttempts(studentIdentifier, { session = null, semester = null, courseCode = null } = {}) {
+  if (!studentIdentifier) return [];
+  const list = getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || [];
+  const norm = String(studentIdentifier).trim().toLowerCase();
+
+  return list.filter((s) => {
+    const mMatric = (s.matricNumber || s.studentId || "").trim().toLowerCase();
+    const mUid = (s.studentUid || s.userId || "").trim().toLowerCase();
+    const matchUser = mMatric === norm || mUid === norm;
+    const matchSess = !session || (s.academicSession || "").trim() === session.trim();
+    const matchSem = !semester || (s.semester || "").trim() === semester.trim();
+    const matchCourse = !courseCode || normalizeCourseCode(s.courseCode) === normalizeCourseCode(courseCode);
+    return matchUser && matchSess && matchSem && matchCourse;
+  }).sort((a, b) => new Date(b.startedAt || b.submittedAt || 0) - new Date(a.startedAt || a.submittedAt || 0));
+}
+
+/**
+ * Retrieve all results (CA scores, exam scores, final grades) for a student
+ * Filterable by academic session, semester, and approval state.
+ */
+export function getStudentResults(studentIdentifier, { session = null, semester = null, onlyApproved = false } = {}) {
+  if (!studentIdentifier) return [];
+  const list = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const norm = String(studentIdentifier).trim().toUpperCase();
+
+  return list.filter((r) => {
+    const matchMatric = (r.matricNumber || "").trim().toUpperCase() === norm;
+    const matchSess = !session || (r.academicSession || "").trim() === session.trim();
+    const matchSem = !semester || (r.semester || "").trim() === semester.trim();
+    const st = (r.status || "").toLowerCase();
+    const matchAppr = !onlyApproved || st === "approved" || st === "published";
+    return matchMatric && matchSess && matchSem && matchAppr;
+  }).sort((a, b) => (a.courseCode || "").localeCompare(b.courseCode || ""));
+}
+
+/**
+ * Multi-Semester Cumulative Academic Transcript Engine
+ * Computes semester-by-semester GPA and cumulative CGPA across First, Second, and Third Semesters.
+ * Retains historical records with absolute fidelity.
+ */
+export function getStudentAcademicTranscript(studentIdentifier) {
+  if (!studentIdentifier) return null;
+  const results = getStudentResults(studentIdentifier, { onlyApproved: false });
+  const registrations = getStudentAllCourseRegistrations(studentIdentifier);
+
+  const semesterMap = {};
+
+  // Hydrate from official registrations
+  registrations.forEach((reg) => {
+    const sess = (reg.academicSession || "2026/2027").trim();
+    const sem = (reg.semester || "First Semester").trim();
+    const key = `${sess}__${sem}`;
+    if (!semesterMap[key]) {
+      semesterMap[key] = {
+        session: sess,
+        semester: sem,
+        registrationId: reg.id,
+        registrationStatus: reg.status,
+        totalRegisteredCredits: reg.totalCredits || 0,
+        courses: [],
+        totalEarnedCredits: 0,
+        totalGradePoints: 0,
+        gpa: 0.0
+      };
+    } else {
+      semesterMap[key].registrationId = reg.id;
+      semesterMap[key].registrationStatus = reg.status;
+      semesterMap[key].totalRegisteredCredits = reg.totalCredits || semesterMap[key].totalRegisteredCredits;
+    }
+  });
+
+  // Attach academic grade results
+  results.forEach((res) => {
+    const sess = (res.academicSession || "2026/2027").trim();
+    const sem = (res.semester || "First Semester").trim();
+    const key = `${sess}__${sem}`;
+    if (!semesterMap[key]) {
+      semesterMap[key] = {
+        session: sess,
+        semester: sem,
+        registrationId: null,
+        registrationStatus: "unregistered_external",
+        totalRegisteredCredits: 0,
+        courses: [],
+        totalEarnedCredits: 0,
+        totalGradePoints: 0,
+        gpa: 0.0
+      };
+    }
+
+    const credits = parseInt(res.creditUnits || 3, 10);
+    const gp = parseFloat(
+      res.gradePoint !== undefined
+        ? res.gradePoint
+        : res.grade === "A" ? 5 : res.grade === "B" ? 4 : res.grade === "C" ? 3 : res.grade === "D" ? 2 : res.grade === "E" ? 1 : 0
+    );
+    const isPassed = (res.grade || "F").toUpperCase() !== "F";
+
+    semesterMap[key].courses.push({
+      resultId: res.id,
+      courseCode: res.courseCode,
+      courseTitle: res.courseTitle,
+      creditUnits: credits,
+      caScore: res.caScore !== undefined ? res.caScore : 0,
+      caPublished: Boolean(res.caPublished),
+      examScore: res.examScore !== undefined ? res.examScore : 0,
+      totalScore: res.score !== undefined ? res.score : 0,
+      grade: res.grade || "F",
+      gradePoint: gp,
+      status: res.status || "submitted",
+      isPassed
+    });
+
+    if (!semesterMap[key].registrationId) {
+      semesterMap[key].totalRegisteredCredits += credits;
+    }
+    if (isPassed) {
+      semesterMap[key].totalEarnedCredits += credits;
+    }
+    semesterMap[key].totalGradePoints += credits * gp;
+  });
+
+  // Calculate semester GPAs and institutional cumulative CGPA
+  const semestersArray = Object.values(semesterMap);
+  let cumulativeCredits = 0;
+  let cumulativeGradePoints = 0;
+  let cumulativeEarnedCredits = 0;
+
+  semestersArray.forEach((semRecord) => {
+    const hasGradedCourses = semRecord.courses.length > 0;
+    const gradedCredits = semRecord.courses.reduce((acc, c) => acc + c.creditUnits, 0);
+    const totalCreditsForGpa = hasGradedCourses ? (gradedCredits || semRecord.totalRegisteredCredits) : 0;
+
+    semRecord.isCompleted = hasGradedCourses;
+    semRecord.gpa = totalCreditsForGpa > 0 ? parseFloat((semRecord.totalGradePoints / totalCreditsForGpa).toFixed(2)) : 0.0;
+    if (totalCreditsForGpa > 0) {
+      cumulativeCredits += totalCreditsForGpa;
+      cumulativeGradePoints += semRecord.totalGradePoints;
+      cumulativeEarnedCredits += semRecord.totalEarnedCredits;
+    }
+  });
+
+  const cgpa = cumulativeCredits > 0 ? parseFloat((cumulativeGradePoints / cumulativeCredits).toFixed(2)) : 0.0;
+
+  return {
+    studentIdentifier,
+    totalSemesters: semestersArray.length,
+    semesters: semestersArray,
+    cumulativeCredits,
+    cumulativeEarnedCredits,
+    cumulativeGradePoints,
+    cgpa
+  };
+}
+
+/**
+ * Course offering academic history inspection across semesters
+ */
+export function getCourseAcademicHistory(courseCode, { session = null, semester = null, studyCentre = null } = {}) {
+  const normCode = normalizeCourseCode(courseCode);
+  const allCourses = getCachedCollection(COLLECTIONS.COURSES) || [...DEFAULT_DIMABIN_COURSES];
+  const allAllocs = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+  const allResults = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const allCbts = getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || [];
+
+  const course = allCourses.find((c) => normalizeCourseCode(c.courseCode) === normCode);
+
+  const allocations = allAllocs.filter((a) => {
+    const match = normalizeCourseCode(a.courseCode) === normCode;
+    const matchSess = !session || (a.academicSession || "").trim() === session.trim();
+    const matchSem = !semester || (a.semester || "").trim() === semester.trim();
+    const matchCentre = !studyCentre || (a.studyCentre || "").toLowerCase().includes(studyCentre.toLowerCase());
+    return match && matchSess && matchSem && matchCentre;
+  });
+
+  const results = allResults.filter((r) => {
+    const match = normalizeCourseCode(r.courseCode) === normCode;
+    const matchSess = !session || (r.academicSession || "").trim() === session.trim();
+    const matchSem = !semester || (r.semester || "").trim() === semester.trim();
+    const matchCentre = !studyCentre || (r.studyCentre || "").toLowerCase().includes(studyCentre.toLowerCase());
+    return match && matchSess && matchSem && matchCentre;
+  });
+
+  const cbtAssessments = allCbts.filter((c) => {
+    const match = normalizeCourseCode(c.courseCode) === normCode;
+    const matchSess = !session || (c.academicSession || "").trim() === session.trim();
+    const matchSem = !semester || (c.semester || "").trim() === semester.trim();
+    return match && matchSess && matchSem;
+  });
+
+  return {
+    courseCode: normCode,
+    course,
+    allocations,
+    results,
+    cbtAssessments,
+    totalResults: results.length,
+    passedCount: results.filter((r) => (r.grade || "F") !== "F").length
+  };
+}
+
+/**
+ * Semester academic record partition reader
+ * Safely inspects courses, allocations, registrations, tests, and grades for any semester.
+ */
+export function getSemesterAcademicRecords(session, semester, { studyCentre = null } = {}) {
+  const normSession = (session || "2026/2027").trim();
+  const normSem = (semester || "First Semester").trim();
+
+  const courses = (getCachedCollection(COLLECTIONS.COURSES) || []).filter(
+    (c) => (c.academicSession || "2026/2027").trim() === normSession && (c.semester || "First Semester").trim() === normSem
+  );
+
+  const allocations = (getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || []).filter(
+    (a) =>
+      (a.academicSession || "2026/2027").trim() === normSession &&
+      (a.semester || "First Semester").trim() === normSem &&
+      (!studyCentre || (a.studyCentre || "").toLowerCase().includes(studyCentre.toLowerCase()))
+  );
+
+  const registrations = (getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || []).filter(
+    (r) =>
+      (r.academicSession || "2026/2027").trim() === normSession &&
+      (r.semester || "First Semester").trim() === normSem &&
+      (!studyCentre || (r.studyCentre || "").toLowerCase().includes(studyCentre.toLowerCase()))
+  );
+
+  const cbts = (getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || []).filter(
+    (c) => (c.academicSession || "2026/2027").trim() === normSession && (c.semester || "First Semester").trim() === normSem
+  );
+
+  const results = (getCachedCollection(COLLECTIONS.RESULTS) || []).filter(
+    (r) =>
+      (r.academicSession || "2026/2027").trim() === normSession &&
+      (r.semester || "First Semester").trim() === normSem &&
+      (!studyCentre || (r.studyCentre || "").toLowerCase().includes(studyCentre.toLowerCase()))
+  );
+
+  return {
+    session: normSession,
+    semester: normSem,
+    courses,
+    allocations,
+    registrations,
+    cbts,
+    results,
+    counts: {
+      courses: courses.length,
+      allocations: allocations.length,
+      registrations: registrations.length,
+      cbts: cbts.length,
+      results: results.length,
+      total: courses.length + allocations.length + registrations.length + cbts.length + results.length
+    }
+  };
+}
+
+/**
+ * Idempotent, safe database schema audit and migration utility
+ * Ensures every academic record contains explicit academicSession and semester fields.
+ * Never deletes records. Preserves all existing historical data.
+ */
+export async function migrateSemesterAcademicRecords() {
+  const audit = {
+    timestamp: new Date().toISOString(),
+    status: "completed",
+    isIdempotent: true,
+    examined: {
+      courses: 0,
+      allocations: 0,
+      registrations: 0,
+      assessments: 0,
+      submissions: 0,
+      results: 0
+    },
+    migrated: {
+      courses: 0,
+      allocations: 0,
+      registrations: 0,
+      assessments: 0,
+      submissions: 0,
+      results: 0
+    },
+    legacyOrUnclassified: []
+  };
+
+  const activeDoc = getActiveAcademicSession();
+  const fallbackSession = activeDoc?.currentSession || "2026/2027";
+  const fallbackSemester = activeDoc?.currentSemester || "First Semester";
+
+  // 1. Audit & normalize Courses
+  const courses = getCachedCollection(COLLECTIONS.COURSES);
+  const courseList = Array.isArray(courses) && courses.length > 0 ? courses : [...DEFAULT_DIMABIN_COURSES];
+  audit.examined.courses = courseList.length;
+
+  courseList.forEach((c) => {
+    let changed = false;
+    if (!c.academicSession || !c.academicSession.trim()) {
+      c.academicSession = fallbackSession;
+      changed = true;
+    }
+    if (!c.semester || !c.semester.trim()) {
+      if (c.id?.includes("sem2") || c.courseCode?.endsWith("-102") || c.courseCode?.endsWith("-202")) {
+        c.semester = "Second Semester";
+      } else if (c.id?.includes("sem3") || c.courseCode?.endsWith("-103") || c.courseCode?.endsWith("-203")) {
+        c.semester = "Third Semester";
+      } else {
+        c.semester = "First Semester";
+      }
+      changed = true;
+    }
+    if (changed) audit.migrated.courses++;
+  });
+  setCachedCollection(COLLECTIONS.COURSES, courseList);
+
+  // 2. Audit & normalize Course Allocations
+  const allocs = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+  audit.examined.allocations = allocs.length;
+  allocs.forEach((a) => {
+    let changed = false;
+    if (!a.academicSession || !a.academicSession.trim()) {
+      a.academicSession = fallbackSession;
+      changed = true;
+    }
+    if (!a.semester || !a.semester.trim()) {
+      a.semester = fallbackSemester;
+      changed = true;
+    }
+    if (changed) audit.migrated.allocations++;
+  });
+  setCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS, allocs);
+
+  // 3. Audit & normalize Course Registrations
+  const regs = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  audit.examined.registrations = regs.length;
+  regs.forEach((r) => {
+    let changed = false;
+    if (!r.academicSession || !r.academicSession.trim()) {
+      r.academicSession = fallbackSession;
+      changed = true;
+    }
+    if (!r.semester || !r.semester.trim()) {
+      r.semester = fallbackSemester;
+      changed = true;
+    }
+    if (changed) audit.migrated.registrations++;
+  });
+  setCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS, regs);
+
+  // 4. Audit & normalize CBT Assessments
+  const cbts = getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || [];
+  audit.examined.assessments = cbts.length;
+  cbts.forEach((a) => {
+    let changed = false;
+    if (!a.academicSession || !a.academicSession.trim()) {
+      a.academicSession = fallbackSession;
+      changed = true;
+    }
+    if (!a.semester || !a.semester.trim()) {
+      a.semester = fallbackSemester;
+      changed = true;
+    }
+    if (changed) audit.migrated.assessments++;
+  });
+  setCachedCollection(COLLECTIONS.CBT_ASSESSMENTS, cbts);
+
+  // 5. Audit & normalize CBT Submissions (inherit from assessment if absent)
+  const subs = getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || [];
+  audit.examined.submissions = subs.length;
+  subs.forEach((s) => {
+    let changed = false;
+    if (!s.academicSession || !s.semester) {
+      const parentAsmt = cbts.find((a) => a.id === s.assessmentId);
+      s.academicSession = s.academicSession || parentAsmt?.academicSession || fallbackSession;
+      s.semester = s.semester || parentAsmt?.semester || fallbackSemester;
+      changed = true;
+    }
+    if (changed) audit.migrated.submissions++;
+  });
+  setCachedCollection(COLLECTIONS.CBT_SUBMISSIONS, subs);
+
+  // 6. Audit & normalize Results
+  const results = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  audit.examined.results = results.length;
+  results.forEach((res) => {
+    let changed = false;
+    if (!res.academicSession || !res.academicSession.trim()) {
+      res.academicSession = fallbackSession;
+      changed = true;
+    }
+    if (!res.semester || !res.semester.trim()) {
+      res.semester = fallbackSemester;
+      changed = true;
+    }
+    if (changed) audit.migrated.results++;
+  });
+  setCachedCollection(COLLECTIONS.RESULTS, results);
+
+  const totalMigrated =
+    audit.migrated.courses +
+    audit.migrated.allocations +
+    audit.migrated.registrations +
+    audit.migrated.assessments +
+    audit.migrated.submissions +
+    audit.migrated.results;
+
+  await logActivity({
+    action: "semester_records_audit_migration",
+    description: `Audited database records: ${audit.examined.courses} courses, ${audit.examined.allocations} allocations, ${audit.examined.registrations} registrations, ${audit.examined.assessments} CBT tests, ${audit.examined.submissions} attempts, ${audit.examined.results} results. Migrated missing fields: ${totalMigrated}.`,
+    targetCollection: COLLECTIONS.SYSTEM_SETTINGS,
+    targetDocumentId: "academic_session"
+  });
+
+  return audit;
+}
+
+// Expose safe inspection namespace on window
+if (typeof window !== "undefined") {
+  window.dimabinBackend = Object.assign(window.dimabinBackend || {}, {
+    COLLECTIONS,
+    ADMIN_CREDENTIALS,
+    DEFAULT_DIMABIN_COURSES,
+    DEFAULT_ACADEMIC_SESSIONS,
+    getActiveAcademicSession,
+    subscribeActiveAcademicSession,
+    subscribeAcademicSessions,
+    getSemesterDetails,
+    getThreeSemestersForSession,
+    previewSessionRollover,
+    publishSessionRollover,
+    saveDraftAcademicSession,
+    deleteDraftAcademicSession,
+    getStudentCourseRegistration,
+    getStudentAllCourseRegistrations,
+    getStudentCourseRegistrationsBySession,
+    getStudentCbtAttempts,
+    getStudentResults,
+    getStudentAcademicTranscript,
+    getCourseAcademicHistory,
+    getSemesterAcademicRecords,
+    migrateSemesterAcademicRecords,
+    getLecturerAssignments,
+    saveLecturerGradeRecord,
+    approveAndPublishCourseResults,
+    rejectCourseResultsWithFeedback
+  });
 }
