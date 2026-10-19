@@ -1231,3 +1231,455 @@ button, input, select, textarea {
   }
 }
 
+/* ==========================================================================
+   PHASE 3: THREE-SEMESTER STUDENT INTERFACE & HISTORICAL ACADEMIC RECORDS
+   DIMABIN Palette: Navy (#122452), Blue (#1F3C82), Gold (#F5B800), White (#FFFFFF)
+   ========================================================================== */
+
+.student-semester-lifecycle-section {
+  background: #FFFFFF;
+  border: 1px solid var(--student-border);
+  border-radius: var(--student-radius-md);
+  padding: 1.5rem;
+  margin-bottom: 1.75rem;
+  box-shadow: var(--student-shadow-sm);
+}
+
+.semester-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border-bottom: 1px solid var(--student-border);
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.semester-section-title-wrap h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--student-navy);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.semester-section-subtitle {
+  font-size: 0.8125rem;
+  color: var(--student-text-muted);
+}
+
+.semester-session-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--student-blue-subtle);
+  color: var(--student-blue);
+  border: 1px solid #BFDBFE;
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.78125rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.student-semester-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.student-sem-card {
+  background: #FFFFFF;
+  border: 1.5px solid var(--student-border);
+  border-radius: var(--student-radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.student-sem-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: var(--student-shadow-md);
+  transform: translateY(-2px);
+}
+
+.student-sem-card.is-current {
+  border: 2px solid var(--student-blue);
+  border-top: 4px solid var(--student-gold);
+  background: linear-gradient(180deg, #FAFCFF 0%, #FFFFFF 100%);
+  box-shadow: 0 4px 16px rgba(31, 60, 130, 0.08);
+}
+
+.student-sem-card.is-completed {
+  border-left: 3.5px solid #2563EB;
+}
+
+.student-sem-card.is-upcoming {
+  opacity: 0.92;
+  background: #FBFBFD;
+}
+
+.sem-card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.sem-card-title-group h4 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--student-navy);
+  margin-bottom: 0.15rem;
+}
+
+.sem-card-session-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--student-blue);
+}
+
+.sem-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 12px;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sem-status-current {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+}
+
+.sem-status-completed {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
+
+.sem-status-upcoming {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+}
+
+.sem-status-historical {
+  background: #F3E8FF;
+  color: #7E22CE;
+  border: 1px solid #D8B4FE;
+}
+
+.sem-card-middle-content {
+  margin-bottom: 1.15rem;
+}
+
+.sem-student-reg-box {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--student-radius-sm);
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.sem-reg-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+}
+
+.sem-reg-label {
+  color: var(--student-text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+}
+
+.sem-reg-load-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--student-navy);
+}
+
+.sem-gpa-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #FEF9E7;
+  border: 1px solid #FDE68A;
+  color: #92400E;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.sem-card-description {
+  font-size: 0.78125rem;
+  color: var(--student-text-muted);
+  line-height: 1.45;
+}
+
+.sem-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: auto;
+  border-top: 1px solid #F1F5F9;
+  padding-top: 0.85rem;
+}
+
+.sem-btn-primary {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--student-radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.sem-btn-gold {
+  background: var(--student-gold);
+  color: var(--student-navy-dark);
+}
+
+.sem-btn-gold:hover {
+  background: var(--student-gold-hover);
+}
+
+.sem-btn-blue {
+  background: var(--student-blue);
+  color: #FFFFFF;
+}
+
+.sem-btn-blue:hover {
+  background: var(--student-navy);
+}
+
+.sem-btn-outline {
+  background: #FFFFFF;
+  color: var(--student-navy);
+  border: 1px solid #CBD5E1;
+}
+
+.sem-btn-outline:hover {
+  background: #F8FAFC;
+  border-color: #94A3B8;
+}
+
+.sem-btn-secondary-link {
+  background: transparent;
+  border: none;
+  color: var(--student-blue);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  padding: 0.2rem;
+  text-decoration: underline;
+}
+
+.sem-btn-secondary-link:hover {
+  color: var(--student-navy);
+}
+
+/* ==========================================================================
+   HISTORICAL ACADEMIC RECORDS MODAL DIALOG
+   ========================================================================== */
+.student-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 22, 51, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.student-modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.student-modal-card {
+  background: #FFFFFF;
+  border-radius: var(--student-radius-md);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--student-border);
+}
+
+.student-modal-header {
+  background: var(--student-navy);
+  color: #FFFFFF;
+  padding: 1.15rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.modal-inst-seal {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  background: #FFFFFF;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.modal-header-titles h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin: 0;
+  color: #FFFFFF;
+}
+
+.modal-header-sub {
+  font-size: 0.75rem;
+  color: #CBD5E1;
+  margin-top: 2px;
+}
+
+.modal-close-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #FFFFFF;
+  font-size: 1.25rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.student-modal-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.student-modal-summary-strip {
+  background: #F8FAFC;
+  border: 1px solid var(--student-border);
+  border-radius: var(--student-radius-sm);
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.modal-stat-group {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.modal-stat-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-stat-label {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: var(--student-text-muted);
+  text-transform: uppercase;
+}
+
+.modal-stat-val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--student-navy);
+}
+
+.modal-tabs-nav {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--student-border);
+  margin-bottom: 1.15rem;
+  overflow-x: auto;
+}
+
+.modal-tab-btn {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--student-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.modal-tab-btn.active {
+  color: var(--student-blue);
+  border-bottom-color: var(--student-blue);
+}
+
+.student-modal-footer {
+  background: #F8FAFC;
+  border-top: 1px solid var(--student-border);
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+

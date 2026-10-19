@@ -142,17 +142,31 @@ export function formatDateOnly(val) {
 /**
  * Local resilient cache helpers
  */
+const memoryCacheStore = new Map();
+
 function getCachedCollection(collName) {
+  if (memoryCacheStore.has(collName)) {
+    return memoryCacheStore.get(collName);
+  }
   try {
-    const raw = localStorage.getItem(`${CACHE_PREFIX}${collName}`);
-    if (raw) return JSON.parse(raw);
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(`${CACHE_PREFIX}${collName}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        memoryCacheStore.set(collName, parsed);
+        return parsed;
+      }
+    }
   } catch (_) {}
   return [];
 }
 
 function setCachedCollection(collName, items) {
+  memoryCacheStore.set(collName, Array.isArray(items) ? [...items] : items);
   try {
-    localStorage.setItem(`${CACHE_PREFIX}${collName}`, JSON.stringify(items));
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(`${CACHE_PREFIX}${collName}`, JSON.stringify(items));
+    }
   } catch (_) {}
 }
 
@@ -2864,7 +2878,8 @@ export async function submitStudentCourseRegistration({
   }
 
   // 3. Fetch central catalogue to validate courses
-  const allCourses = getCachedCollection(COLLECTIONS.COURSES) || [...DEFAULT_DIMABIN_COURSES];
+  const cachedCourses = getCachedCollection(COLLECTIONS.COURSES);
+  const allCourses = Array.isArray(cachedCourses) && cachedCourses.length > 0 ? cachedCourses : [...DEFAULT_DIMABIN_COURSES];
   const allAllocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
 
   // Deduplicate selected IDs
@@ -4644,17 +4659,30 @@ const DEFAULT_SESSION_ROLLOVERS = Object.freeze([
   }
 ]);
 
+let memoryActiveSessionDoc = null;
+
 function getCachedActiveSession() {
+  if (memoryActiveSessionDoc) {
+    return { ...memoryActiveSessionDoc };
+  }
   try {
-    const raw = localStorage.getItem("dimabin_active_session");
-    if (raw) return JSON.parse(raw);
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem("dimabin_active_session");
+      if (raw) {
+        memoryActiveSessionDoc = JSON.parse(raw);
+        return { ...memoryActiveSessionDoc };
+      }
+    }
   } catch (_) {}
   return { ...DEFAULT_ACTIVE_SESSION_DOC };
 }
 
 function setCachedActiveSession(data) {
+  memoryActiveSessionDoc = data ? { ...data } : null;
   try {
-    localStorage.setItem("dimabin_active_session", JSON.stringify(data));
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("dimabin_active_session", JSON.stringify(data));
+    }
   } catch (_) {}
 }
 

@@ -339,6 +339,162 @@
             </div>
           </div>
 
+          <!-- ================================================================
+               PHASE 3: THREE-SEMESTER ACADEMIC INTERFACE
+               First Semester, Second Semester, and Third Semester Management
+               ================================================================ -->
+          <div class="student-semester-lifecycle-section" id="student-semester-lifecycle-section">
+            <div class="semester-section-header">
+              <div class="semester-section-title-wrap">
+                <h3>
+                  <span>🏛️</span> Academic Semesters &amp; Term Lifecycle
+                </h3>
+                <p class="semester-section-subtitle">
+                  Inspect semester-specific course enrollment, register for open academic terms, and review historical performance.
+                </p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <span class="semester-session-pill" id="student-sem-current-session-pill">
+                  <span>✦</span> Active Academic Session: <strong id="stu-active-session-label">2026/2027</strong>
+                </span>
+                <span class="sem-status-badge sem-status-current" id="stu-active-sem-badge">
+                  ● ACTIVE: FIRST SEMESTER
+                </span>
+              </div>
+            </div>
+
+            <!-- THREE SEMESTER CARDS -->
+            <div class="student-semester-cards-grid">
+              
+              <!-- CARD 1: FIRST SEMESTER -->
+              <div class="student-sem-card is-current" id="stu-card-sem-first">
+                <div>
+                  <div class="sem-card-top-row">
+                    <div class="sem-card-title-group">
+                      <h4>First Semester</h4>
+                      <span class="sem-card-session-tag" id="sem1-card-session-tag">2026/2027 Academic Session</span>
+                    </div>
+                    <span class="sem-status-badge sem-status-current" id="sem1-status-badge">CURRENT</span>
+                  </div>
+
+                  <div class="sem-card-middle-content">
+                    <div class="sem-student-reg-box">
+                      <div class="sem-reg-status-row">
+                        <span class="sem-reg-label">Course Registration</span>
+                        <span id="sem1-reg-status-pill" class="status-pill-badge badge-gold">Checking...</span>
+                      </div>
+                      <div class="sem-reg-load-row">
+                        <span id="sem1-courses-count">0 Courses Enrolled</span>
+                        <span id="sem1-credits-count">0 Credit Units</span>
+                      </div>
+                      <div id="sem1-gpa-container" style="display: none; margin-top: 0.45rem; justify-content: space-between; align-items: center;">
+                        <span class="sem-reg-label">Academic GPA:</span>
+                        <span class="sem-gpa-indicator" id="sem1-gpa-badge">GPA: 0.00</span>
+                      </div>
+                    </div>
+                    <p class="sem-card-description">
+                      Foundation theological courses, biblical hermeneutics, and Old Testament canonical studies.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sem-card-actions">
+                  <button type="button" class="sem-btn-primary sem-btn-gold" id="btn-sem1-action">
+                    Open First Semester →
+                  </button>
+                  <button type="button" class="sem-btn-secondary-link" id="btn-sem1-secondary">
+                    View Academic Records &amp; Slip
+                  </button>
+                </div>
+              </div>
+
+              <!-- CARD 2: SECOND SEMESTER -->
+              <div class="student-sem-card is-upcoming" id="stu-card-sem-second">
+                <div>
+                  <div class="sem-card-top-row">
+                    <div class="sem-card-title-group">
+                      <h4>Second Semester</h4>
+                      <span class="sem-card-session-tag" id="sem2-card-session-tag">2026/2027 Academic Session</span>
+                    </div>
+                    <span class="sem-status-badge sem-status-upcoming" id="sem2-status-badge">UPCOMING</span>
+                  </div>
+
+                  <div class="sem-card-middle-content">
+                    <div class="sem-student-reg-box">
+                      <div class="sem-reg-status-row">
+                        <span class="sem-reg-label">Course Registration</span>
+                        <span id="sem2-reg-status-pill" class="status-pill-badge badge-blue">Not Registered</span>
+                      </div>
+                      <div class="sem-reg-load-row">
+                        <span id="sem2-courses-count">0 Courses Enrolled</span>
+                        <span id="sem2-credits-count">0 Credit Units</span>
+                      </div>
+                      <div id="sem2-gpa-container" style="display: none; margin-top: 0.45rem; justify-content: space-between; align-items: center;">
+                        <span class="sem-reg-label">Academic GPA:</span>
+                        <span class="sem-gpa-indicator" id="sem2-gpa-badge">GPA: 0.00</span>
+                      </div>
+                    </div>
+                    <p class="sem-card-description">
+                      Systematic theology, New Testament Pauline literature, pneumatology, and Christian ethics.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sem-card-actions">
+                  <button type="button" class="sem-btn-primary sem-btn-outline" id="btn-sem2-action">
+                    View Semester Records
+                  </button>
+                  <button type="button" class="sem-btn-secondary-link" id="btn-sem2-secondary">
+                    Semester Curriculum Overview
+                  </button>
+                </div>
+              </div>
+
+              <!-- CARD 3: THIRD SEMESTER -->
+              <div class="student-sem-card is-upcoming" id="stu-card-sem-third">
+                <div>
+                  <div class="sem-card-top-row">
+                    <div class="sem-card-title-group">
+                      <h4>Third Semester</h4>
+                      <span class="sem-card-session-tag" id="sem3-card-session-tag">2026/2027 Academic Session</span>
+                    </div>
+                    <span class="sem-status-badge sem-status-upcoming" id="sem3-status-badge">UPCOMING</span>
+                  </div>
+
+                  <div class="sem-card-middle-content">
+                    <div class="sem-student-reg-box">
+                      <div class="sem-reg-status-row">
+                        <span class="sem-reg-label">Course Registration</span>
+                        <span id="sem3-reg-status-pill" class="status-pill-badge badge-blue">Not Registered</span>
+                      </div>
+                      <div class="sem-reg-load-row">
+                        <span id="sem3-courses-count">0 Courses Enrolled</span>
+                        <span id="sem3-credits-count">0 Credit Units</span>
+                      </div>
+                      <div id="sem3-gpa-container" style="display: none; margin-top: 0.45rem; justify-content: space-between; align-items: center;">
+                        <span class="sem-reg-label">Academic GPA:</span>
+                        <span class="sem-gpa-indicator" id="sem3-gpa-badge">GPA: 0.00</span>
+                      </div>
+                    </div>
+                    <p class="sem-card-description">
+                      Advanced biblical research, eschatology, ministerial leadership, and evangelism practicum.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sem-card-actions">
+                  <button type="button" class="sem-btn-primary sem-btn-outline" id="btn-sem3-action">
+                    View Semester Records
+                  </button>
+                  <button type="button" class="sem-btn-secondary-link" id="btn-sem3-secondary">
+                    Semester Curriculum Overview
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
           <!-- DUAL COLUMN SPLIT -->
           <div class="student-dual-grid">
 
@@ -920,8 +1076,17 @@
                   Official semester examinations (70%) and lecturer-published Continuous Assessments (30%).
                 </p>
               </div>
-              <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center;">
-                <button type="button" class="student-card-action-btn" id="btn-print-student-result-slip" onclick="window.print()" style="font-weight: 700; padding: 0.5rem 1rem;">
+              <div class="no-print" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                  <label for="stu-results-semester-filter" style="font-size: 0.75rem; font-weight: 800; color: var(--student-navy); text-transform: uppercase;">Term Scope:</label>
+                  <select id="stu-results-semester-filter" style="padding: 0.4rem 0.85rem; border-radius: var(--student-radius-sm); border: 1.5px solid var(--student-border); font-size: 0.8125rem; font-weight: 700; color: var(--student-navy); background: #FFFFFF; cursor: pointer;">
+                    <option value="ALL">All Semesters (Cumulative Transcript)</option>
+                    <option value="First Semester">First Semester</option>
+                    <option value="Second Semester">Second Semester</option>
+                    <option value="Third Semester">Third Semester</option>
+                  </select>
+                </div>
+                <button type="button" class="student-card-action-btn" id="btn-print-student-result-slip" onclick="window.print()" style="font-weight: 700; padding: 0.45rem 1rem;">
                   🖨️ Print Statement of Results
                 </button>
               </div>
@@ -955,8 +1120,14 @@
                     </div>
                     <div style="height: 24px; width: 1px; background: #CBD5E1;"></div>
                     <div>
-                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase; display: block;">Semester GPA</span>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase; display: block;" id="stu-gpa-label">Term GPA</span>
                       <strong style="font-size: 1.2rem; color: var(--student-blue);" id="stu-gpa-val">0.00</strong>
+                      <span style="font-size: 0.75rem; color: var(--student-text-muted);">/ 5.00</span>
+                    </div>
+                    <div style="height: 24px; width: 1px; background: #CBD5E1;"></div>
+                    <div>
+                      <span style="font-size: 0.72rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase; display: block;">Cumulative CGPA</span>
+                      <strong style="font-size: 1.2rem; color: #B45309;" id="stu-cgpa-val">0.00</strong>
                       <span style="font-size: 0.75rem; color: var(--student-text-muted);">/ 5.00</span>
                     </div>
                   </div>
@@ -1603,6 +1774,196 @@
       <div style="display: flex; justify-content: flex-end;">
         <button type="button" class="btn btn-primary" id="btn-done-review" style="font-weight: 700;">Close Review</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       PHASE 3: HISTORICAL ACADEMIC RECORDS & TRANSCRIPT MODAL DOSSIER
+       Enables students to inspect past semester records, grades, CA, and slips
+       ====================================================================== -->
+  <div class="student-modal-backdrop" id="modal-student-historical-record" role="dialog" aria-modal="true" aria-labelledby="hist-modal-title">
+    <div class="student-modal-card">
+      
+      <!-- Modal Header -->
+      <div class="student-modal-header">
+        <div class="modal-header-left">
+          <img src="assets/images/dimabin-logo.png" alt="DIMABIN" class="modal-inst-seal">
+          <div class="modal-header-titles">
+            <h3 id="hist-modal-title">Semester Academic Dossier &amp; Record</h3>
+            <div class="modal-header-sub" id="hist-modal-sem-session">
+              First Semester · 2026/2027 Academic Session
+            </div>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-hist-modal" aria-label="Close Modal">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="student-modal-body">
+        
+        <!-- Summary Strip -->
+        <div class="student-modal-summary-strip">
+          <div class="modal-stat-group">
+            <div class="modal-stat-item">
+              <span class="modal-stat-label">Registered Units</span>
+              <span class="modal-stat-val" id="hist-modal-reg-credits">0</span>
+            </div>
+            <div style="width: 1px; height: 32px; background: #CBD5E1;"></div>
+            <div class="modal-stat-item">
+              <span class="modal-stat-label">Units Passed</span>
+              <span class="modal-stat-val" style="color: #16A34A;" id="hist-modal-passed-credits">0</span>
+            </div>
+            <div style="width: 1px; height: 32px; background: #CBD5E1;"></div>
+            <div class="modal-stat-item">
+              <span class="modal-stat-label">Semester GPA</span>
+              <span class="modal-stat-val" style="color: var(--student-blue);" id="hist-modal-gpa">0.00</span>
+            </div>
+          </div>
+
+          <div>
+            <span class="status-pill-badge badge-blue" id="hist-modal-status-badge">
+              OFFICIAL RECORDS ARCHIVE
+            </span>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="modal-tabs-nav">
+          <button type="button" class="modal-tab-btn active" id="btn-hist-tab-results">
+            🎓 Examination Results &amp; Grades
+          </button>
+          <button type="button" class="modal-tab-btn" id="btn-hist-tab-ca">
+            📝 Continuous Assessment (CA 30%)
+          </button>
+          <button type="button" class="modal-tab-btn" id="btn-hist-tab-reg">
+            📖 Course Registration &amp; Slip
+          </button>
+          <button type="button" class="modal-tab-btn" id="btn-hist-tab-cbt">
+            🖥️ CBT Test History
+          </button>
+        </div>
+
+        <!-- PANE 1: EXAMINATION RESULTS -->
+        <div id="hist-pane-results">
+          <div class="student-table-wrap">
+            <table class="student-table" style="font-size: 0.8125rem;">
+              <thead>
+                <tr>
+                  <th>Course Code</th>
+                  <th>Course Title</th>
+                  <th style="text-align: center;">Units</th>
+                  <th style="text-align: center;">CA (30)</th>
+                  <th style="text-align: center;">Exam (70)</th>
+                  <th style="text-align: center;">Total</th>
+                  <th style="text-align: center;">Grade</th>
+                  <th style="text-align: center;">GP</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="hist-results-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PANE 2: CA BREAKDOWN -->
+        <div id="hist-pane-ca" style="display: none;">
+          <div class="student-table-wrap">
+            <table class="student-table" style="font-size: 0.8125rem;">
+              <thead>
+                <tr>
+                  <th>Course Code</th>
+                  <th>Course Title</th>
+                  <th>Faculty Instructor</th>
+                  <th style="text-align: center;">CBT (/10)</th>
+                  <th style="text-align: center;">Att (/5)</th>
+                  <th style="text-align: center;">Ass (/5)</th>
+                  <th style="text-align: center;">Prac (/10)</th>
+                  <th style="text-align: center; color: #15803D;">Total CA (/30)</th>
+                  <th style="text-align: center;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="hist-ca-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PANE 3: REGISTERED COURSES & SLIP SUMMARY -->
+        <div id="hist-pane-reg" style="display: none;">
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <div style="font-size: 0.75rem; color: var(--student-text-muted); font-weight: 700; text-transform: uppercase;">Official Registry Status:</div>
+              <div id="hist-reg-official-status" style="font-size: 0.95rem; font-weight: 800; color: var(--student-navy);">Approved Registration</div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="button" class="student-btn-gold" id="btn-hist-pane-print-slip" style="padding: 0.45rem 1rem; font-size: 0.8125rem; font-weight: 800;">
+                🖨️ Print Original Slip
+              </button>
+              <button type="button" class="student-card-action-btn" id="btn-hist-pane-download-pdf" style="padding: 0.45rem 1rem; font-size: 0.8125rem; font-weight: 800; background: #fff;">
+                📥 Download PDF Slip
+              </button>
+            </div>
+          </div>
+
+          <div class="student-table-wrap">
+            <table class="student-table" style="font-size: 0.8125rem;">
+              <thead>
+                <tr>
+                  <th style="width: 40px; text-align: center;">#</th>
+                  <th>Course Code</th>
+                  <th>Course Title</th>
+                  <th style="text-align: center;">Units</th>
+                  <th>Assigned Lecturer</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="hist-courses-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PANE 4: CBT TEST HISTORY -->
+        <div id="hist-pane-cbt" style="display: none;">
+          <div class="student-table-wrap">
+            <table class="student-table" style="font-size: 0.8125rem;">
+              <thead>
+                <tr>
+                  <th>Course Code</th>
+                  <th>Assessment Title</th>
+                  <th>Date Taken</th>
+                  <th style="text-align: center;">Score</th>
+                  <th style="text-align: center;">Max Marks</th>
+                  <th style="text-align: center;">%</th>
+                  <th style="text-align: center;">Grade</th>
+                  <th>Marking Status</th>
+                </tr>
+              </thead>
+              <tbody id="hist-cbt-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="student-modal-footer">
+        <div style="font-size: 0.75rem; color: var(--student-text-muted);" id="hist-modal-footnote">
+          Official academic record sealed and preserved by Academic Board regulations.
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button type="button" class="student-card-action-btn" id="btn-hist-modal-close" style="padding: 0.5rem 1.25rem; font-weight: 700; font-size: 0.8125rem;">
+            Close Dossier
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 

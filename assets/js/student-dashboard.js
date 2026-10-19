@@ -34,7 +34,16 @@ import {
   saveCbtProgress,
   submitCbtAttempt,
   subscribeActiveAcademicSession,
-  getActiveAcademicSession
+  getActiveAcademicSession,
+  getSemesterDetails,
+  getThreeSemestersForSession,
+  getStudentAllCourseRegistrations,
+  getStudentCourseRegistrationsBySession,
+  getStudentCbtAttempts,
+  getStudentResults,
+  getStudentAcademicTranscript,
+  getCourseAcademicHistory,
+  getSemesterAcademicRecords
 } from "./firebase-backend.js";
 import {
   mountPrintableRegistrationSlip,
@@ -256,31 +265,49 @@ function initStudentResults(studentProfile) {
 
   const studentReg = (studentProfile.studentId || studentProfile.admissionNumber || "").trim().toUpperCase();
   const studentName = (studentProfile.fullName || "").trim().toLowerCase();
+  const semesterFilter = document.getElementById("stu-results-semester-filter");
+  const gpaLabel = document.getElementById("stu-gpa-label");
+  const cgpaValEl = document.getElementById("stu-cgpa-val");
 
-  subscribeResults((rawResults) => {
-    const list = rawResults || [];
+  let cachedAllRecords = [];
 
-    // Filter all records for this specific student
-    const myAllRecords = list.filter((r) => {
-      const rMatric = (r.matricNumber || "").trim().toUpperCase();
-      const rName = (r.studentName || "").trim().toLowerCase();
-      return (
-        (studentReg && rMatric === studentReg) ||
-        (studentName && rName === studentName)
-      );
-    });
+  function renderFilteredResults() {
+    const selectedTerm = semesterFilter ? semesterFilter.value : "ALL";
 
     // 1. Official Semester Results (Must be approved / published by Admin)
-    const officialResults = myAllRecords.filter((r) => {
+    const allOfficialResults = cachedAllRecords.filter((r) => {
       return r.status === "approved" || r.status === "published";
     });
 
     // 2. Continuous Assessment (CA) records (Published directly by Lecturer)
-    const publishedCaRecords = myAllRecords.filter((r) => {
+    const allCaRecords = cachedAllRecords.filter((r) => {
       return r.caPublished === true || r.caStatus === "published";
     });
 
-    // Compute GPA and Units from official results
+    // Multi-Semester Cumulative Academic Transcript Calculation
+    const transcript = getStudentAcademicTranscript(studentReg || studentProfile.uid);
+    const cumulativeCgpa = transcript && transcript.cgpa ? transcript.cgpa.toFixed(2) : "0.00";
+
+    if (cgpaValEl) cgpaValEl.textContent = cumulativeCgpa;
+    const heroCgpa = document.getElementById("hero-cgpa-val");
+    if (heroCgpa) heroCgpa.textContent = cumulativeCgpa;
+    const cardCgpa = document.getElementById("card-cgpa-val");
+    if (cardCgpa) cardCgpa.textContent = cumulativeCgpa;
+
+    // Filter by selected term
+    const officialResults = selectedTerm === "ALL"
+      ? allOfficialResults
+      : allOfficialResults.filter((r) => (r.semester || "First Semester").trim() === selectedTerm);
+
+    const publishedCaRecords = selectedTerm === "ALL"
+      ? allCaRecords
+      : allCaRecords.filter((r) => (r.semester || "First Semester").trim() === selectedTerm);
+
+    if (gpaLabel) {
+      gpaLabel.textContent = selectedTerm === "ALL" ? "Cumulative GPA" : `${selectedTerm} GPA`;
+    }
+
+    // Compute GPA and Units from filtered official results
     let totalUnits = 0;
     let passedUnits = 0;
     let totalQualityPoints = 0;
@@ -300,7 +327,7 @@ function initStudentResults(studentProfile) {
     if (gpaVal) gpaVal.textContent = calculatedGpa;
 
     if (gpaStanding) {
-      const gpaNum = parseFloat(calculatedGpa);
+      const gpaNum = parseFloat(cumulativeCgpa > 0 ? cumulativeCgpa : calculatedGpa);
       if (gpaNum >= 4.5) {
         gpaStanding.className = "status-pill-badge badge-green";
         gpaStanding.textContent = "ACADEMIC STANDING: FIRST CLASS HONOURS / DISTINCTION";
@@ -321,12 +348,13 @@ function initStudentResults(studentProfile) {
 
     // Render Official Semester Examination Results Table
     if (officialResults.length === 0) {
+      const termNotice = selectedTerm === "ALL" ? "No final results have been approved yet." : `No final results approved for ${selectedTerm} yet.`;
       const emptyHtml = `
         <tr>
           <td colspan="9">
             <div class="student-empty-box">
               <div class="student-empty-icon">📋</div>
-              <div class="student-empty-text">No final results have been approved yet.</div>
+              <div class="student-empty-text">${termNotice}</div>
               <div class="student-empty-sub">Verified semester scores will appear here once approved by the Academic Registry. Check the CA Breakdown tab to see continuous assessment marks published by lecturers.</div>
             </div>
           </td>
@@ -381,7 +409,7 @@ function initStudentResults(studentProfile) {
       }
 
       if (dashResultsTbody) {
-        dashResultsTbody.innerHTML = officialResults.slice(0, 4).map((res) => `
+        dashResultsTbody.innerHTML = allOfficialResults.slice(0, 4).map((res) => `
           <tr>
             <td><strong>${res.courseCode || "THEO"}</strong></td>
             <td>${res.courseTitle || "Theological Study"}</td>
@@ -397,12 +425,13 @@ function initStudentResults(studentProfile) {
     // Render Continuous Assessment (CA) Breakdown Table
     if (caBreakdownTbody) {
       if (publishedCaRecords.length === 0) {
+        const caNotice = selectedTerm === "ALL" ? "No Continuous Assessment Published Yet" : `No Continuous Assessment Published for ${selectedTerm} Yet`;
         caBreakdownTbody.innerHTML = `
           <tr>
             <td colspan="9">
               <div class="student-empty-box">
                 <div class="student-empty-icon">📝</div>
-                <div class="student-empty-text">No Continuous Assessment Published Yet</div>
+                <div class="student-empty-text">${caNotice}</div>
                 <div class="student-empty-sub">When your course lecturers publish Continuous Assessment marks (CBT, Attendance, Assignments, Practicals), they will appear here immediately.</div>
               </div>
             </td>
@@ -435,6 +464,26 @@ function initStudentResults(studentProfile) {
         }).join("");
       }
     }
+  }
+
+  if (semesterFilter) {
+    semesterFilter.onchange = renderFilteredResults;
+  }
+
+  subscribeResults((rawResults) => {
+    const list = rawResults || [];
+
+    // Filter all records for this specific student
+    cachedAllRecords = list.filter((r) => {
+      const rMatric = (r.matricNumber || "").trim().toUpperCase();
+      const rName = (r.studentName || "").trim().toLowerCase();
+      return (
+        (studentReg && rMatric === studentReg) ||
+        (studentName && rName === studentName)
+      );
+    });
+
+    renderFilteredResults();
   });
 }
 
@@ -504,10 +553,36 @@ function initStudentCourseRegistration(studentProfile, userUid) {
   if (!studentProfile) return;
 
   const uid = userUid || studentProfile.uid || studentProfile.id;
-  const session = (studentProfile.academicSession || "2026/2027").trim();
+  let session = (getActiveAcademicSession()?.currentSession || studentProfile.academicSession || "2026/2027").trim();
   const studentCentre = (studentProfile.studyCentre || "Abeokuta Main Campus").trim();
-  let activeSemester = "First Semester";
+  let activeSemester = (getActiveAcademicSession()?.currentSemester || "First Semester").trim();
   let isEditingExisting = false;
+
+  // Global trigger to open a specific semester's course registration
+  window.openCourseRegistrationForSemester = function(targetSemester) {
+    if (!targetSemester) return;
+    activeSemester = targetSemester;
+    isEditingExisting = false;
+
+    // Update switcher tabs in course registration pane
+    document.querySelectorAll(".student-sem-tab").forEach((t) => {
+      const sem = t.getAttribute("data-sem");
+      if (sem === targetSemester) {
+        t.classList.add("active");
+        t.style.background = "var(--student-blue)";
+        t.style.color = "#fff";
+        t.style.borderColor = "var(--student-blue)";
+      } else {
+        t.classList.remove("active");
+        t.style.background = "#fff";
+        t.style.color = "#475569";
+        t.style.borderColor = "#CBD5E1";
+      }
+    });
+
+    navigateToSection("course-reg");
+    renderView();
+  };
 
   // Data cache
   let regSettingsList = [];
@@ -790,7 +865,8 @@ function initStudentCourseRegistration(studentProfile, userUid) {
                   ? alloc.lecturerName
                   : (c.lecturerName || "To be announced (TBA)");
 
-                const isChecked = previouslyRegisteredIds.includes(c.id) || previouslyRegisteredIds.length === 0;
+                // Clean, unselected form for fresh registration; pre-checked only when editing existing registration
+                const isChecked = isEditingExisting ? previouslyRegisteredIds.includes(c.id) : false;
 
                 return `
                   <tr>
@@ -1045,15 +1121,582 @@ function initStudentCourseRegistration(studentProfile, userUid) {
     renderView();
   });
 
-  subscribeCourseAllocations((allocs) => {
-    allocationsList = allocs || [];
+  subscribeActiveAcademicSession((sessData) => {
+    if (sessData && sessData.currentSession) {
+      session = sessData.currentSession.trim();
+      if (sessionBadge) sessionBadge.textContent = session;
+    }
     renderView();
+  });
+}
+
+/**
+ * =============================================================================
+ * PHASE 3: THREE-SEMESTER ACADEMIC INTERFACE & STUDENT CONTROLLER
+ * First Semester, Second Semester, and Third Semester Management
+ * =============================================================================
+ */
+export function initThreeSemesterCards(studentProfile, userUid) {
+  if (!studentProfile) return;
+
+  const uid = userUid || studentProfile.uid || studentProfile.id;
+  const matric = (studentProfile.matricNumber || studentProfile.admissionNumber || studentProfile.studentId || "").trim().toUpperCase();
+
+  const sessLabelEl = document.getElementById("stu-active-session-label");
+  const activeSemBadgeEl = document.getElementById("stu-active-sem-badge");
+
+  const semesterOrder = ["First Semester", "Second Semester", "Third Semester"];
+  const cardPrefixes = ["sem1", "sem2", "sem3"];
+  const cardIds = ["stu-card-sem-first", "stu-card-sem-second", "stu-card-sem-third"];
+
+  function updateSemesterCards() {
+    const activeDoc = getActiveAcademicSession();
+    const activeSession = (activeDoc?.currentSession || studentProfile.academicSession || "2026/2027").trim();
+    const activeSemester = (activeDoc?.currentSemester || "First Semester").trim();
+
+    if (sessLabelEl) sessLabelEl.textContent = activeSession;
+    if (activeSemBadgeEl) activeSemBadgeEl.textContent = `● ACTIVE: ${activeSemester.toUpperCase()}`;
+
+    const currentIdx = semesterOrder.indexOf(activeSemester) !== -1 ? semesterOrder.indexOf(activeSemester) : 0;
+
+    // Retrieve all registrations for this student
+    const studentAllRegs = getStudentAllCourseRegistrations(matric || uid);
+
+    semesterOrder.forEach((semName, i) => {
+      const prefix = cardPrefixes[i];
+      const cardEl = document.getElementById(cardIds[i]);
+      const sessionTagEl = document.getElementById(`${prefix}-card-session-tag`);
+      const statusBadgeEl = document.getElementById(`${prefix}-status-badge`);
+      const regStatusPillEl = document.getElementById(`${prefix}-reg-status-pill`);
+      const coursesCountEl = document.getElementById(`${prefix}-courses-count`);
+      const creditsCountEl = document.getElementById(`${prefix}-credits-count`);
+      const gpaContainerEl = document.getElementById(`${prefix}-gpa-container`);
+      const gpaBadgeEl = document.getElementById(`${prefix}-gpa-badge`);
+      const actionBtnEl = document.getElementById(`btn-${prefix}-action`);
+      const secondaryBtnEl = document.getElementById(`btn-${prefix}-secondary`);
+
+      if (sessionTagEl) sessionTagEl.textContent = `${activeSession} Academic Session`;
+
+      // 1. Determine status
+      let semStatus = "Upcoming";
+      if (i === currentIdx) {
+        semStatus = "Current";
+      } else if (i < currentIdx) {
+        semStatus = "Completed";
+      } else {
+        semStatus = "Upcoming";
+      }
+
+      // Update card classes
+      if (cardEl) {
+        cardEl.classList.remove("is-current", "is-completed", "is-upcoming");
+        cardEl.classList.add(`is-${semStatus.toLowerCase()}`);
+      }
+
+      // Update status badge
+      if (statusBadgeEl) {
+        statusBadgeEl.className = `sem-status-badge sem-status-${semStatus.toLowerCase()}`;
+        statusBadgeEl.textContent = semStatus === "Current" ? "CURRENT SEMESTER" : semStatus.toUpperCase();
+      }
+
+      // 2. Look up student registration for this exact semester & session
+      const semReg = studentAllRegs.find((r) => {
+        const matchSess = (r.academicSession || "2026/2027").trim() === activeSession;
+        const matchSem = (r.semester || "First Semester").trim() === semName;
+        return matchSess && matchSem;
+      });
+
+      const coursesCount = semReg && Array.isArray(semReg.courses) ? semReg.courses.length : 0;
+      const creditsCount = semReg ? (semReg.totalCredits || (semReg.courses || []).reduce((acc, c) => acc + (parseInt(c.creditUnits, 10) || 3), 0)) : 0;
+
+      if (coursesCountEl) coursesCountEl.textContent = `${coursesCount} Course${coursesCount === 1 ? "" : "s"} Enrolled`;
+      if (creditsCountEl) creditsCountEl.textContent = `${creditsCount} Credit Unit${creditsCount === 1 ? "" : "s"}`;
+
+      if (regStatusPillEl) {
+        if (semReg) {
+          const st = (semReg.status || "submitted").toLowerCase();
+          if (st === "approved") {
+            regStatusPillEl.className = "status-pill-badge badge-green";
+            regStatusPillEl.textContent = "✓ Approved";
+          } else if (st === "returned") {
+            regStatusPillEl.className = "status-pill-badge badge-gold";
+            regStatusPillEl.textContent = "⚠️ Returned";
+          } else if (st === "rejected") {
+            regStatusPillEl.className = "status-pill-badge badge-red";
+            regStatusPillEl.textContent = "✕ Rejected";
+          } else {
+            regStatusPillEl.className = "status-pill-badge badge-blue";
+            regStatusPillEl.textContent = "⏳ Submitted";
+          }
+        } else {
+          if (semStatus === "Current") {
+            const regSetting = getRegistrationSettings(activeSession, semName);
+            if (regSetting.isOpen) {
+              regStatusPillEl.className = "status-pill-badge badge-gold";
+              regStatusPillEl.textContent = "Registration Open";
+            } else {
+              regStatusPillEl.className = "status-pill-badge badge-blue";
+              regStatusPillEl.textContent = "Registration Closed";
+            }
+          } else if (semStatus === "Completed") {
+            regStatusPillEl.className = "status-pill-badge badge-blue";
+            regStatusPillEl.textContent = "Not Enrolled";
+          } else {
+            regStatusPillEl.className = "status-pill-badge badge-blue";
+            regStatusPillEl.textContent = "Upcoming Term";
+          }
+        }
+      }
+
+      // 3. GPA & Academic Results check
+      const semResults = getStudentResults(matric || uid, { session: activeSession, semester: semName, onlyApproved: true });
+      if (semResults.length > 0) {
+        let pts = 0;
+        let units = 0;
+        semResults.forEach((r) => {
+          const u = parseInt(r.creditUnits, 10) || 3;
+          const gp = parseFloat(r.gradePoint !== undefined ? r.gradePoint : (r.gp || 0));
+          pts += u * gp;
+          units += u;
+        });
+        const semGpa = units > 0 ? (pts / units).toFixed(2) : "0.00";
+        if (gpaBadgeEl) gpaBadgeEl.textContent = `Term GPA: ${semGpa}`;
+        if (gpaContainerEl) gpaContainerEl.style.display = "flex";
+      } else {
+        if (gpaContainerEl) gpaContainerEl.style.display = "none";
+      }
+
+      // 4. Action Button behaviors
+      if (actionBtnEl) {
+        const newBtn = actionBtnEl.cloneNode(true);
+        actionBtnEl.parentNode.replaceChild(newBtn, actionBtnEl);
+
+        if (semStatus === "Current") {
+          if (semReg) {
+            newBtn.className = "sem-btn-primary sem-btn-blue";
+            newBtn.innerHTML = "View / Print Slip 🖨️";
+            newBtn.onclick = () => {
+              if (window.openCourseRegistrationForSemester) {
+                window.openCourseRegistrationForSemester(semName);
+              } else {
+                navigateToSection("course-reg");
+              }
+            };
+          } else {
+            const regSetting = getRegistrationSettings(activeSession, semName);
+            if (regSetting.isOpen) {
+              newBtn.className = "sem-btn-primary sem-btn-gold";
+              newBtn.innerHTML = "Register Courses →";
+              newBtn.onclick = () => {
+                if (window.openCourseRegistrationForSemester) {
+                  window.openCourseRegistrationForSemester(semName);
+                } else {
+                  navigateToSection("course-reg");
+                }
+              };
+            } else {
+              newBtn.className = "sem-btn-primary sem-btn-outline";
+              newBtn.innerHTML = "View Semester Dossier";
+              newBtn.onclick = () => {
+                if (window.openHistoricalRecordsModal) {
+                  window.openHistoricalRecordsModal(activeSession, semName);
+                }
+              };
+            }
+          }
+        } else if (semStatus === "Completed") {
+          newBtn.className = "sem-btn-primary sem-btn-outline";
+          newBtn.innerHTML = "View Academic Dossier 📜";
+          newBtn.onclick = () => {
+            if (window.openHistoricalRecordsModal) {
+              window.openHistoricalRecordsModal(activeSession, semName);
+            }
+          };
+        } else {
+          newBtn.className = "sem-btn-primary sem-btn-outline";
+          newBtn.innerHTML = "Preview Curriculum 📋";
+          newBtn.onclick = () => {
+            if (window.openHistoricalRecordsModal) {
+              window.openHistoricalRecordsModal(activeSession, semName);
+            }
+          };
+        }
+      }
+
+      // 5. Secondary Button behavior
+      if (secondaryBtnEl) {
+        const newSecBtn = secondaryBtnEl.cloneNode(true);
+        secondaryBtnEl.parentNode.replaceChild(newSecBtn, secondaryBtnEl);
+        newSecBtn.onclick = () => {
+          if (window.openHistoricalRecordsModal) {
+            window.openHistoricalRecordsModal(activeSession, semName);
+          }
+        };
+      }
+    });
+  }
+
+  // Subscribe to real-time events
+  subscribeActiveAcademicSession(() => updateSemesterCards());
+  subscribeCourseRegistrations(() => updateSemesterCards());
+  subscribeResults(() => updateSemesterCards());
+  subscribeRegistrationSettings(() => updateSemesterCards());
+
+  updateSemesterCards();
+}
+
+/**
+ * =============================================================================
+ * PHASE 3: HISTORICAL ACADEMIC RECORDS & REGISTRATION SLIP MODAL
+ * Full transparency into past semester grades, CA breakdown, CBT attempts, and slips
+ * =============================================================================
+ */
+export function initHistoricalRecordsModal(studentProfile, userUid) {
+  if (!studentProfile) return;
+
+  const uid = userUid || studentProfile.uid || studentProfile.id;
+  const matric = (studentProfile.matricNumber || studentProfile.admissionNumber || studentProfile.studentId || "").trim().toUpperCase();
+
+  const modalBackdrop = document.getElementById("modal-student-historical-record");
+  const modalTitle = document.getElementById("hist-modal-title");
+  const modalSub = document.getElementById("hist-modal-sem-session");
+  const closeBtn = document.getElementById("btn-close-hist-modal");
+  const closeBottomBtn = document.getElementById("btn-hist-modal-close");
+
+  const regCreditsEl = document.getElementById("hist-modal-reg-credits");
+  const passedCreditsEl = document.getElementById("hist-modal-passed-credits");
+  const gpaEl = document.getElementById("hist-modal-gpa");
+  const statusBadgeEl = document.getElementById("hist-modal-status-badge");
+  const footnoteEl = document.getElementById("hist-modal-footnote");
+
+  // Tabs
+  const tabResults = document.getElementById("btn-hist-tab-results");
+  const tabCa = document.getElementById("btn-hist-tab-ca");
+  const tabReg = document.getElementById("btn-hist-tab-reg");
+  const tabCbt = document.getElementById("btn-hist-tab-cbt");
+
+  const paneResults = document.getElementById("hist-pane-results");
+  const paneCa = document.getElementById("hist-pane-ca");
+  const paneReg = document.getElementById("hist-pane-reg");
+  const paneCbt = document.getElementById("hist-pane-cbt");
+
+  // Tables
+  const resultsTbody = document.getElementById("hist-results-tbody");
+  const caTbody = document.getElementById("hist-ca-tbody");
+  const coursesTbody = document.getElementById("hist-courses-tbody");
+  const cbtTbody = document.getElementById("hist-cbt-tbody");
+
+  const regStatusText = document.getElementById("hist-reg-official-status");
+  const printSlipBtn = document.getElementById("btn-hist-pane-print-slip");
+  const downloadPdfBtn = document.getElementById("btn-hist-pane-download-pdf");
+
+  let currentActiveReg = null;
+
+  function switchTab(target) {
+    [tabResults, tabCa, tabReg, tabCbt].forEach((t) => t?.classList.remove("active"));
+    [paneResults, paneCa, paneReg, paneCbt].forEach((p) => {
+      if (p) p.style.display = "none";
+    });
+
+    if (target === "results") {
+      tabResults?.classList.add("active");
+      if (paneResults) paneResults.style.display = "block";
+    } else if (target === "ca") {
+      tabCa?.classList.add("active");
+      if (paneCa) paneCa.style.display = "block";
+    } else if (target === "reg") {
+      tabReg?.classList.add("active");
+      if (paneReg) paneReg.style.display = "block";
+    } else if (target === "cbt") {
+      tabCbt?.classList.add("active");
+      if (paneCbt) paneCbt.style.display = "block";
+    }
+  }
+
+  tabResults?.addEventListener("click", () => switchTab("results"));
+  tabCa?.addEventListener("click", () => switchTab("ca"));
+  tabReg?.addEventListener("click", () => switchTab("reg"));
+  tabCbt?.addEventListener("click", () => switchTab("cbt"));
+
+  function closeModal() {
+    modalBackdrop?.classList.remove("is-open");
+    document.body.style.overflow = "";
+  }
+
+  closeBtn?.addEventListener("click", closeModal);
+  closeBottomBtn?.addEventListener("click", closeModal);
+  modalBackdrop?.addEventListener("click", (e) => {
+    if (e.target === modalBackdrop) closeModal();
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modalBackdrop?.classList.contains("is-open")) {
+      closeModal();
+    }
   });
 
-  subscribeCourseRegistrations((regs) => {
-    registrationsList = regs || [];
-    renderView();
+  // Slip actions inside modal
+  printSlipBtn?.addEventListener("click", () => {
+    if (!currentActiveReg) {
+      alert("No confirmed course registration record found for this semester to print.");
+      return;
+    }
+    printCourseRegistrationSlip(currentActiveReg, studentProfile);
   });
+
+  downloadPdfBtn?.addEventListener("click", async () => {
+    if (!currentActiveReg) {
+      alert("No confirmed course registration record found for this semester to download.");
+      return;
+    }
+    const origText = downloadPdfBtn.textContent;
+    downloadPdfBtn.textContent = "Generating PDF...";
+    downloadPdfBtn.disabled = true;
+    try {
+      await downloadCourseRegistrationPdf(currentActiveReg, studentProfile);
+    } catch (err) {
+      alert(`PDF download note: ${err.message}. You can also use 'Print Original Slip' to Save as PDF.`);
+    } finally {
+      downloadPdfBtn.textContent = origText;
+      downloadPdfBtn.disabled = false;
+    }
+  });
+
+  // Expose openHistoricalRecordsModal globally
+  window.openHistoricalRecordsModal = function(session, semester) {
+    const targetSession = (session || "2026/2027").trim();
+    const targetSem = (semester || "First Semester").trim();
+
+    if (modalTitle) modalTitle.textContent = `${targetSem} Academic Dossier & Records`;
+    if (modalSub) modalSub.textContent = `${targetSem} · ${targetSession} Academic Session`;
+
+    // 1. Fetch exact registration
+    const allRegs = getStudentAllCourseRegistrations(matric || uid);
+    currentActiveReg = allRegs.find((r) => {
+      const matchSess = (r.academicSession || "2026/2027").trim() === targetSession;
+      const matchSem = (r.semester || "First Semester").trim() === targetSem;
+      return matchSess && matchSem;
+    });
+
+    // 2. Fetch exact results
+    const allStudentResults = getStudentResults(matric || uid, { session: targetSession, semester: targetSem, onlyApproved: false });
+    const approvedResults = allStudentResults.filter((r) => r.status === "approved" || r.status === "published");
+    const caResults = allStudentResults.filter((r) => r.caPublished === true || r.caStatus === "published");
+
+    // 3. Fetch CBT attempts
+    const cbtAttempts = getStudentCbtAttempts(matric || uid, { session: targetSession, semester: targetSem });
+
+    // Compute Summary Stats
+    let registeredUnits = currentActiveReg?.totalCredits || 0;
+    if (!registeredUnits && approvedResults.length > 0) {
+      registeredUnits = approvedResults.reduce((acc, r) => acc + (parseInt(r.creditUnits, 10) || 3), 0);
+    }
+    let passedUnits = 0;
+    let totalQualityPts = 0;
+    let gradedUnits = 0;
+
+    approvedResults.forEach((r) => {
+      const u = parseInt(r.creditUnits, 10) || 3;
+      const gp = parseFloat(r.gradePoint !== undefined ? r.gradePoint : (r.gp || 0));
+      if ((r.grade || "F").toUpperCase() !== "F") {
+        passedUnits += u;
+      }
+      totalQualityPts += u * gp;
+      gradedUnits += u;
+    });
+
+    const semGpa = gradedUnits > 0 ? (totalQualityPts / gradedUnits).toFixed(2) : (approvedResults.length > 0 ? "0.00" : "Pending");
+
+    if (regCreditsEl) regCreditsEl.textContent = registeredUnits;
+    if (passedCreditsEl) passedCreditsEl.textContent = passedUnits;
+    if (gpaEl) gpaEl.textContent = semGpa;
+
+    const activeDoc = getActiveAcademicSession();
+    const isCurrentlyActive = activeDoc?.currentSession === targetSession && activeDoc?.currentSemester === targetSem;
+
+    if (statusBadgeEl) {
+      if (isCurrentlyActive) {
+        statusBadgeEl.className = "status-pill-badge badge-green";
+        statusBadgeEl.textContent = "CURRENT ACTIVE SEMESTER";
+      } else if (approvedResults.length > 0) {
+        statusBadgeEl.className = "status-pill-badge badge-green";
+        statusBadgeEl.textContent = "OFFICIALLY ARCHIVED & APPROVED";
+      } else if (currentActiveReg) {
+        statusBadgeEl.className = "status-pill-badge badge-blue";
+        statusBadgeEl.textContent = "REGISTERED — GRADES UNDER REVIEW";
+      } else {
+        statusBadgeEl.className = "status-pill-badge badge-blue";
+        statusBadgeEl.textContent = "UPCOMING / UNENROLLED TERM";
+      }
+    }
+
+    if (footnoteEl) {
+      footnoteEl.textContent = `Official historical record preserved for ${targetSem} ${targetSession} under Academic Board regulations.`;
+    }
+
+    // Render Pane 1: Examination Results
+    if (resultsTbody) {
+      if (approvedResults.length === 0) {
+        resultsTbody.innerHTML = `
+          <tr>
+            <td colspan="9">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📋</div>
+                <div class="student-empty-text">No final results have been approved yet for ${targetSem}.</div>
+                <div class="student-empty-sub">Official examination scores are currently undergoing Senate moderation. Verified grades will appear here once approved by the Academic Registry. Check Continuous Assessment tab for tutor marks.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+      } else {
+        resultsTbody.innerHTML = approvedResults.map((r) => {
+          const u = parseInt(r.creditUnits, 10) || 3;
+          const ca = r.caScore !== undefined ? r.caScore : 0;
+          const exam = r.examScore !== undefined ? r.examScore : 0;
+          const tot = r.score !== undefined ? r.score : (ca + exam);
+          const gr = r.grade || "—";
+          const gp = r.gradePoint !== undefined ? r.gradePoint : "—";
+          const rem = r.remarks || (tot >= 40 ? "Pass" : "Fail");
+
+          const badgeCls = gr === "A" ? "badge-green" : gr === "B" || gr === "C" ? "badge-blue" : gr === "D" || gr === "E" ? "badge-gold" : "badge-red";
+
+          return `
+            <tr>
+              <td><strong style="color: var(--student-navy); font-family: monospace;">${r.courseCode || "THEO"}</strong></td>
+              <td>${r.courseTitle || "Course Title"}</td>
+              <td style="text-align: center; font-weight: 700;">${u}</td>
+              <td style="text-align: center; color: #15803D; font-weight: 700;">${ca}/30</td>
+              <td style="text-align: center; color: var(--student-blue); font-weight: 700;">${exam}/70</td>
+              <td style="text-align: center; font-weight: 800; color: var(--student-navy);">${tot}%</td>
+              <td style="text-align: center;"><span class="status-pill-badge ${badgeCls}">${gr}</span></td>
+              <td style="text-align: center; font-weight: 700; color: var(--student-navy);">${gp}</td>
+              <td style="font-size: 0.8125rem; color: var(--student-text-muted);">${rem}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+    // Render Pane 2: Continuous Assessment
+    if (caTbody) {
+      if (caResults.length === 0) {
+        caTbody.innerHTML = `
+          <tr>
+            <td colspan="9">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📝</div>
+                <div class="student-empty-text">No Continuous Assessment published yet for ${targetSem}.</div>
+                <div class="student-empty-sub">When your course lecturers publish Continuous Assessment marks (CBT, Attendance, Assignments, Practicals), they will appear here.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+      } else {
+        caTbody.innerHTML = caResults.map((r) => {
+          const cbt = r.cbtScore !== undefined ? r.cbtScore : 0;
+          const att = r.attendanceScore !== undefined ? r.attendanceScore : 0;
+          const ass = r.assignmentScore !== undefined ? r.assignmentScore : 0;
+          const prac = r.practicalScore !== undefined ? r.practicalScore : 0;
+          const totCa = r.caScore !== undefined ? r.caScore : (cbt + att + ass + prac);
+
+          return `
+            <tr>
+              <td><strong style="color: var(--student-navy); font-family: monospace;">${r.courseCode || "THEO"}</strong></td>
+              <td>${r.courseTitle || "Course Title"}</td>
+              <td style="font-size: 0.8125rem; color: var(--student-text-muted);">${r.lecturerName || "Course Faculty"}</td>
+              <td style="text-align: center; font-weight: 700; color: var(--student-blue);">${cbt}/10</td>
+              <td style="text-align: center; font-weight: 700; color: var(--student-blue);">${att}/5</td>
+              <td style="text-align: center; font-weight: 700; color: var(--student-blue);">${ass}/5</td>
+              <td style="text-align: center; font-weight: 700; color: var(--student-blue);">${prac}/10</td>
+              <td style="text-align: center; font-weight: 800; font-size: 0.95rem; color: #15803D;">${totCa}/30</td>
+              <td style="text-align: center;"><span class="status-pill-badge badge-green">✓ Published</span></td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+    // Render Pane 3: Course Registration & Slip
+    if (regStatusText) {
+      if (currentActiveReg) {
+        const st = (currentActiveReg.status || "submitted").toUpperCase();
+        regStatusText.textContent = `${st} REGISTRATION (${currentActiveReg.courses?.length || 0} Courses · ${currentActiveReg.totalCredits || 0} Units)`;
+      } else {
+        regStatusText.textContent = "No Registration Record On File";
+      }
+    }
+
+    if (coursesTbody) {
+      if (!currentActiveReg || !Array.isArray(currentActiveReg.courses) || currentActiveReg.courses.length === 0) {
+        coursesTbody.innerHTML = `
+          <tr>
+            <td colspan="6">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">📖</div>
+                <div class="student-empty-text">No courses were officially registered for ${targetSem} ${targetSession}.</div>
+                <div class="student-empty-sub">If this is the current active term, please visit the Course Registration section to select and submit your modules.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+      } else {
+        coursesTbody.innerHTML = currentActiveReg.courses.map((c, idx) => {
+          const u = parseInt(c.creditUnits !== undefined ? c.creditUnits : (c.creditUnit || 3), 10) || 3;
+          return `
+            <tr>
+              <td style="text-align: center; color: #64748B; font-weight: 700;">${idx + 1}</td>
+              <td><strong style="color: var(--student-navy); font-family: monospace;">${c.courseCode || "THEO"}</strong></td>
+              <td>${c.courseTitle || c.title || "Theological Study"}</td>
+              <td style="text-align: center;"><span class="status-pill-badge badge-blue">${u} Units</span></td>
+              <td style="font-size: 0.8125rem; color: var(--student-text-muted);">${c.lecturerName || c.assignedLecturer || "Assigned Faculty"}</td>
+              <td><span class="status-pill-badge badge-green">${(currentActiveReg.status || "Approved").toUpperCase()}</span></td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+    // Render Pane 4: CBT Tests
+    if (cbtTbody) {
+      if (cbtAttempts.length === 0) {
+        cbtTbody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="student-empty-box">
+                <div class="student-empty-icon">🖥️</div>
+                <div class="student-empty-text">No CBT tests recorded for ${targetSem} ${targetSession}.</div>
+                <div class="student-empty-sub">Scheduled assessments and automated quizzes for this semester will be archived here.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+      } else {
+        cbtTbody.innerHTML = cbtAttempts.map((s) => {
+          const dateStr = s.submittedAt ? formatDateOnly(s.submittedAt) : (s.startedAt ? formatDateOnly(s.startedAt) : "Completed");
+          const gr = s.grade || (s.totalScore >= 20 ? "A" : s.totalScore >= 15 ? "B" : "C");
+          const pct = s.percentage !== undefined ? `${s.percentage}%` : `${Math.round(((s.totalScore || 0) / (s.maxMarks || 30)) * 100)}%`;
+
+          return `
+            <tr>
+              <td><strong style="color: var(--student-navy); font-family: monospace;">${s.courseCode || "THEO"}</strong></td>
+              <td>${s.assessmentTitle || "Continuous Assessment Test"}</td>
+              <td style="font-size: 0.8125rem; color: var(--student-text-muted);">${dateStr}</td>
+              <td style="text-align: center; font-weight: 800; color: var(--student-blue);">${s.totalScore !== undefined ? s.totalScore : 0}</td>
+              <td style="text-align: center; color: var(--student-text-muted); font-weight: 700;">${s.maxMarks || 30}</td>
+              <td style="text-align: center; font-weight: 700; color: #15803D;">${pct}</td>
+              <td style="text-align: center;"><span class="status-pill-badge badge-blue">Grade ${gr}</span></td>
+              <td style="font-size: 0.8125rem; color: var(--student-text-muted);">${s.markingStatus === "fully_graded" ? "Fully Graded" : "Submitted"}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+    // Default to Results tab
+    switchTab("results");
+
+    modalBackdrop?.classList.add("is-open");
+    document.body.style.overflow = "hidden";
+  };
 }
 
 /**
@@ -1400,6 +2043,10 @@ export function initStudentCbt(studentProfile, uid) {
               </p>
 
               <div class="cbt-meta-row">
+                <div class="cbt-meta-item">
+                  <span style="color: var(--student-text-muted);">Term:</span>
+                  <strong style="color: var(--student-blue);">${a.semester || "First Semester"} (${a.academicSession || "2026/2027"})</strong>
+                </div>
                 <div class="cbt-meta-item">
                   <span style="color: var(--student-text-muted);">Duration:</span>
                   <strong>${a.durationMinutes || 30} Minutes</strong>
@@ -2163,7 +2810,10 @@ export async function initStudentDashboard() {
 
   if (localSession) {
     renderStudentProfile(localSession);
+    initStudentResults(localSession);
     initStudentCourseRegistration(localSession, localSession.uid || localSession.id);
+    initThreeSemesterCards(localSession, localSession.uid || localSession.id);
+    initHistoricalRecordsModal(localSession, localSession.uid || localSession.id);
     initStudentCbt(localSession, localSession.uid || localSession.id);
   }
 
@@ -2192,6 +2842,8 @@ export async function initStudentDashboard() {
       initStudentResults(profile);
       initStudentNotifications();
       initStudentCourseRegistration(profile, user.uid);
+      initThreeSemesterCards(profile, user.uid);
+      initHistoricalRecordsModal(profile, user.uid);
       initStudentCbt(profile, user.uid);
     } catch (err) {
       console.error("[DIMABIN Student Dashboard] Profile initialization error:", err);
@@ -2245,7 +2897,19 @@ if (typeof window !== "undefined") {
     navigateToSection,
     openMobileDrawer,
     closeMobileDrawer,
-    studentLogout
+    studentLogout,
+    openCourseRegistrationForSemester: (sem) => {
+      if (window.openCourseRegistrationForSemester) {
+        window.openCourseRegistrationForSemester(sem);
+      } else {
+        navigateToSection("course-reg");
+      }
+    },
+    openHistoricalRecordsModal: (session, sem) => {
+      if (window.openHistoricalRecordsModal) {
+        window.openHistoricalRecordsModal(session, sem);
+      }
+    }
   };
 }
 
