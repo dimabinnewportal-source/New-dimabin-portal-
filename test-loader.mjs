@@ -10,7 +10,7 @@ export async function resolve(specifier, context, nextResolve) {
       export const getDoc = async () => ({ exists: () => false, data: () => ({}) });
       export const getDocs = async () => ({ forEach: () => {}, docs: [] });
       export const setDoc = async () => {};
-      export const addDoc = async () => ({ id: "mock_doc_id" });
+      export const addDoc = async () => ({ id: "mock_doc_" + Math.random().toString(36).substring(2) + Date.now().toString(36) });
       export const updateDoc = async () => {};
       export const deleteDoc = async () => {};
       export const query = () => ({});

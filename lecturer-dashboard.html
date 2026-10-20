@@ -302,6 +302,162 @@
             </div>
           </div>
 
+          <!-- ================================================================
+               PHASE 4: THREE-SEMESTER ACADEMIC INTERFACE (FACULTY)
+               First Semester, Second Semester, and Third Semester Management
+               ================================================================ -->
+          <div class="student-semester-lifecycle-section" id="lecturer-semester-lifecycle-section">
+            <div class="semester-section-header">
+              <div class="semester-section-title-wrap">
+                <h3>
+                  <span>🏛️</span> Academic Semesters &amp; Teaching Assignments
+                </h3>
+                <p class="semester-section-subtitle">
+                  Inspect semester-specific course allocations, manage student grading and CA submissions for open terms, and access historical teaching records.
+                </p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <span class="semester-session-pill" id="lec-sem-current-session-pill">
+                  <span>✦</span> Active Academic Session: <strong id="lec-active-session-label">2026/2027</strong>
+                </span>
+                <span class="sem-status-badge sem-status-current" id="lec-active-sem-badge">
+                  ● ACTIVE: FIRST SEMESTER
+                </span>
+              </div>
+            </div>
+
+            <!-- THREE SEMESTER CARDS -->
+            <div class="student-semester-cards-grid">
+              
+              <!-- CARD 1: FIRST SEMESTER -->
+              <div class="student-sem-card is-current" id="lec-card-sem-first">
+                <div>
+                  <div class="sem-card-top-row">
+                    <div class="sem-card-title-group">
+                      <h4>First Semester</h4>
+                      <span class="sem-card-session-tag" id="lec-sem1-card-session-tag">2026/2027 Academic Session</span>
+                    </div>
+                    <span class="sem-status-badge sem-status-current" id="lec-sem1-status-badge">CURRENT</span>
+                  </div>
+
+                  <div class="sem-card-middle-content">
+                    <div class="sem-student-reg-box">
+                      <div class="sem-reg-status-row">
+                        <span class="sem-reg-label">Teaching Allocation</span>
+                        <span id="lec-sem1-status-pill" class="status-pill-badge badge-blue">Checking...</span>
+                      </div>
+                      <div class="sem-reg-load-row">
+                        <span id="lec-sem1-courses-count">0 Courses Assigned</span>
+                        <span id="lec-sem1-students-count">0 Students Enrolled</span>
+                      </div>
+                      <div id="lec-sem1-tasks-row" style="margin-top: 0.45rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span class="sem-reg-label">Grading &amp; Review:</span>
+                        <span class="status-pill-badge badge-gold" id="lec-sem1-tasks-badge">0 Pending Tasks</span>
+                      </div>
+                    </div>
+                    <p class="sem-card-description" id="lec-sem1-desc">
+                      Foundation theological courses, biblical hermeneutics, and Old Testament studies.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sem-card-actions">
+                  <button type="button" class="sem-btn-primary sem-btn-gold" id="btn-lec-sem1-action">
+                    Open Teaching Workspace →
+                  </button>
+                  <button type="button" class="sem-btn-secondary-link" id="btn-lec-sem1-secondary">
+                    View Teaching Dossier &amp; Grades
+                  </button>
+                </div>
+              </div>
+
+              <!-- CARD 2: SECOND SEMESTER -->
+              <div class="student-sem-card is-upcoming" id="lec-card-sem-second">
+                <div>
+                  <div class="sem-card-top-row">
+                    <div class="sem-card-title-group">
+                      <h4>Second Semester</h4>
+                      <span class="sem-card-session-tag" id="lec-sem2-card-session-tag">2026/2027 Academic Session</span>
+                    </div>
+                    <span class="sem-status-badge sem-status-upcoming" id="lec-sem2-status-badge">UPCOMING</span>
+                  </div>
+
+                  <div class="sem-card-middle-content">
+                    <div class="sem-student-reg-box">
+                      <div class="sem-reg-status-row">
+                        <span class="sem-reg-label">Teaching Allocation</span>
+                        <span id="lec-sem2-status-pill" class="status-pill-badge badge-blue">No Allocations</span>
+                      </div>
+                      <div class="sem-reg-load-row">
+                        <span id="lec-sem2-courses-count">0 Courses Assigned</span>
+                        <span id="lec-sem2-students-count">0 Students Enrolled</span>
+                      </div>
+                      <div id="lec-sem2-tasks-row" style="margin-top: 0.45rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span class="sem-reg-label">Grading &amp; Review:</span>
+                        <span class="status-pill-badge badge-blue" id="lec-sem2-tasks-badge">Upcoming Term</span>
+                      </div>
+                    </div>
+                    <p class="sem-card-description" id="lec-sem2-desc">
+                      Systematic theology, New Testament Pauline literature, pneumatology, and Christian ethics.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sem-card-actions">
+                  <button type="button" class="sem-btn-primary sem-btn-outline" id="btn-lec-sem2-action">
+                    Preview Upcoming Semester
+                  </button>
+                  <button type="button" class="sem-btn-secondary-link" id="btn-lec-sem2-secondary">
+                    Semester Course Syllabi
+                  </button>
+                </div>
+              </div>
+
+              <!-- CARD 3: THIRD SEMESTER -->
+              <div class="student-sem-card is-upcoming" id="lec-card-sem-third">
+                <div>
+                  <div class="sem-card-top-row">
+                    <div class="sem-card-title-group">
+                      <h4>Third Semester</h4>
+                      <span class="sem-card-session-tag" id="lec-sem3-card-session-tag">2026/2027 Academic Session</span>
+                    </div>
+                    <span class="sem-status-badge sem-status-upcoming" id="lec-sem3-status-badge">UPCOMING</span>
+                  </div>
+
+                  <div class="sem-card-middle-content">
+                    <div class="sem-student-reg-box">
+                      <div class="sem-reg-status-row">
+                        <span class="sem-reg-label">Teaching Allocation</span>
+                        <span id="lec-sem3-status-pill" class="status-pill-badge badge-blue">No Allocations</span>
+                      </div>
+                      <div class="sem-reg-load-row">
+                        <span id="lec-sem3-courses-count">0 Courses Assigned</span>
+                        <span id="lec-sem3-students-count">0 Students Enrolled</span>
+                      </div>
+                      <div id="lec-sem3-tasks-row" style="margin-top: 0.45rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span class="sem-reg-label">Grading &amp; Review:</span>
+                        <span class="status-pill-badge badge-blue" id="lec-sem3-tasks-badge">Upcoming Term</span>
+                      </div>
+                    </div>
+                    <p class="sem-card-description" id="lec-sem3-desc">
+                      Advanced biblical research, eschatology, ministerial leadership, and evangelism practicum.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="sem-card-actions">
+                  <button type="button" class="sem-btn-primary sem-btn-outline" id="btn-lec-sem3-action">
+                    Preview Upcoming Semester
+                  </button>
+                  <button type="button" class="sem-btn-secondary-link" id="btn-lec-sem3-secondary">
+                    Semester Course Syllabi
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
           <!-- 3. FACULTY QUICK ACTIONS -->
           <div style="margin-bottom: 2rem;">
             <div class="student-card-header" style="background: transparent; border: none; padding: 0 0 0.85rem 0;">
@@ -502,6 +658,12 @@
 
               <!-- Filter Bar -->
               <div class="portal-filter-bar no-print">
+                <select class="portal-filter-select" id="roster-semester-select" style="font-weight: 700; color: var(--student-blue);">
+                  <option value="all">All Semesters</option>
+                  <option value="First Semester">First Semester</option>
+                  <option value="Second Semester">Second Semester</option>
+                  <option value="Third Semester">Third Semester</option>
+                </select>
                 <select class="portal-filter-select" id="roster-course-select">
                   <option value="all">All Assigned Courses</option>
                 </select>
@@ -547,18 +709,20 @@
 
               <!-- Course Selection & Academic Context Bar -->
               <div class="portal-filter-bar no-print" style="background: #F8FAFC; padding: 1rem; border-radius: var(--student-radius-sm); border: 1px solid var(--student-border); margin-bottom: 1.25rem;">
-                <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 2; min-width: 260px;">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 2; min-width: 240px;">
                   <label for="gradebook-course-select" style="font-size: 0.75rem; font-weight: 700; color: var(--student-navy); text-transform: uppercase;">Select Course Offering:</label>
                   <select class="portal-filter-select" id="gradebook-course-select" style="width: 100%; font-weight: 600;">
                     <option value="">-- Choose Assigned Course --</option>
                   </select>
                 </div>
 
-                <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 180px;">
-                  <label style="font-size: 0.75rem; font-weight: 700; color: var(--student-navy); text-transform: uppercase;">Academic Term:</label>
-                  <div id="gradebook-academic-term-badge" style="font-size: 0.875rem; font-weight: 700; color: var(--student-blue); padding: 0.55rem 0.85rem; background: #FFFFFF; border: 1px solid var(--student-border); border-radius: var(--student-radius-sm);">
-                    2026/2027 · First Semester
-                  </div>
+                <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1.5; min-width: 200px;">
+                  <label for="gradebook-semester-select" style="font-size: 0.75rem; font-weight: 700; color: var(--student-navy); text-transform: uppercase;">Academic Term:</label>
+                  <select class="portal-filter-select" id="gradebook-semester-select" style="width: 100%; font-weight: 700; color: var(--student-blue);">
+                    <option value="First Semester">First Semester (2026/2027)</option>
+                    <option value="Second Semester">Second Semester (2026/2027)</option>
+                    <option value="Third Semester">Third Semester (2026/2027)</option>
+                  </select>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 160px;">
@@ -566,6 +730,16 @@
                   <button type="button" class="btn btn-outline-blue btn-sm" id="btn-open-asmt-modal" style="font-weight: 700; padding: 0.55rem 0.85rem;">
                     ➕ New Assessment / CBT
                   </button>
+                </div>
+              </div>
+
+              <!-- Historical Term Notice Banner -->
+              <div id="gradebook-historical-banner" style="display: none; background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; color: #92400E; font-size: 0.8125rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 1.1rem;">📜</span>
+                  <div>
+                    <strong>HISTORICAL ACADEMIC RECORD:</strong> You are viewing <span id="gradebook-hist-term-name" style="font-weight: 700;">First Semester</span> archives. Grades and examination marks are archived. Inputs are read-only unless returned for correction by the Academic Registry.
+                  </div>
                 </div>
               </div>
 
@@ -1847,6 +2021,183 @@
           <button type="submit" class="btn btn-primary" style="font-weight: 700;">Confirm Extension</button>
         </div>
       </form>
+    </div>
+  <!-- ======================================================================
+       PHASE 4: HISTORICAL TEACHING DOSSIER & RECORDS MODAL
+       ====================================================================== -->
+  <div class="student-modal-backdrop" id="modal-lecturer-historical-record" role="dialog" aria-modal="true" aria-labelledby="lec-hist-modal-title">
+    <div class="student-modal-card">
+      <!-- Modal Header -->
+      <div class="student-modal-header">
+        <div class="modal-header-left">
+          <img src="assets/images/dimabin-logo.png" alt="DIMABIN" class="modal-inst-seal">
+          <div class="modal-header-titles">
+            <h3 id="lec-hist-modal-title">Faculty Teaching Dossier &amp; Record</h3>
+            <div class="modal-header-sub" id="lec-hist-modal-sem-session">
+              First Semester · 2026/2027 Academic Session
+            </div>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-lec-hist-modal" aria-label="Close Modal">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="student-modal-body">
+        <!-- Top Statistics Strip -->
+        <div class="student-modal-summary-strip">
+          <div class="modal-stat-group">
+            <div class="modal-stat-item">
+              <span class="modal-stat-label">Assigned Courses</span>
+              <span class="modal-stat-val" id="lec-hist-modal-courses-count">0</span>
+            </div>
+            <div class="modal-stat-item">
+              <span class="modal-stat-label">Enrolled Students</span>
+              <span class="modal-stat-val" style="color: #16A34A;" id="lec-hist-modal-students-count">0</span>
+            </div>
+            <div class="modal-stat-item">
+              <span class="modal-stat-label">CBT Assessments</span>
+              <span class="modal-stat-val" style="color: var(--student-blue);" id="lec-hist-modal-cbt-count">0</span>
+            </div>
+          </div>
+          <div>
+            <span class="status-pill-badge badge-blue" id="lec-hist-modal-status-badge">
+              HISTORICAL RECORD
+            </span>
+          </div>
+        </div>
+
+        <!-- Navigation Sub-Tabs -->
+        <div class="modal-tabs-nav">
+          <button type="button" class="modal-tab-btn active" id="btn-lec-hist-tab-courses">
+            📚 Assigned Courses
+          </button>
+          <button type="button" class="modal-tab-btn" id="btn-lec-hist-tab-grades">
+            🎓 Student Grades &amp; Exam (100)
+          </button>
+          <button type="button" class="modal-tab-btn" id="btn-lec-hist-tab-ca">
+            📝 Continuous Assessment (30)
+          </button>
+          <button type="button" class="modal-tab-btn" id="btn-lec-hist-tab-cbt">
+            🖥️ CBT Assessments &amp; Tests
+          </button>
+        </div>
+
+        <!-- TAB 1: Assigned Courses -->
+        <div id="lec-hist-pane-courses" class="modal-tab-pane">
+          <div class="student-table-wrap">
+            <table class="student-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">#</th>
+                  <th>Course Code</th>
+                  <th>Course Title</th>
+                  <th style="text-align: center;">Units</th>
+                  <th>Study Centre</th>
+                  <th>Allocation Status</th>
+                </tr>
+              </thead>
+              <tbody id="lec-hist-courses-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 2: Student Grades & Exam Results -->
+        <div id="lec-hist-pane-grades" class="modal-tab-pane" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-size: 0.8125rem; font-weight: 700; color: var(--student-navy);">
+              <span id="lec-hist-grades-course-label">All Courses</span>
+            </div>
+            <select id="lec-hist-grades-course-filter" style="padding: 0.35rem 0.75rem; border-radius: var(--student-radius-sm); border: 1px solid var(--student-border); font-size: 0.8125rem; font-weight: 600;">
+              <option value="all">All Allocated Courses</option>
+            </select>
+          </div>
+          <div class="student-table-wrap">
+            <table class="student-table">
+              <thead>
+                <tr>
+                  <th>Matric Number</th>
+                  <th>Student Name</th>
+                  <th>Course</th>
+                  <th style="text-align: center;">CA (30)</th>
+                  <th style="text-align: center;">Exam (70)</th>
+                  <th style="text-align: center;">Total (100%)</th>
+                  <th style="text-align: center;">Grade</th>
+                  <th style="text-align: center;">GP</th>
+                  <th>Registry Status</th>
+                </tr>
+              </thead>
+              <tbody id="lec-hist-grades-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 3: Continuous Assessment Breakdown -->
+        <div id="lec-hist-pane-ca" class="modal-tab-pane" style="display: none;">
+          <div class="student-table-wrap">
+            <table class="student-table">
+              <thead>
+                <tr>
+                  <th>Matric Number</th>
+                  <th>Student Name</th>
+                  <th>Course</th>
+                  <th style="text-align: center;">CBT (10)</th>
+                  <th style="text-align: center;">Att (5)</th>
+                  <th style="text-align: center;">Ass (5)</th>
+                  <th style="text-align: center;">Prac (10)</th>
+                  <th style="text-align: center;">Total (30)</th>
+                  <th>Publication Status</th>
+                </tr>
+              </thead>
+              <tbody id="lec-hist-ca-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 4: CBT Tests -->
+        <div id="lec-hist-pane-cbt" class="modal-tab-pane" style="display: none;">
+          <div class="student-table-wrap">
+            <table class="student-table">
+              <thead>
+                <tr>
+                  <th>Course</th>
+                  <th>Assessment Title</th>
+                  <th>Type</th>
+                  <th>Duration</th>
+                  <th style="text-align: center;">Total Marks</th>
+                  <th style="text-align: center;">Attempts</th>
+                  <th style="text-align: center;">Avg Score</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="lec-hist-cbt-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="student-modal-footer">
+        <div style="font-size: 0.75rem; color: var(--student-text-muted);" id="lec-hist-modal-footnote">
+          Official faculty teaching record preserved under Academic Board regulations.
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-outline-blue btn-sm" id="btn-lec-hist-modal-print" onclick="window.print()">
+            🖨️ Print Teaching Dossier
+          </button>
+          <button type="button" class="student-card-action-btn" id="btn-lec-hist-modal-close" style="padding: 0.5rem 1.25rem; font-weight: 700; font-size: 0.8125rem;">
+            Close Dossier
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 

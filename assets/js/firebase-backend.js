@@ -1355,15 +1355,149 @@ export async function deleteLecturer(lecturerId) {
   return { success: true, id: targetId };
 }
 
-export function getLecturerAssignments(lecturerStaffId, { session = null, semester = null } = {}) {
-  if (!lecturerStaffId) return [];
+export function getLecturerAssignments(lecturerStaffId, optOrSession = {}, maybeSemester = null, maybeOptions = {}) {
+  let session = null;
+  let semester = null;
+  let lecturerName = null;
+
+  if (typeof optOrSession === "string") {
+    session = optOrSession;
+    semester = maybeSemester;
+    lecturerName = maybeOptions?.lecturerName || null;
+  } else if (optOrSession && typeof optOrSession === "object") {
+    session = optOrSession.session || null;
+    semester = optOrSession.semester || null;
+    lecturerName = optOrSession.lecturerName || null;
+  }
+
+  if (!lecturerStaffId && !lecturerName) return [];
   const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+  const normStaffId = (lecturerStaffId || "").trim().toLowerCase();
+  const normName = (lecturerName || "").trim().toLowerCase();
+
   return allocations.filter((a) => {
-    const matchLecturer = (a.lecturerId || "").trim().toLowerCase() === lecturerStaffId.trim().toLowerCase();
+    const aId = (a.lecturerId || a.lecturerStaffId || "").trim().toLowerCase();
+    const aName = (a.lecturerName || "").trim().toLowerCase();
+    const matchLecturer =
+      (normStaffId && (aId === normStaffId || aId.includes(normStaffId) || normStaffId.includes(aId))) ||
+      (normName && (aName === normName || aName.includes(normName) || normName.includes(aName)));
     const matchSess = !session || (a.academicSession || "").trim() === session.trim();
     const matchSem = !semester || (a.semester || "").trim() === semester.trim();
-    return matchLecturer && matchSess && matchSem;
+    const isNotEnded = (a.status || "active").toLowerCase() !== "ended";
+    return matchLecturer && matchSess && matchSem && isNotEnded;
   });
+}
+
+/**
+ * Retrieve comprehensive teaching dossier for a lecturer for a specific academic session & semester
+ * Safely inspects assigned courses, enrolled students, submitted CA & exam grades, CBT tests, and approval status.
+ */
+export function getLecturerSemesterTeachingDossier(lecturerStaffId, session, semester, { lecturerName = "" } = {}) {
+  const normSession = (session || "2026/2027").trim();
+  const normSemester = (semester || "First Semester").trim();
+  const activeDoc = getActiveAcademicSession();
+  const isCurrent = (activeDoc?.currentSession || "2026/2027").trim() === normSession && (activeDoc?.currentSemester || "First Semester").trim() === normSemester;
+
+  const assignedCourses = getLecturerAssignments(lecturerStaffId, { session: normSession, semester: normSemester, lecturerName });
+  const myCourseCodes = new Set(assignedCourses.map((a) => (a.courseCode || "").trim().toUpperCase()));
+  const myCourseIds = new Set(assignedCourses.map((a) => a.courseId).filter(Boolean));
+
+  // Enrolled students in this semester & session
+  const allRegistrations = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  const enrolledStudents = [];
+  allRegistrations.forEach((reg) => {
+    const matchSess = (reg.academicSession || "2026/2027").trim() === normSession;
+    const matchSem = (reg.semester || "First Semester").trim() === normSemester;
+    if (!matchSess || !matchSem) return;
+
+    (reg.courses || []).forEach((c) => {
+      const cCode = (c.courseCode || "").trim().toUpperCase();
+      const cId = c.courseId;
+      if (myCourseCodes.has(cCode) || (cId && myCourseIds.has(cId))) {
+        enrolledStudents.push({
+          registrationId: reg.id,
+          studentUid: reg.studentUid || reg.userId,
+          studentName: reg.studentName || "Candidate",
+          matricNumber: reg.studentId || reg.admissionNumber || "DIMABIN/STU",
+          studyCentre: reg.studyCentre || "Abeokuta Main Campus",
+          programme: reg.programme || "Diploma in Theology",
+          courseCode: cCode,
+          courseTitle: c.courseTitle || c.title,
+          creditUnits: c.creditUnits || 3
+        });
+      }
+    });
+  });
+
+  // Results for these assigned courses in this semester & session
+  const allResults = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const semesterResults = allResults.filter((r) => {
+    const matchCode = myCourseCodes.has((r.courseCode || "").trim().toUpperCase());
+    const matchSess = (r.academicSession || "2026/2027").trim() === normSession;
+    const matchSem = (r.semester || "First Semester").trim() === normSemester;
+    return matchCode && matchSess && matchSem;
+  });
+
+  // CBT Assessments for these assigned courses in this semester & session
+  const allCbts = getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || [];
+  const semesterCbts = allCbts.filter((c) => {
+    const matchCode = myCourseCodes.has((c.courseCode || "").trim().toUpperCase());
+    const matchSess = (c.academicSession || "2026/2027").trim() === normSession;
+    const matchSem = (c.semester || "First Semester").trim() === normSemester;
+    return matchCode && matchSess && matchSem;
+  });
+
+  // CBT Submissions
+  const allCbtSubs = getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || [];
+  const cbtAssessmentIds = new Set(semesterCbts.map((c) => c.id));
+  const semesterCbtSubs = allCbtSubs.filter((s) => cbtAssessmentIds.has(s.assessmentId));
+
+  // Determine overall status
+  const approvedCount = semesterResults.filter((r) => r.status === "approved" || r.status === "published").length;
+  const submittedCount = semesterResults.filter((r) => r.status === "submitted").length;
+  const returnedCount = semesterResults.filter((r) => r.status === "returned").length;
+  const draftCount = semesterResults.filter((r) => r.status === "draft" || !r.status).length;
+  const unenteredCount = Math.max(0, enrolledStudents.length - semesterResults.length);
+
+  let overallStatus = "No Allocations";
+  if (assignedCourses.length > 0) {
+    if (approvedCount > 0 && approvedCount === semesterResults.length && unenteredCount === 0) {
+      overallStatus = "Approved by Senate";
+    } else if (submittedCount > 0) {
+      overallStatus = "Submitted to Registry";
+    } else if (returnedCount > 0) {
+      overallStatus = "Returned for Correction";
+    } else if (draftCount > 0 || semesterResults.length > 0) {
+      overallStatus = "Draft Grades in Progress";
+    } else {
+      overallStatus = isCurrent ? "Grading Pending" : "Historical Record";
+    }
+  }
+
+  return {
+    session: normSession,
+    semester: normSemester,
+    isCurrent,
+    assignedCourses,
+    enrolledStudents,
+    results: semesterResults,
+    cbtAssessments: semesterCbts,
+    cbtSubmissions: semesterCbtSubs,
+    metrics: {
+      coursesCount: assignedCourses.length,
+      studentsCount: enrolledStudents.length,
+      resultsCount: semesterResults.length,
+      approvedCount,
+      submittedCount,
+      returnedCount,
+      draftCount,
+      unenteredCount,
+      pendingTasksCount: unenteredCount + draftCount + returnedCount,
+      cbtCount: semesterCbts.length,
+      cbtSubmissionsCount: semesterCbtSubs.length
+    },
+    overallStatus
+  };
 }
 
 /**
@@ -6963,6 +7097,7 @@ if (typeof window !== "undefined") {
     getSemesterAcademicRecords,
     migrateSemesterAcademicRecords,
     getLecturerAssignments,
+    getLecturerSemesterTeachingDossier,
     saveLecturerGradeRecord,
     approveAndPublishCourseResults,
     rejectCourseResultsWithFeedback

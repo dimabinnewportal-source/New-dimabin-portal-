@@ -50,7 +50,10 @@ import {
   formatDateTime,
   formatDateOnly,
   subscribeActiveAcademicSession,
-  getActiveAcademicSession
+  getActiveAcademicSession,
+  getLecturerAssignments,
+  getLecturerSemesterTeachingDossier,
+  getThreeSemestersForSession
 } from "./firebase-backend.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -307,7 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const isStatusActive = (alloc.status || "active").toLowerCase() !== "ended";
     if (!isStatusActive) return false;
 
-    const aId = (alloc.lecturerId || "").trim().toLowerCase();
+    const aId = (alloc.lecturerId || alloc.lecturerStaffId || "").trim().toLowerCase();
     const aName = (alloc.lecturerName || "").trim().toLowerCase();
 
     return (
@@ -362,10 +365,434 @@ document.addEventListener("DOMContentLoaded", () => {
     return studentList;
   };
 
+  // =========================================================================
+  // PHASE 4: THREE-SEMESTER ACADEMIC INTERFACE CONTROLLER (FACULTY)
+  // =========================================================================
+  const semesterOrder = ["First Semester", "Second Semester", "Third Semester"];
+  const lecCardPrefixes = ["lec-sem1", "lec-sem2", "lec-sem3"];
+  const lecCardIds = ["lec-card-sem-first", "lec-card-sem-second", "lec-card-sem-third"];
+
+  const updateLecturerSemesterCards = () => {
+    const activeDoc = getActiveAcademicSession();
+    const currentSession = (activeDoc?.currentSession || activeAcademicSession || "2026/2027").trim();
+    const currentSemester = (activeDoc?.currentSemester || activeAcademicSemester || "First Semester").trim();
+
+    safeSetText("lec-active-session-label", currentSession);
+    const activeBadgeEl = document.getElementById("lec-active-sem-badge");
+    if (activeBadgeEl) {
+      activeBadgeEl.textContent = `● ACTIVE: ${currentSemester.toUpperCase()}`;
+    }
+
+    const currentIdx = semesterOrder.indexOf(currentSemester) !== -1 ? semesterOrder.indexOf(currentSemester) : 0;
+
+    semesterOrder.forEach((semName, i) => {
+      const prefix = lecCardPrefixes[i];
+      const cardEl = document.getElementById(lecCardIds[i]);
+      const sessionTagEl = document.getElementById(`${prefix}-card-session-tag`);
+      const statusBadgeEl = document.getElementById(`${prefix}-status-badge`);
+      const statusPillEl = document.getElementById(`${prefix}-status-pill`);
+      const coursesCountEl = document.getElementById(`${prefix}-courses-count`);
+      const studentsCountEl = document.getElementById(`${prefix}-students-count`);
+      const tasksBadgeEl = document.getElementById(`${prefix}-tasks-badge`);
+      const actionBtnEl = document.getElementById(`btn-${prefix}-action`);
+      const secondaryBtnEl = document.getElementById(`btn-${prefix}-secondary`);
+
+      if (sessionTagEl) sessionTagEl.textContent = `${currentSession} Academic Session`;
+
+      // 1. Determine status
+      let semStatus = "Upcoming";
+      if (i === currentIdx) {
+        semStatus = "Current";
+      } else if (i < currentIdx) {
+        semStatus = "Completed";
+      } else {
+        semStatus = "Upcoming";
+      }
+
+      // Update card classes
+      if (cardEl) {
+        cardEl.classList.remove("is-current", "is-completed", "is-upcoming", "is-historical");
+        cardEl.classList.add(`is-${semStatus.toLowerCase()}`);
+      }
+
+      // Update status badge
+      if (statusBadgeEl) {
+        statusBadgeEl.className = `sem-status-badge sem-status-${semStatus.toLowerCase()}`;
+        statusBadgeEl.textContent = semStatus === "Current" ? "CURRENT SEMESTER" : semStatus.toUpperCase();
+      }
+
+      // 2. Load Dossier for this exact session and semester
+      const dossier = getLecturerSemesterTeachingDossier(staffId, currentSession, semName, { lecturerName: fullName });
+      const coursesCount = dossier.metrics.coursesCount;
+      const studentsCount = dossier.metrics.studentsCount;
+      const pendingTasks = dossier.metrics.pendingTasksCount;
+      const overallStatus = dossier.overallStatus;
+
+      if (coursesCountEl) {
+        coursesCountEl.textContent = `${coursesCount} Course${coursesCount === 1 ? "" : "s"} Assigned`;
+      }
+      if (studentsCountEl) {
+        studentsCountEl.textContent = `${studentsCount} Student${studentsCount === 1 ? "" : "s"} Enrolled`;
+      }
+
+      if (statusPillEl) {
+        if (coursesCount > 0) {
+          if (semStatus === "Current") {
+            statusPillEl.className = "status-pill-badge badge-green";
+            statusPillEl.textContent = "Teaching Active";
+          } else if (semStatus === "Completed") {
+            statusPillEl.className = "status-pill-badge badge-blue";
+            statusPillEl.textContent = overallStatus || "Completed Term";
+          } else {
+            statusPillEl.className = "status-pill-badge badge-gold";
+            statusPillEl.textContent = "Pre-Allocated";
+          }
+        } else {
+          statusPillEl.className = "status-pill-badge badge-blue";
+          statusPillEl.textContent = "No Allocations";
+        }
+      }
+
+      if (tasksBadgeEl) {
+        if (semStatus === "Current") {
+          if (pendingTasks > 0) {
+            tasksBadgeEl.className = "status-pill-badge badge-gold";
+            tasksBadgeEl.textContent = `${pendingTasks} Pending Task${pendingTasks === 1 ? "" : "s"}`;
+          } else if (coursesCount > 0) {
+            tasksBadgeEl.className = "status-pill-badge badge-green";
+            tasksBadgeEl.textContent = "All Graded ✓";
+          } else {
+            tasksBadgeEl.className = "status-pill-badge badge-blue";
+            tasksBadgeEl.textContent = "Awaiting Courses";
+          }
+        } else if (semStatus === "Completed") {
+          tasksBadgeEl.className = "status-pill-badge badge-blue";
+          tasksBadgeEl.textContent = overallStatus.includes("Approved") ? "Senate Approved" : "Archived Record";
+        } else {
+          tasksBadgeEl.className = "status-pill-badge badge-blue";
+          tasksBadgeEl.textContent = "Upcoming Term";
+        }
+      }
+
+      // Action Button behavior
+      if (actionBtnEl) {
+        const newBtn = actionBtnEl.cloneNode(true);
+        actionBtnEl.parentNode.replaceChild(newBtn, actionBtnEl);
+
+        if (semStatus === "Current") {
+          newBtn.className = "sem-btn-primary sem-btn-gold";
+          newBtn.innerHTML = "Open Teaching Workspace →";
+          newBtn.onclick = () => {
+            window.openLecturerSemesterWorkspace(semName);
+          };
+        } else if (semStatus === "Completed") {
+          newBtn.className = "sem-btn-primary sem-btn-outline";
+          newBtn.innerHTML = "View Historical Records 📜";
+          newBtn.onclick = () => {
+            window.openLecturerHistoricalRecordsModal(currentSession, semName);
+          };
+        } else {
+          newBtn.className = "sem-btn-primary sem-btn-outline";
+          newBtn.innerHTML = "Preview Upcoming Semester 📋";
+          newBtn.onclick = () => {
+            if (coursesCount > 0) {
+              window.openLecturerSemesterWorkspace(semName);
+            } else {
+              window.openLecturerHistoricalRecordsModal(currentSession, semName);
+            }
+          };
+        }
+      }
+
+      // Secondary Button behavior
+      if (secondaryBtnEl) {
+        const newSecBtn = secondaryBtnEl.cloneNode(true);
+        secondaryBtnEl.parentNode.replaceChild(newSecBtn, secondaryBtnEl);
+        newSecBtn.onclick = () => {
+          window.openLecturerHistoricalRecordsModal(currentSession, semName);
+        };
+      }
+    });
+  };
+
+  window.openLecturerSemesterWorkspace = (targetSemester) => {
+    navigateTo("assessments");
+
+    const semSelect = document.getElementById("gradebook-semester-select");
+    if (semSelect) {
+      semSelect.value = targetSemester;
+    }
+    const courseSemFilter = document.getElementById("courses-semester-filter");
+    if (courseSemFilter) {
+      courseSemFilter.value = targetSemester;
+    }
+    const rosterSemSelect = document.getElementById("roster-semester-select");
+    if (rosterSemSelect) {
+      rosterSemSelect.value = targetSemester;
+    }
+    refreshAllViews();
+  };
+
+  // =========================================================================
+  // PHASE 4: HISTORICAL TEACHING DOSSIER & RECORDS MODAL CONTROLLER
+  // =========================================================================
+  const initLecturerHistoricalRecordsModal = () => {
+    const modalBackdrop = document.getElementById("modal-lecturer-historical-record");
+    const closeBtn = document.getElementById("btn-close-lec-hist-modal");
+    const closeBottomBtn = document.getElementById("btn-lec-hist-modal-close");
+
+    // Modal Tabs
+    const tabCourses = document.getElementById("btn-lec-hist-tab-courses");
+    const tabGrades = document.getElementById("btn-lec-hist-tab-grades");
+    const tabCa = document.getElementById("btn-lec-hist-tab-ca");
+    const tabCbt = document.getElementById("btn-lec-hist-tab-cbt");
+
+    const paneCourses = document.getElementById("lec-hist-pane-courses");
+    const paneGrades = document.getElementById("lec-hist-pane-grades");
+    const paneCa = document.getElementById("lec-hist-pane-ca");
+    const paneCbt = document.getElementById("lec-hist-pane-cbt");
+
+    let currentDossier = null;
+
+    const switchModalTab = (target) => {
+      [tabCourses, tabGrades, tabCa, tabCbt].forEach((t) => t?.classList.remove("active"));
+      [paneCourses, paneGrades, paneCa, paneCbt].forEach((p) => {
+        if (p) p.style.display = "none";
+      });
+
+      if (target === "courses") {
+        tabCourses?.classList.add("active");
+        if (paneCourses) paneCourses.style.display = "block";
+      } else if (target === "grades") {
+        tabGrades?.classList.add("active");
+        if (paneGrades) paneGrades.style.display = "block";
+      } else if (target === "ca") {
+        tabCa?.classList.add("active");
+        if (paneCa) paneCa.style.display = "block";
+      } else if (target === "cbt") {
+        tabCbt?.classList.add("active");
+        if (paneCbt) paneCbt.style.display = "block";
+      }
+    };
+
+    tabCourses?.addEventListener("click", () => switchModalTab("courses"));
+    tabGrades?.addEventListener("click", () => switchModalTab("grades"));
+    tabCa?.addEventListener("click", () => switchModalTab("ca"));
+    tabCbt?.addEventListener("click", () => switchModalTab("cbt"));
+
+    const closeModal = () => {
+      modalBackdrop?.classList.remove("is-open");
+      document.body.style.overflow = "";
+    };
+
+    closeBtn?.addEventListener("click", closeModal);
+    closeBottomBtn?.addEventListener("click", closeModal);
+    modalBackdrop?.addEventListener("click", (e) => {
+      if (e.target === modalBackdrop) closeModal();
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modalBackdrop?.classList.contains("is-open")) {
+        closeModal();
+      }
+    });
+
+    const gradesCourseFilter = document.getElementById("lec-hist-grades-course-filter");
+    if (gradesCourseFilter) {
+      gradesCourseFilter.addEventListener("change", () => {
+        renderModalGradesTable();
+      });
+    }
+
+    const renderModalGradesTable = () => {
+      const gradesTbody = document.getElementById("lec-hist-grades-tbody");
+      if (!gradesTbody || !currentDossier) return;
+
+      const filterVal = gradesCourseFilter?.value || "all";
+      const filtered = (currentDossier.results || []).filter((r) => {
+        return filterVal === "all" || (r.courseCode || "").toUpperCase() === filterVal.toUpperCase();
+      });
+
+      if (filtered.length === 0) {
+        gradesTbody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 2rem; color: var(--student-text-muted);">
+              No student examination results found for this course selection.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      gradesTbody.innerHTML = filtered.map((r) => {
+        const statusVal = r.status || "draft";
+        let statusBadge = `<span class="status-pill-badge badge-gold">Draft</span>`;
+        if (statusVal === "approved" || statusVal === "published") {
+          statusBadge = `<span class="status-pill-badge badge-green">Approved</span>`;
+        } else if (statusVal === "submitted") {
+          statusBadge = `<span class="status-pill-badge badge-blue">Submitted</span>`;
+        } else if (statusVal === "returned" || statusVal === "rejected") {
+          statusBadge = `<span class="status-pill-badge badge-red">Returned</span>`;
+        }
+
+        return `
+          <tr>
+            <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${r.matricNumber}</td>
+            <td><strong style="color: var(--student-navy);">${r.studentName || "Candidate"}</strong></td>
+            <td><span class="status-pill-badge badge-blue">${r.courseCode}</span></td>
+            <td style="text-align: center; font-weight: 700; color: #15803D;">${r.caScore !== undefined ? r.caScore : 0}</td>
+            <td style="text-align: center; font-weight: 700;">${r.examScore !== undefined ? r.examScore : 0}</td>
+            <td style="text-align: center; font-weight: 800; font-size: 0.95rem; color: var(--student-navy);">${r.score !== undefined ? r.score : 0}%</td>
+            <td style="text-align: center;"><span class="grade-letter-pill ${r.grade || 'F'}">${r.grade || 'F'}</span></td>
+            <td style="text-align: center; font-weight: 700;">${r.gradePoint !== undefined ? r.gradePoint : "0.0"}</td>
+            <td>${statusBadge}</td>
+          </tr>
+        `;
+      }).join("");
+    };
+
+    window.openLecturerHistoricalRecordsModal = (session, semester) => {
+      const activeDoc = getActiveAcademicSession();
+      const currentSession = session || activeDoc?.currentSession || "2026/2027";
+      const currentSemester = semester || activeDoc?.currentSemester || "First Semester";
+
+      safeSetText("lec-hist-modal-title", `Faculty Teaching Dossier & Record`);
+      safeSetText(
+        "lec-hist-modal-sem-session",
+        `${currentSemester} · ${currentSession} Academic Session — ${fullName} (${staffId})`
+      );
+
+      currentDossier = getLecturerSemesterTeachingDossier(staffId, currentSession, currentSemester, { lecturerName: fullName });
+
+      safeSetText("lec-hist-modal-courses-count", currentDossier.metrics.coursesCount);
+      safeSetText("lec-hist-modal-students-count", currentDossier.metrics.studentsCount);
+      safeSetText("lec-hist-modal-cbt-count", currentDossier.metrics.cbtCount);
+
+      const statusBadge = document.getElementById("lec-hist-modal-status-badge");
+      if (statusBadge) {
+        statusBadge.textContent = currentDossier.overallStatus.toUpperCase();
+        statusBadge.className = currentDossier.overallStatus.includes("Approved")
+          ? "status-pill-badge badge-green"
+          : "status-pill-badge badge-blue";
+      }
+
+      safeSetText(
+        "lec-hist-modal-footnote",
+        `Official faculty teaching record preserved under Academic Board regulations. Academic Session: ${currentSession}, ${currentSemester}.`
+      );
+
+      // Populate Courses Tab
+      const coursesTbody = document.getElementById("lec-hist-courses-tbody");
+      if (coursesTbody) {
+        if (currentDossier.assignedCourses.length === 0) {
+          coursesTbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 2rem; color: var(--student-text-muted);">
+                No course allocations found for your staff ID (${staffId}) in ${currentSemester} of ${currentSession}.
+              </td>
+            </tr>
+          `;
+        } else {
+          coursesTbody.innerHTML = currentDossier.assignedCourses.map((c, idx) => `
+            <tr>
+              <td style="text-align: center; font-weight: 700; color: var(--student-text-muted);">${idx + 1}</td>
+              <td style="font-weight: 800; color: var(--student-blue); font-family: monospace;">${c.courseCode}</td>
+              <td><strong style="color: var(--student-navy);">${c.courseTitle}</strong></td>
+              <td style="text-align: center; font-weight: 700;">${c.creditUnits || 3}</td>
+              <td style="color: var(--student-text-muted);">${c.studyCentre || "Abeokuta Campus"}</td>
+              <td><span class="status-pill-badge badge-green">Allocated</span></td>
+            </tr>
+          `).join("");
+        }
+      }
+
+      // Populate Course filter for Grades Tab
+      if (gradesCourseFilter) {
+        gradesCourseFilter.innerHTML = `
+          <option value="all">All Allocated Courses (${currentDossier.assignedCourses.length})</option>
+          ${currentDossier.assignedCourses.map((c) => `<option value="${c.courseCode}">${c.courseCode} — ${c.courseTitle}</option>`).join("")}
+        `;
+      }
+      renderModalGradesTable();
+
+      // Populate CA Tab
+      const caTbody = document.getElementById("lec-hist-ca-tbody");
+      if (caTbody) {
+        if (currentDossier.results.length === 0) {
+          caTbody.innerHTML = `
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 2rem; color: var(--student-text-muted);">
+                No Continuous Assessment marks recorded for ${currentSemester} of ${currentSession}.
+              </td>
+            </tr>
+          `;
+        } else {
+          caTbody.innerHTML = currentDossier.results.map((r) => {
+            const isPub = r.caPublished || r.caStatus === "published";
+            return `
+              <tr>
+                <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${r.matricNumber}</td>
+                <td><strong style="color: var(--student-navy);">${r.studentName || "Candidate"}</strong></td>
+                <td><span class="status-pill-badge badge-blue">${r.courseCode}</span></td>
+                <td style="text-align: center;">${r.cbtScore !== undefined ? r.cbtScore : 0}</td>
+                <td style="text-align: center;">${r.attendanceScore !== undefined ? r.attendanceScore : 0}</td>
+                <td style="text-align: center;">${r.assignmentScore !== undefined ? r.assignmentScore : 0}</td>
+                <td style="text-align: center;">${r.practicalScore !== undefined ? r.practicalScore : 0}</td>
+                <td style="text-align: center; font-weight: 800; color: #15803D;">${r.caScore !== undefined ? r.caScore : 0}/30</td>
+                <td><span class="status-pill-badge ${isPub ? 'badge-green' : 'badge-gold'}">${isPub ? 'Published' : 'Draft'}</span></td>
+              </tr>
+            `;
+          }).join("");
+        }
+      }
+
+      // Populate CBT Tab
+      const cbtTbody = document.getElementById("lec-hist-cbt-tbody");
+      if (cbtTbody) {
+        if (currentDossier.cbtAssessments.length === 0) {
+          cbtTbody.innerHTML = `
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 2rem; color: var(--student-text-muted);">
+                No CBT assessments scheduled for ${currentSemester} of ${currentSession}.
+              </td>
+            </tr>
+          `;
+        } else {
+          cbtTbody.innerHTML = currentDossier.cbtAssessments.map((a) => {
+            const subs = (currentDossier.cbtSubmissions || []).filter((s) => s.assessmentId === a.id);
+            const avg = subs.length > 0
+              ? Math.round(subs.reduce((acc, s) => acc + (s.percentage || 0), 0) / subs.length)
+              : 0;
+            return `
+              <tr>
+                <td><span class="status-pill-badge badge-blue">${a.courseCode}</span></td>
+                <td><strong style="color: var(--student-navy);">${a.title}</strong></td>
+                <td style="text-transform: uppercase; font-size: 0.75rem;">${a.type || "Test"}</td>
+                <td>${a.durationMinutes || 30} mins</td>
+                <td style="text-align: center; font-weight: 700;">${a.maxMarks || 30}</td>
+                <td style="text-align: center; font-weight: 700;">${subs.length}</td>
+                <td style="text-align: center; font-weight: 800; color: var(--student-blue);">${avg}%</td>
+                <td><span class="status-pill-badge badge-green">${a.status || 'Active'}</span></td>
+              </tr>
+            `;
+          }).join("");
+        }
+      }
+
+      switchModalTab("courses");
+      modalBackdrop?.classList.add("is-open");
+      document.body.style.overflow = "hidden";
+    };
+  };
+
+  initLecturerHistoricalRecordsModal();
+
   // Re-render all views whenever state updates
   const refreshAllViews = () => {
     const myAllocations = allAllocationsState.filter(isMyAllocation);
     const enrolledStudents = compileEnrolledStudents(myAllocations, allRegistrationsState);
+
+    // 0. Update Three Semester Cards
+    updateLecturerSemesterCards();
 
     // 1. Overview Metrics Update
     const coursesCount = myAllocations.length;
@@ -491,9 +918,14 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       if (filtered.length === 0) {
+        const emptyMsg = sem !== "all"
+          ? `Course allocations for ${sem} have not yet been configured by the Academic Registry. Official teaching allocations will appear once published by Registry.`
+          : `No assigned courses match your filter criteria.`;
         fullCoursesContainer.innerHTML = `
           <div style="text-align: center; padding: 2.5rem 1rem; color: var(--student-text-muted);">
-            <p>No courses match your filter criteria.</p>
+            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📚</div>
+            <strong style="color: var(--student-navy); font-size: 1rem; display: block;">No Course Allocations</strong>
+            <p style="font-size: 0.875rem; margin-top: 0.25rem;">${emptyMsg}</p>
           </div>
         `;
         return;
@@ -600,11 +1032,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const rosterSemesterSelect = document.getElementById("roster-semester-select");
+    const selSem = rosterSemesterSelect?.value || "all";
     const selCourse = rosterCourseSelect?.value || "all";
     const selCentre = rosterCentreSelect?.value || "all";
     const q = (rosterSearchInput?.value || "").trim().toLowerCase();
 
     const filtered = enrolledStudents.filter((stu) => {
+      const matchSem = selSem === "all" || (stu.semester || "").trim() === selSem.trim();
       const matchCourse = selCourse === "all" || stu.courseCode === selCourse;
       const matchCentre = selCentre === "all" || (stu.studyCentre || "").toLowerCase().includes(selCentre.toLowerCase());
       const matchQ =
@@ -612,13 +1047,18 @@ document.addEventListener("DOMContentLoaded", () => {
         stu.studentName.toLowerCase().includes(q) ||
         stu.matricNumber.toLowerCase().includes(q) ||
         stu.programme.toLowerCase().includes(q);
-      return matchCourse && matchCentre && matchQ;
+      return matchSem && matchCourse && matchCentre && matchQ;
     });
 
     if (filtered.length === 0) {
+      const emptyMsg = selSem !== "all"
+        ? `No students are currently enrolled in your assigned courses for ${selSem}.`
+        : `No student records match the selected filters.`;
       rosterContainer.innerHTML = `
         <div style="text-align: center; padding: 2.5rem 1rem; color: var(--student-text-muted);">
-          <p>No student records match the selected filters.</p>
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">👥</div>
+          <strong style="color: var(--student-navy); font-size: 1rem; display: block;">No Enrolled Students</strong>
+          <p style="font-size: 0.875rem; margin-top: 0.25rem;">${emptyMsg}</p>
         </div>
       `;
       return;
@@ -640,11 +1080,13 @@ document.addEventListener("DOMContentLoaded", () => {
           </thead>
           <tbody>
             ${filtered.map((stu, idx) => {
-              // Check if already graded in results collection
+              // Check if already graded in results collection for this exact semester & session
               const existingResult = allResultsState.find(
                 (r) =>
                   (r.matricNumber || "").trim().toUpperCase() === stu.matricNumber.trim().toUpperCase() &&
-                  (r.courseCode || "").trim().toUpperCase() === stu.courseCode.trim().toUpperCase()
+                  (r.courseCode || "").trim().toUpperCase() === stu.courseCode.trim().toUpperCase() &&
+                  (r.academicSession || "2026/2027").trim() === (stu.academicSession || activeAcademicSession).trim() &&
+                  (r.semester || "First Semester").trim() === (stu.semester || activeAcademicSemester).trim()
               );
 
               let statusBadge = `<span class="status-pill-badge badge-gold">Pending Grading</span>`;
@@ -685,6 +1127,8 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   };
 
+  const rosterSemesterSelect = document.getElementById("roster-semester-select");
+  if (rosterSemesterSelect) rosterSemesterSelect.addEventListener("change", refreshAllViews);
   if (rosterCourseSelect) rosterCourseSelect.addEventListener("change", refreshAllViews);
   if (rosterCentreSelect) rosterCentreSelect.addEventListener("change", refreshAllViews);
   if (rosterSearchInput) rosterSearchInput.addEventListener("input", refreshAllViews);
@@ -767,17 +1211,70 @@ document.addEventListener("DOMContentLoaded", () => {
   if (tabBtnActivities) tabBtnActivities.addEventListener("click", () => switchGradeSubTab("activities"));
 
   const updateCourseSelects = (myAllocations) => {
+    const gradebookSemesterSelect = document.getElementById("gradebook-semester-select");
+    const selGradeSem = (gradebookSemesterSelect?.value || activeAcademicSemester || "First Semester").trim();
     const currentVal = gradebookCourseSelect?.value || "";
     const rosterCurrentVal = rosterCourseSelect?.value || "all";
     const asmtFormCourse = document.getElementById("asmt-form-course");
 
+    // Filter allocations for gradebook by the selected semester
+    const semAllocations = myAllocations.filter((a) => !selGradeSem || (a.semester || "").trim() === selGradeSem);
+    const coursesForGradebook = semAllocations.length > 0 ? semAllocations : myAllocations;
+
     if (gradebookCourseSelect) {
-      gradebookCourseSelect.innerHTML = `
-        <option value="">-- Choose Assigned Course --</option>
-        ${myAllocations.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle} (${a.studyCentre || "All Centres"})</option>`).join("")}
-      `;
-      if (currentVal && myAllocations.some((a) => a.courseCode === currentVal)) {
-        gradebookCourseSelect.value = currentVal;
+      if (coursesForGradebook.length === 0) {
+        gradebookCourseSelect.innerHTML = `<option value="">-- No Courses Assigned for ${selGradeSem} --</option>`;
+      } else {
+        gradebookCourseSelect.innerHTML = `
+          <option value="">-- Choose Assigned Course (${coursesForGradebook.length}) --</option>
+          ${coursesForGradebook.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle} (${a.semester || 'Term'} · ${a.studyCentre || "All Centres"})</option>`).join("")}
+        `;
+        if (currentVal && coursesForGradebook.some((a) => a.courseCode === currentVal)) {
+          gradebookCourseSelect.value = currentVal;
+        } else if (coursesForGradebook.length === 1) {
+          gradebookCourseSelect.value = coursesForGradebook[0].courseCode;
+        }
+      }
+    }
+
+    // Historical / Upcoming Term Notice Banner handling
+    const histBanner = document.getElementById("gradebook-historical-banner");
+    const termOrder = ["First Semester", "Second Semester", "Third Semester"];
+    const curIdx = termOrder.indexOf(activeAcademicSemester);
+    const selIdx = termOrder.indexOf(selGradeSem);
+
+    const isPast = curIdx !== -1 && selIdx !== -1 && selIdx < curIdx;
+    const isUpcoming = curIdx !== -1 && selIdx !== -1 && selIdx > curIdx;
+
+    if (histBanner) {
+      if (isPast) {
+        histBanner.style.display = "block";
+        histBanner.style.background = "#FFFBEB";
+        histBanner.style.borderColor = "#FDE68A";
+        histBanner.style.color = "#92400E";
+        histBanner.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.1rem;">📜</span>
+            <div>
+              <strong>HISTORICAL ACADEMIC RECORD:</strong> You are viewing <strong>${selGradeSem}</strong> archives. Grades and examination marks are archived. Inputs are read-only unless returned for correction by the Academic Registry.
+            </div>
+          </div>
+        `;
+      } else if (isUpcoming) {
+        histBanner.style.display = "block";
+        histBanner.style.background = "#EFF6FF";
+        histBanner.style.borderColor = "#BFDBFE";
+        histBanner.style.color = "#1E40AF";
+        histBanner.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.1rem;">⏳</span>
+            <div>
+              <strong>UPCOMING ACADEMIC TERM:</strong> You are previewing <strong>${selGradeSem}</strong>. Grading and examination mark submissions are locked until the semester is officially activated by the Academic Registry.
+            </div>
+          </div>
+        `;
+      } else {
+        histBanner.style.display = "none";
       }
     }
 
@@ -851,17 +1348,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Check if CA has been published for this course offering
+    const gradebookSemesterSelect = document.getElementById("gradebook-semester-select");
+    const selGradeSem = (gradebookSemesterSelect?.value || activeAcademicSemester || "First Semester").trim();
+    const termOrder = ["First Semester", "Second Semester", "Third Semester"];
+    const curIdx = termOrder.indexOf(activeAcademicSemester);
+    const selIdx = termOrder.indexOf(selGradeSem);
+    const isPast = curIdx !== -1 && selIdx !== -1 && selIdx < curIdx;
+    const isUpcoming = curIdx !== -1 && selIdx !== -1 && selIdx > curIdx;
+
     const publishedCount = studentsInCourse.filter((stu) => {
       const res = allResults.find(
         (r) =>
           (r.matricNumber || "").trim().toUpperCase() === stu.matricNumber.trim().toUpperCase() &&
-          (r.courseCode || "").trim().toUpperCase() === selectedCourseCode.toUpperCase()
+          (r.courseCode || "").trim().toUpperCase() === selectedCourseCode.toUpperCase() &&
+          (r.academicSession || "2026/2027").trim() === (stu.academicSession || activeAcademicSession).trim() &&
+          (r.semester || "First Semester").trim() === (stu.semester || activeAcademicSemester).trim()
       );
       return res && (res.caPublished || res.caStatus === "published");
     }).length;
 
     if (btnUnpublishCa) {
-      btnUnpublishCa.style.display = publishedCount > 0 ? "inline-block" : "none";
+      btnUnpublishCa.style.display = (!isPast && !isUpcoming && publishedCount > 0) ? "inline-block" : "none";
+    }
+
+    if (btnSaveCaDraft) {
+      btnSaveCaDraft.disabled = isPast || isUpcoming;
+      btnSaveCaDraft.title = isPast ? "Historical record — read-only" : isUpcoming ? "Upcoming term — locked" : "Save Continuous Assessment Draft";
+    }
+    if (btnPublishCaStudents) {
+      btnPublishCaStudents.disabled = isPast || isUpcoming;
+      btnPublishCaStudents.title = isPast ? "Historical record — cannot publish" : isUpcoming ? "Upcoming term — locked" : "Publish CA directly to enrolled students";
     }
 
     caGridContainer.innerHTML = `
@@ -886,7 +1402,9 @@ document.addEventListener("DOMContentLoaded", () => {
               const existingResult = allResults.find(
                 (r) =>
                   (r.matricNumber || "").trim().toUpperCase() === stu.matricNumber.trim().toUpperCase() &&
-                  (r.courseCode || "").trim().toUpperCase() === selectedCourseCode.toUpperCase()
+                  (r.courseCode || "").trim().toUpperCase() === selectedCourseCode.toUpperCase() &&
+                  (r.academicSession || "2026/2027").trim() === (stu.academicSession || activeAcademicSession).trim() &&
+                  (r.semester || "First Semester").trim() === (stu.semester || activeAcademicSemester).trim()
               );
 
               const cbt = existingResult?.cbtScore !== undefined ? existingResult.cbtScore : "";
@@ -896,9 +1414,10 @@ document.addEventListener("DOMContentLoaded", () => {
               const caTotal = existingResult?.caScore !== undefined ? existingResult.caScore : "";
 
               const isCaPub = existingResult && (existingResult.caPublished || existingResult.caStatus === "published");
+              const isInputDisabled = isPast || isUpcoming || isCaPub;
               const statusPill = isCaPub
                 ? `<span class="faculty-badge badge-active" title="Visible to student in student portal">✓ Published</span>`
-                : `<span class="faculty-badge badge-draft">Draft</span>`;
+                : (isPast ? `<span class="faculty-badge badge-draft">Archived</span>` : `<span class="faculty-badge badge-draft">Draft</span>`);
 
               return `
                 <tr data-student-name="${stu.studentName}" data-matric="${stu.matricNumber}" data-centre="${stu.studyCentre}" data-session="${stu.academicSession}" data-semester="${stu.semester}">
@@ -910,16 +1429,16 @@ document.addEventListener("DOMContentLoaded", () => {
                   <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${stu.matricNumber}</td>
                   <td style="font-size: 0.8125rem;">${stu.studyCentre}</td>
                   <td style="text-align: center;">
-                    <input type="number" min="0" max="10" class="grade-score-input input-ca-cbt" value="${cbt}" placeholder="0–10">
+                    <input type="number" min="0" max="10" class="grade-score-input input-ca-cbt" value="${cbt}" placeholder="0–10" ${isInputDisabled ? "disabled" : ""}>
                   </td>
                   <td style="text-align: center;">
-                    <input type="number" min="0" max="5" class="grade-score-input input-ca-att" value="${att}" placeholder="0–5">
+                    <input type="number" min="0" max="5" class="grade-score-input input-ca-att" value="${att}" placeholder="0–5" ${isInputDisabled ? "disabled" : ""}>
                   </td>
                   <td style="text-align: center;">
-                    <input type="number" min="0" max="5" class="grade-score-input input-ca-ass" value="${ass}" placeholder="0–5">
+                    <input type="number" min="0" max="5" class="grade-score-input input-ca-ass" value="${ass}" placeholder="0–5" ${isInputDisabled ? "disabled" : ""}>
                   </td>
                   <td style="text-align: center;">
-                    <input type="number" min="0" max="10" class="grade-score-input input-ca-pract" value="${pract}" placeholder="0–10">
+                    <input type="number" min="0" max="10" class="grade-score-input input-ca-pract" value="${pract}" placeholder="0–10" ${isInputDisabled ? "disabled" : ""}>
                   </td>
                   <td style="text-align: center; font-weight: 800; font-size: 1rem; color: #15803D;" class="cell-ca-total">
                     ${caTotal !== "" ? `${caTotal}/30` : "—"}
@@ -1038,54 +1557,76 @@ document.addEventListener("DOMContentLoaded", () => {
             </tr>
           </thead>
           <tbody>
-            ${studentsInCourse.map((stu, idx) => {
-              const existingResult = allResults.find(
-                (r) =>
-                  (r.matricNumber || "").trim().toUpperCase() === stu.matricNumber.trim().toUpperCase() &&
-                  (r.courseCode || "").trim().toUpperCase() === selectedCourseCode.toUpperCase()
-              );
+            ${(() => {
+              const gradebookSemesterSelect = document.getElementById("gradebook-semester-select");
+              const selGradeSem = (gradebookSemesterSelect?.value || activeAcademicSemester || "First Semester").trim();
+              const termOrder = ["First Semester", "Second Semester", "Third Semester"];
+              const curIdx = termOrder.indexOf(activeAcademicSemester);
+              const selIdx = termOrder.indexOf(selGradeSem);
+              const isPast = curIdx !== -1 && selIdx !== -1 && selIdx < curIdx;
+              const isUpcoming = curIdx !== -1 && selIdx !== -1 && selIdx > curIdx;
 
-              const caVal = existingResult?.caScore !== undefined ? existingResult.caScore : 0;
-              const initialExam = existingResult?.examScore !== undefined ? existingResult.examScore : "";
-              const initialTotal = existingResult?.score !== undefined ? existingResult.score : "";
-              const initialGrade = existingResult ? existingResult.grade || "F" : "—";
-              const initialGp = existingResult?.gradePoint !== undefined ? existingResult.gradePoint : "—";
-              const initialRemarks = existingResult ? existingResult.remarks || "Pending Entry" : "Pending Entry";
-              const statusVal = existingResult ? existingResult.status || "draft" : "draft";
-
-              let statusBadge = `<span class="faculty-badge badge-draft">Draft</span>`;
-              if (statusVal === "approved" || statusVal === "published") {
-                statusBadge = `<span class="faculty-badge badge-active">Approved &amp; Published</span>`;
-              } else if (statusVal === "submitted") {
-                statusBadge = `<span class="faculty-badge badge-blue">Submitted to Registry</span>`;
-              } else if (statusVal === "rejected") {
-                statusBadge = `<span class="faculty-badge" style="background:#FEE2E2; color:#B91C1C; border:1px solid #FCA5A5;">Revision Requested</span>`;
+              if (btnSaveGradeDraft) {
+                btnSaveGradeDraft.disabled = isPast || isUpcoming;
+                btnSaveGradeDraft.title = isPast ? "Historical record — read-only" : isUpcoming ? "Upcoming term — locked" : "Save Exam Draft";
+              }
+              if (btnSubmitGradeRegistry) {
+                btnSubmitGradeRegistry.disabled = isPast || isUpcoming;
+                btnSubmitGradeRegistry.title = isPast ? "Historical record — cannot submit" : isUpcoming ? "Upcoming term — locked" : "Submit to Academic Registry";
               }
 
-              const isLocked = statusVal === "approved" || statusVal === "published";
+              return studentsInCourse.map((stu, idx) => {
+                const existingResult = allResults.find(
+                  (r) =>
+                    (r.matricNumber || "").trim().toUpperCase() === stu.matricNumber.trim().toUpperCase() &&
+                    (r.courseCode || "").trim().toUpperCase() === selectedCourseCode.toUpperCase() &&
+                    (r.academicSession || "2026/2027").trim() === (stu.academicSession || activeAcademicSession).trim() &&
+                    (r.semester || "First Semester").trim() === (stu.semester || activeAcademicSemester).trim()
+                );
 
-              return `
-                <tr data-student-name="${stu.studentName}" data-matric="${stu.matricNumber}" data-centre="${stu.studyCentre}" data-session="${stu.academicSession}" data-semester="${stu.semester}" data-ca="${caVal}">
-                  <td style="color: var(--student-text-muted); font-weight: 700;">${idx + 1}</td>
-                  <td>
-                    <strong style="color: var(--student-navy); display: block;">${stu.studentName}</strong>
-                    <span style="font-size: 0.75rem; color: var(--student-text-muted);">${stu.programme}</span>
-                  </td>
-                  <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${stu.matricNumber}</td>
-                  <td style="text-align: center; font-weight: 700; color: #15803D;" class="cell-exam-ca">
-                    ${caVal}/30
-                  </td>
-                  <td style="text-align: center;">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max="70" 
-                      class="grade-score-input input-exam" 
-                      value="${initialExam}" 
-                      placeholder="0–70"
-                      ${isLocked ? "disabled" : ""}
-                    >
-                  </td>
+                const caVal = existingResult?.caScore !== undefined ? existingResult.caScore : 0;
+                const initialExam = existingResult?.examScore !== undefined ? existingResult.examScore : "";
+                const initialTotal = existingResult?.score !== undefined ? existingResult.score : "";
+                const initialGrade = existingResult ? existingResult.grade || "F" : "—";
+                const initialGp = existingResult?.gradePoint !== undefined ? existingResult.gradePoint : "—";
+                const initialRemarks = existingResult ? existingResult.remarks || "Pending Entry" : "Pending Entry";
+                const statusVal = existingResult ? existingResult.status || "draft" : "draft";
+
+                let statusBadge = `<span class="faculty-badge badge-draft">Draft</span>`;
+                if (statusVal === "approved" || statusVal === "published") {
+                  statusBadge = `<span class="faculty-badge badge-active">Approved &amp; Published</span>`;
+                } else if (statusVal === "submitted") {
+                  statusBadge = `<span class="faculty-badge badge-blue">Submitted to Registry</span>`;
+                } else if (statusVal === "rejected") {
+                  statusBadge = `<span class="faculty-badge" style="background:#FEE2E2; color:#B91C1C; border:1px solid #FCA5A5;">Revision Requested</span>`;
+                } else if (isPast) {
+                  statusBadge = `<span class="faculty-badge badge-draft">Archived Record</span>`;
+                }
+
+                const isLocked = isPast || isUpcoming || statusVal === "approved" || statusVal === "published";
+
+                return `
+                  <tr data-student-name="${stu.studentName}" data-matric="${stu.matricNumber}" data-centre="${stu.studyCentre}" data-session="${stu.academicSession}" data-semester="${stu.semester}" data-ca="${caVal}">
+                    <td style="color: var(--student-text-muted); font-weight: 700;">${idx + 1}</td>
+                    <td>
+                      <strong style="color: var(--student-navy); display: block;">${stu.studentName}</strong>
+                      <span style="font-size: 0.75rem; color: var(--student-text-muted);">${stu.programme}</span>
+                    </td>
+                    <td style="font-weight: 700; color: var(--student-blue); font-family: monospace;">${stu.matricNumber}</td>
+                    <td style="text-align: center; font-weight: 700; color: #15803D;" class="cell-exam-ca">
+                      ${caVal}/30
+                    </td>
+                    <td style="text-align: center;">
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="70" 
+                        class="grade-score-input input-exam" 
+                        value="${initialExam}" 
+                        placeholder="0–70"
+                        ${isLocked ? "disabled" : ""}
+                      >
+                    </td>
                   <td style="text-align: center; font-weight: 800; font-size: 0.95rem; color: var(--student-navy);" class="cell-total">
                     ${initialTotal !== "" ? `${initialTotal}%` : "—"}
                   </td>
@@ -1101,9 +1642,9 @@ document.addEventListener("DOMContentLoaded", () => {
                   <td class="cell-status">
                     ${statusBadge}
                   </td>
-                </tr>
-              `;
-            }).join("")}
+                `;
+              }).join("");
+            })()}
           </tbody>
         </table>
       </div>
@@ -1256,6 +1797,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const gradebookSemesterSelect = document.getElementById("gradebook-semester-select");
+  if (gradebookSemesterSelect) {
+    gradebookSemesterSelect.addEventListener("change", () => {
+      refreshAllViews();
+    });
+  }
+
   // -------------------------------------------------------------------------
   // 6D. SAVE & PUBLISH CONTINUOUS ASSESSMENT (CA)
   // -------------------------------------------------------------------------
@@ -1266,12 +1814,28 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const selGradeSem = (gradebookSemesterSelect?.value || activeAcademicSemester || "First Semester").trim();
+    const termOrder = ["First Semester", "Second Semester", "Third Semester"];
+    const curIdx = termOrder.indexOf(activeAcademicSemester);
+    const selIdx = termOrder.indexOf(selGradeSem);
+
+    if (curIdx !== -1 && selIdx !== -1 && selIdx < curIdx) {
+      showGradebookAlert("This semester is completed and archived. Historical records cannot be modified.", "error");
+      return;
+    }
+    if (curIdx !== -1 && selIdx !== -1 && selIdx > curIdx) {
+      showGradebookAlert("This semester is upcoming. Marks cannot be entered until the semester is active.", "error");
+      return;
+    }
+
     const table = document.getElementById("ca-entry-table");
     if (!table) return;
 
     const rows = table.querySelectorAll("tbody tr");
     const myAllocations = allAllocationsState.filter(isMyAllocation);
     const courseObj = myAllocations.find((a) => a.courseCode === selectedCourseCode);
+    const opSession = courseObj?.academicSession || activeAcademicSession || "2026/2027";
+    const opSemester = courseObj?.semester || selGradeSem || activeAcademicSemester || "First Semester";
 
     const caEntriesToSave = [];
 
@@ -1291,8 +1855,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const studentName = row.getAttribute("data-student-name");
         const matricNumber = row.getAttribute("data-matric");
         const studyCentre = row.getAttribute("data-centre");
-        const sessionVal = row.getAttribute("data-session") || "2026/2027";
-        const semesterVal = row.getAttribute("data-semester") || "First Semester";
+        const sessionVal = row.getAttribute("data-session") || opSession;
+        const semesterVal = row.getAttribute("data-semester") || opSemester;
 
         caEntriesToSave.push({
           studentName,
@@ -1321,7 +1885,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (publishToStudents) {
-      if (!confirm(`Publish Continuous Assessment marks directly to all ${caEntriesToSave.length} enrolled student(s) in ${selectedCourseCode}?\n\nEnrolled students will immediately be able to view their CBT, Attendance, Assignment, Practical, and Total CA marks in their Student Portal.`)) {
+      if (!confirm(`Publish Continuous Assessment marks directly to all ${caEntriesToSave.length} enrolled student(s) in ${selectedCourseCode} for ${opSemester} (${opSession})?\n\nEnrolled students will immediately be able to view their CBT, Attendance, Assignment, Practical, and Total CA marks in their Student Portal.`)) {
         return;
       }
     }
@@ -1338,20 +1902,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (publishToStudents) {
         await publishCourseCAResults(selectedCourseCode, {
-          session: "2026/2027",
-          semester: "First Semester",
+          session: opSession,
+          semester: opSemester,
           studyCentre: "all",
           lecturerStaffId: staffId,
           lecturerName: fullName
         });
 
         showGradebookAlert(
-          `✓ Success: Continuous Assessment (CA) scores published directly to ${caEntriesToSave.length} enrolled students for ${selectedCourseCode}. Enrolled students can now view their scores immediately.`,
+          `✓ Success: Continuous Assessment (CA) scores published directly to ${caEntriesToSave.length} enrolled students for ${selectedCourseCode} (${opSemester}). Enrolled students can now view their scores immediately.`,
           "success"
         );
       } else {
         showGradebookAlert(
-          `✓ Draft CA scores saved for ${caEntriesToSave.length} students in ${selectedCourseCode}. You can continue editing or publish when ready.`,
+          `✓ Draft CA scores saved for ${caEntriesToSave.length} students in ${selectedCourseCode} (${opSemester}). You can continue editing or publish when ready.`,
           "success"
         );
       }
@@ -1370,15 +1934,21 @@ document.addEventListener("DOMContentLoaded", () => {
     btnUnpublishCa.addEventListener("click", async () => {
       const selectedCourseCode = gradebookCourseSelect?.value;
       if (!selectedCourseCode) return;
-      if (!confirm(`Withdraw CA publication for ${selectedCourseCode}? Scores will revert to draft and become hidden from student view.`)) return;
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const courseObj = myAllocations.find((a) => a.courseCode === selectedCourseCode);
+      const selGradeSem = (gradebookSemesterSelect?.value || activeAcademicSemester || "First Semester").trim();
+      const opSession = courseObj?.academicSession || activeAcademicSession || "2026/2027";
+      const opSemester = courseObj?.semester || selGradeSem || activeAcademicSemester || "First Semester";
+
+      if (!confirm(`Withdraw CA publication for ${selectedCourseCode} (${opSemester})? Scores will revert to draft and become hidden from student view.`)) return;
 
       try {
         await unpublishCourseCAResults(selectedCourseCode, {
-          session: "2026/2027",
-          semester: "First Semester",
+          session: opSession,
+          semester: opSemester,
           studyCentre: "all"
         });
-        showGradebookAlert(`Continuous Assessment for ${selectedCourseCode} reverted to draft status.`, "success");
+        showGradebookAlert(`Continuous Assessment for ${selectedCourseCode} (${opSemester}) reverted to draft status.`, "success");
       } catch (err) {
         showGradebookAlert(`Failed to unpublish CA: ${err.message}`, "error");
       }
@@ -1395,12 +1965,28 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const selGradeSem = (gradebookSemesterSelect?.value || activeAcademicSemester || "First Semester").trim();
+    const termOrder = ["First Semester", "Second Semester", "Third Semester"];
+    const curIdx = termOrder.indexOf(activeAcademicSemester);
+    const selIdx = termOrder.indexOf(selGradeSem);
+
+    if (curIdx !== -1 && selIdx !== -1 && selIdx < curIdx) {
+      showGradebookAlert("This semester is completed and archived. Historical records cannot be modified.", "error");
+      return;
+    }
+    if (curIdx !== -1 && selIdx !== -1 && selIdx > curIdx) {
+      showGradebookAlert("This semester is upcoming. Marks cannot be entered until the semester is active.", "error");
+      return;
+    }
+
     const table = document.getElementById("exam-entry-table");
     if (!table) return;
 
     const rows = table.querySelectorAll("tbody tr");
     const myAllocations = allAllocationsState.filter(isMyAllocation);
     const courseObj = myAllocations.find((a) => a.courseCode === selectedCourseCode);
+    const opSession = courseObj?.academicSession || activeAcademicSession || "2026/2027";
+    const opSemester = courseObj?.semester || selGradeSem || activeAcademicSemester || "First Semester";
 
     const gradeEntriesToSave = [];
 
@@ -1416,8 +2002,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const studentName = row.getAttribute("data-student-name");
         const matricNumber = row.getAttribute("data-matric");
         const studyCentre = row.getAttribute("data-centre");
-        const sessionVal = row.getAttribute("data-session") || "2026/2027";
-        const semesterVal = row.getAttribute("data-semester") || "First Semester";
+        const sessionVal = row.getAttribute("data-session") || opSession;
+        const semesterVal = row.getAttribute("data-semester") || opSemester;
 
         gradeEntriesToSave.push({
           studentName,
@@ -1443,7 +2029,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (targetStatus === "submitted") {
-      if (!confirm(`Submit final examination results for ${gradeEntriesToSave.length} students in ${selectedCourseCode} to the Academic Registry?\n\nNote: Submitted results will be reviewed and officially approved by the Academic Registry prior to semester publication.`)) {
+      if (!confirm(`Submit final examination results for ${gradeEntriesToSave.length} students in ${selectedCourseCode} for ${opSemester} (${opSession}) to the Academic Registry?\n\nNote: Submitted results will be reviewed and officially approved by the Academic Registry prior to semester publication.`)) {
         return;
       }
     }
@@ -1461,20 +2047,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const count = gradeEntriesToSave.length;
       if (targetStatus === "submitted") {
         await submitCourseGradesToRegistry(selectedCourseCode, {
-          session: "2026/2027",
-          semester: "First Semester",
+          session: opSession,
+          semester: opSemester,
           studyCentre: "all",
           lecturerStaffId: staffId,
           lecturerName: fullName
         });
 
         showGradebookAlert(
-          `✓ Successfully submitted examination results for ${count} students in ${selectedCourseCode} to Academic Registry for verification and approval.`,
+          `✓ Successfully submitted examination results for ${count} students in ${selectedCourseCode} (${opSemester}) to Academic Registry for verification and approval.`,
           "success"
         );
       } else {
         showGradebookAlert(
-          `✓ Draft examination scores saved for ${count} students in ${selectedCourseCode}. You can return and complete editing anytime.`,
+          `✓ Draft examination scores saved for ${count} students in ${selectedCourseCode} (${opSemester}). You can return and complete editing anytime.`,
           "success"
         );
       }
@@ -1571,9 +2157,18 @@ document.addEventListener("DOMContentLoaded", () => {
       btnSubmit.disabled = true;
       btnSubmit.textContent = "Creating...";
 
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const courseObj = myAllocations.find((a) => a.courseCode === courseCode);
+      const selGradeSem = (gradebookSemesterSelect?.value || activeAcademicSemester || "First Semester").trim();
+      const opSession = courseObj?.academicSession || activeAcademicSession || "2026/2027";
+      const opSemester = courseObj?.semester || selGradeSem || activeAcademicSemester || "First Semester";
+
       try {
         await createCourseAssessment({
           courseCode,
+          courseTitle: courseObj?.courseTitle || `${courseCode} Study`,
+          academicSession: opSession,
+          semester: opSemester,
           type,
           title,
           maxScore,
@@ -2746,8 +3341,8 @@ document.addEventListener("DOMContentLoaded", () => {
         courseCode,
         courseTitle: courseObj?.courseTitle || "Theological Study",
         topic,
-        academicSession: activeAcademicSession || "2026/2027",
-        semester: activeAcademicSemester || "First Semester",
+        academicSession: courseObj?.academicSession || activeAcademicSession || "2026/2027",
+        semester: courseObj?.semester || activeAcademicSemester || "First Semester",
         studyCentre,
         instructions,
         startDate: new Date(startDate).toISOString(),
