@@ -1913,25 +1913,31 @@
               <p class="section-sub-title">Configure academic courses, semester allocations, curriculum parameters, and course status.</p>
             </div>
             <div class="section-heading-actions" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-              <button type="button" class="btn-card-action" id="btn-course-list-view" style="padding: 0.55rem 1rem; font-size: 0.8125rem;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
-                  <line x1="8" y1="6" x2="21" y2="6"></line>
-                  <line x1="8" y1="12" x2="21" y2="12"></line>
-                  <line x1="8" y1="18" x2="21" y2="18"></line>
-                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              <button type="button" class="btn-card-action" id="btn-open-add-offering" style="background: var(--primary-blue); color: #ffffff; font-weight: 700; border-color: var(--primary-blue); padding: 0.55rem 1rem; font-size: 0.8125rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                List View
+                Offer Course in Semester (+)
               </button>
               <button type="button" class="btn-card-action" id="btn-open-add-course" style="background: var(--gold); color: var(--dark-navy); font-weight: 800; border-color: var(--gold); padding: 0.55rem 1.15rem; font-size: 0.8125rem;">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                Add Course (+)
+                Add Catalogue Course (+)
               </button>
             </div>
+          </div>
+
+          <!-- Course Management View Mode Switcher -->
+          <div class="course-mgmt-tab-bar" style="display: flex; gap: 0.5rem; margin-top: 1rem; margin-bottom: 1.25rem;">
+            <button type="button" class="btn-card-action" id="tab-btn-course-catalog" style="background: var(--primary-blue); color: #ffffff; border-color: var(--primary-blue); font-weight: 700; padding: 0.5rem 1.15rem;">
+              📖 Central Course Catalogue
+            </button>
+            <button type="button" class="btn-card-action" id="tab-btn-course-offerings" style="background: #ffffff; color: var(--dark-navy); border-color: #CBD5E1; font-weight: 700; padding: 0.5rem 1.15rem;">
+              📅 Semester Course Offerings
+            </button>
           </div>
 
           <!-- Course Statistics Cards (Calculated Dynamically from Real Records) -->
@@ -2758,9 +2764,14 @@
                   These central courses are simultaneously available to eligible students at every active study centre.
                 </p>
               </div>
-              <button type="button" class="btn-card-action" onclick="window.dimabinAdmin?.navigateToSection('course-management')" style="padding: 0.4rem 0.85rem; font-size: 0.75rem;">
-                + Add / Manage Courses
-              </button>
+              <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn-card-action" id="btn-reg-add-offering" style="background: var(--gold); color: var(--dark-navy); font-weight: 800; border-color: var(--gold); padding: 0.4rem 0.85rem; font-size: 0.75rem;">
+                  + Add Course to Offering
+                </button>
+                <button type="button" class="btn-card-action" onclick="window.dimabinAdmin?.navigateToSection('course-management')" style="padding: 0.4rem 0.85rem; font-size: 0.75rem;">
+                  Manage Curriculum
+                </button>
+              </div>
             </div>
             <div class="card-body-clean" style="padding: 0;">
               <div class="table-responsive-wrapper">
@@ -2772,7 +2783,9 @@
                       <th>Department</th>
                       <th>Units</th>
                       <th>Assigned Lecturer</th>
+                      <th>Registered Students</th>
                       <th>Status</th>
+                      <th style="text-align: right; min-width: 140px;">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="reg-offerings-tbody">
@@ -4446,6 +4459,154 @@
         <button type="button" class="btn-admin-cancel" id="btn-cancel-course-delete">Cancel</button>
         <button type="button" class="btn-card-action" id="btn-confirm-course-delete" style="background: #DC2626; color: #FFFFFF; border-color: #DC2626; font-weight: 800; padding: 0.6rem 1.25rem;">
           Permanently Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Authorized Remove Course from Semester Offering (Safeguards Academic Records) -->
+  <div class="admin-modal-overlay" id="modal-remove-course-offering" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-remove-offering-title" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header" style="background: #DC2626;">
+        <h3 class="admin-modal-title" id="modal-remove-offering-title" style="color: #FFFFFF;">Remove Course from Semester Offering</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-remove-offering-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="admin-modal-body">
+        <input type="hidden" id="remove-offering-id" value="">
+        <input type="hidden" id="remove-offering-code" value="">
+        <input type="hidden" id="remove-offering-session" value="">
+        <input type="hidden" id="remove-offering-semester" value="">
+
+        <!-- Mandatory Immediate Withdrawal Warning -->
+        <div class="course-delete-warning-box" style="background: #FEF2F2; border-color: #F87171; color: #991B1B; margin-bottom: 1rem;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; color: #DC2626;">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <div>
+            <div style="font-weight: 800; font-size: 0.9375rem; margin-bottom: 0.25rem;">Warning: Immediate Student Course List Withdrawal</div>
+            <div style="font-size: 0.8125rem; line-height: 1.45;">
+              Removing this course will take it out of active student course lists and current semester registration displays immediately. Credit units will be deducted from active enrolled student totals. All historical examination results, grades, and CBT attempts remain safely preserved in institutional archives.
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-item-box" style="margin-bottom: 1rem;">
+          <span class="detail-item-label">Target Course Offering</span>
+          <div class="detail-item-val" id="remove-offering-modal-course-title">THY-101 — Introduction to Systematic Theology</div>
+          <div style="font-size: 0.78rem; color: var(--admin-text-muted); margin-top: 0.3rem;" id="remove-offering-modal-meta">
+            Academic Session: 2026/2027 · Semester: First Semester · Scope: All Study Centres
+          </div>
+          <div style="margin-top: 0.5rem; font-size: 0.8125rem; font-weight: 700; color: #B91C1C;" id="remove-offering-modal-dep-warning">
+            <!-- Dynamically populated affected student count -->
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label class="admin-form-label" for="remove-offering-reason">Reason for Withdrawal / Removal *</label>
+          <input type="text" class="admin-form-input" id="remove-offering-reason" placeholder="e.g. Curriculum update, lecturer sabbatical, semester offering withdrawal" required>
+          <small style="color: var(--admin-text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">This reason will be logged in the permanent institutional audit trail and registration snapshots.</small>
+        </div>
+      </div>
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-remove-offering">Cancel</button>
+        <button type="button" class="btn-card-action" id="btn-confirm-remove-offering" style="background: #DC2626; color: #FFFFFF; border-color: #DC2626; font-weight: 800; padding: 0.6rem 1.25rem;">
+          <span class="btn-spinner" id="remove-offering-spinner" style="display: none;">⏳</span>
+          <span id="remove-offering-btn-text">Confirm Course Removal</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Add Central Course to Academic Semester Offering -->
+  <div class="admin-modal-overlay" id="modal-add-course-offering" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-add-offering-title" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header" style="background: var(--dark-navy);">
+        <h3 class="admin-modal-title" id="modal-add-offering-title" style="color: #FFFFFF;">Configure Course for Semester Offering</h3>
+        <button type="button" class="admin-modal-close-btn" id="btn-close-add-offering-modal" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="admin-modal-body">
+        <div id="add-offering-modal-alert" class="course-modal-feedback" role="alert" style="display: none;"></div>
+
+        <div class="allocation-info-banner" style="margin-bottom: 1.25rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <div>
+            <strong>Central Catalogue Independence:</strong> Configuring a course for a semester offering makes it active and available for student enrollment without modifying or duplicating central catalogue records.
+          </div>
+        </div>
+
+        <form id="form-add-offering" novalidate>
+          <div class="course-form-grid">
+            <!-- 1. Select Central Course -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="add-offering-course-select">Select Course from Central Catalogue *</label>
+              <select class="admin-form-select" id="add-offering-course-select" required>
+                <!-- Dynamically populated with central catalogue courses -->
+              </select>
+            </div>
+
+            <!-- 2. Academic Session -->
+            <div>
+              <label class="admin-form-label" for="add-offering-session-select">Academic Session *</label>
+              <select class="admin-form-select" id="add-offering-session-select" required>
+                <option value="2026/2027">2026/2027</option>
+                <option value="2025/2026">2025/2026</option>
+                <option value="2024/2025">2024/2025</option>
+              </select>
+            </div>
+
+            <!-- 3. Academic Semester -->
+            <div>
+              <label class="admin-form-label" for="add-offering-semester-select">Academic Semester *</label>
+              <select class="admin-form-select" id="add-offering-semester-select" required>
+                <option value="First Semester">First Semester</option>
+                <option value="Second Semester">Second Semester</option>
+                <option value="Third Semester">Third Semester</option>
+              </select>
+            </div>
+
+            <!-- 4. Study Centre Scope -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="add-offering-centre-select">Study Centre (Campus Scope) *</label>
+              <select class="admin-form-select" id="add-offering-centre-select" required>
+                <option value="all">All Study Centres (Institution-Wide)</option>
+              </select>
+            </div>
+
+            <!-- 5. Credit Units -->
+            <div>
+              <label class="admin-form-label" for="add-offering-credits">Applicable Credit Units *</label>
+              <input type="number" class="admin-form-input" id="add-offering-credits" min="1" max="12" value="3" required>
+            </div>
+
+            <!-- 6. Offering Notes -->
+            <div class="form-group-full">
+              <label class="admin-form-label" for="add-offering-notes">Offering Remarks / Enrolment Notes</label>
+              <textarea class="admin-form-textarea" id="add-offering-notes" rows="2" placeholder="e.g. Core module for 100L Diploma intake, trimester intake prerequisite..."></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="admin-modal-footer">
+        <button type="button" class="btn-admin-cancel" id="btn-cancel-add-offering">Cancel</button>
+        <button type="button" class="btn-admin-primary" id="btn-confirm-add-offering">
+          <span class="btn-spinner" id="add-offering-spinner" style="display: none;">⏳</span>
+          <span id="add-offering-btn-text">Add Course to Offering</span>
         </button>
       </div>
     </div>

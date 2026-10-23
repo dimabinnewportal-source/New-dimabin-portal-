@@ -1212,5 +1212,183 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   }
+
+  // =========================================================================
+  // 12. FLOATING SPONSOR US MODAL & COPY ACCOUNT NUMBER HANDLERS
+  // =========================================================================
+  const initSponsorshipModal = () => {
+    const floatingBtn = document.getElementById('btn-floating-sponsor');
+    const modal = document.getElementById('modal-sponsorship');
+    const closeBtn = document.getElementById('btn-close-sponsorship');
+    const closeFooterBtn = document.getElementById('btn-close-sponsorship-footer');
+    const copyBtns = document.querySelectorAll('.btn-copy-account');
+    const liveAnnouncer = document.getElementById('sponsorship-copy-announcement');
+
+    if (!floatingBtn || !modal) return;
+
+    let lastActiveElement = null;
+
+    const openModal = () => {
+      lastActiveElement = document.activeElement;
+      modal.removeAttribute('hidden');
+      // Trigger browser reflow so CSS animation/transition fires cleanly
+      void modal.offsetWidth;
+      modal.classList.add('active');
+      document.body.classList.add('modal-open');
+      floatingBtn.setAttribute('aria-expanded', 'true');
+
+      // Focus close button for keyboard accessibility
+      if (closeBtn) {
+        closeBtn.focus();
+      }
+    };
+
+    const closeModal = () => {
+      modal.classList.remove('active');
+      document.body.classList.remove('modal-open');
+      floatingBtn.setAttribute('aria-expanded', 'false');
+
+      setTimeout(() => {
+        if (!modal.classList.contains('active')) {
+          modal.setAttribute('hidden', '');
+        }
+      }, 250);
+
+      // Return focus to trigger button
+      if (lastActiveElement && typeof lastActiveElement.focus === 'function') {
+        lastActiveElement.focus();
+      }
+    };
+
+    floatingBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openModal();
+    });
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeModal();
+      });
+    }
+
+    if (closeFooterBtn) {
+      closeFooterBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeModal();
+      });
+    }
+
+    // Close when clicking overlay backdrop outside dialog
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+
+    // Close on Escape key and trap tab focus within modal
+    document.addEventListener('keydown', (e) => {
+      if (!modal.classList.contains('active')) return;
+
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        e.preventDefault();
+        closeModal();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const focusableSelectors = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusables = Array.from(modal.querySelectorAll(focusableSelectors));
+        if (focusables.length === 0) return;
+
+        const firstEl = focusables[0];
+        const lastEl = focusables[focusables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
+      }
+    });
+
+    // Handle copying account numbers
+    copyBtns.forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const rawAccount = btn.getAttribute('data-account') || '';
+        const accountNumber = rawAccount.trim();
+        const bankName = btn.getAttribute('data-bank') || 'Bank';
+        const textSpan = btn.querySelector('.copy-btn-text');
+        const originalText = textSpan ? textSpan.textContent : 'Copy Account Number';
+
+        if (!accountNumber) return;
+
+        let copiedSuccessfully = false;
+
+        // 1. Primary standard Clipboard API
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          try {
+            await navigator.clipboard.writeText(accountNumber);
+            copiedSuccessfully = true;
+          } catch (_) {
+            copiedSuccessfully = false;
+          }
+        }
+
+        // 2. Fallback: temporary hidden textarea + document.execCommand('copy')
+        if (!copiedSuccessfully) {
+          try {
+            const textarea = document.createElement('textarea');
+            textarea.value = accountNumber;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            textarea.style.top = '0';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            copiedSuccessfully = document.execCommand('copy');
+            document.body.removeChild(textarea);
+          } catch (_) {
+            copiedSuccessfully = false;
+          }
+        }
+
+        // 3. Fallback prompt if system clipboard access is completely blocked
+        if (!copiedSuccessfully) {
+          window.prompt(`Copy ${bankName} account number:`, accountNumber);
+          copiedSuccessfully = true;
+        }
+
+        if (copiedSuccessfully) {
+          btn.classList.add('copied');
+          if (textSpan) textSpan.textContent = 'Account number copied!';
+          btn.setAttribute('aria-label', `${bankName} account number ${accountNumber} copied to clipboard!`);
+
+          if (liveAnnouncer) {
+            liveAnnouncer.textContent = `${bankName} account number ${accountNumber} copied to clipboard!`;
+          }
+
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            if (textSpan) textSpan.textContent = originalText;
+            btn.setAttribute('aria-label', `Copy ${bankName} account number ${accountNumber}`);
+          }, 2500);
+        }
+      });
+    });
+  };
+
+  initSponsorshipModal();
 });
+
 

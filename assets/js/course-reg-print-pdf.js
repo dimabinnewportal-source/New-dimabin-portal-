@@ -150,14 +150,15 @@ export function buildRegistrationSlipHtml(reg, studentProfile = {}, customLogoUr
     statusBorder = "#BFDBFE";
   }
 
-  // Courses list & total units computation
-  const courses = Array.isArray(regData.courses) ? regData.courses : [];
+  // Courses list & total units computation (filtering out any withdrawn or removed course offerings)
+  const rawCourses = Array.isArray(regData.courses) ? regData.courses : [];
+  const courses = rawCourses.filter((c) => !c.isRemovedFromOffering && c.status !== "removed");
   let calculatedTotalUnits = 0;
   courses.forEach((c) => {
     calculatedTotalUnits += parseInt(c.creditUnits !== undefined ? c.creditUnits : (c.creditUnit || 3), 10) || 0;
   });
 
-  const totalCredits = calculatedTotalUnits > 0 ? calculatedTotalUnits : (regData.totalCredits || 0);
+  const totalCredits = calculatedTotalUnits;
   const submissionDate = regData.submittedAt || regData.updatedAt || new Date().toISOString();
   const printTimestamp = new Date().toLocaleString("en-GB", {
     day: "2-digit",

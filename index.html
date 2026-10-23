@@ -769,6 +769,161 @@
     </div>
   </footer>
 
+  <!-- ========================================================================
+       FLOATING SPONSOR US BUTTON & SPONSORSHIP MODAL
+       ======================================================================== -->
+  <aside class="floating-sponsor-wrapper" aria-label="Sponsorship options">
+    <button type="button" 
+            id="btn-floating-sponsor" 
+            class="floating-sponsor-btn" 
+            aria-haspopup="dialog" 
+            aria-expanded="false" 
+            aria-controls="modal-sponsorship" 
+            aria-label="Support DIMABIN Bible Institute - Sponsor Us">
+      <span class="floating-sponsor-icon-box" aria-hidden="true">
+        <svg class="floating-sponsor-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>
+      </span>
+      <span class="floating-sponsor-text">Sponsor Us</span>
+    </button>
+  </aside>
+
+  <!-- Sponsorship Modal Dialog -->
+  <div id="modal-sponsorship" 
+       class="sponsorship-modal-overlay" 
+       role="dialog" 
+       aria-modal="true" 
+       aria-labelledby="sponsorship-modal-title" 
+       aria-describedby="sponsorship-modal-desc" 
+       hidden>
+    <div class="sponsorship-modal-dialog">
+      <!-- Modal Header -->
+      <div class="sponsorship-modal-header">
+        <div class="sponsorship-modal-header-content">
+          <span class="sponsorship-modal-eyebrow">PARTNERSHIP &amp; DONATIONS</span>
+          <h2 id="sponsorship-modal-title" class="sponsorship-modal-title">Support DIMABIN Bible Institute</h2>
+        </div>
+        <button type="button" 
+                class="sponsorship-modal-close" 
+                id="btn-close-sponsorship" 
+                aria-label="Close sponsorship panel">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="sponsorship-modal-body">
+        <!-- Message -->
+        <div class="sponsorship-message-card">
+          <p id="sponsorship-modal-desc" class="sponsorship-message-text">
+            “Your sponsorship helps support the work and mission of DIMABIN Bible Institute. Thank you for your generosity and support.”
+          </p>
+        </div>
+
+        <!-- Bank Accounts Section Header -->
+        <div class="sponsorship-accounts-header">
+          <span class="sponsorship-accounts-label">OFFICIAL BANK TRANSFER DETAILS</span>
+        </div>
+
+        <!-- Bank Cards Grid -->
+        <div class="sponsorship-cards-grid">
+          <!-- Card 1: FIRST BANK -->
+          <div class="bank-card">
+            <div class="bank-card-header">
+              <div class="bank-badge bank-firstbank">
+                <span>FIRST BANK</span>
+              </div>
+            </div>
+
+            <div class="bank-card-content">
+              <div class="bank-detail-group">
+                <span class="bank-detail-label">Account Name</span>
+                <span class="bank-account-name">SORINOLA OLALEKAN JOSIAH</span>
+              </div>
+
+              <div class="bank-detail-group">
+                <span class="bank-detail-label">Account Number</span>
+                <div class="bank-number-row">
+                  <span class="bank-account-number" id="num-firstbank">3015784163</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bank-card-footer">
+              <button type="button" 
+                      class="btn-copy-account" 
+                      data-account="3015784163" 
+                      data-bank="First Bank"
+                      aria-label="Copy First Bank account number 3015784163">
+                <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span class="copy-btn-text">Copy Account Number</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 2: GTB BANK -->
+          <div class="bank-card">
+            <div class="bank-card-header">
+              <div class="bank-badge bank-gtb">
+                <span>GTB BANK</span>
+              </div>
+            </div>
+
+            <div class="bank-card-content">
+              <div class="bank-detail-group">
+                <span class="bank-detail-label">Account Name</span>
+                <span class="bank-account-name">SORINOLA OLABINPE ARIKE</span>
+              </div>
+
+              <div class="bank-detail-group">
+                <span class="bank-detail-label">Account Number</span>
+                <div class="bank-number-row">
+                  <span class="bank-account-number" id="num-gtb">0032819189</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bank-card-footer">
+              <button type="button" 
+                      class="btn-copy-account" 
+                      data-account="0032819189" 
+                      data-bank="GTB Bank"
+                      aria-label="Copy GTB Bank account number 0032819189">
+                <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span class="copy-btn-text">Copy Account Number</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accessible polite live region for screen reader confirmations -->
+        <div id="sponsorship-copy-announcement" class="sr-only" aria-live="polite"></div>
+
+        <!-- Support Info Note -->
+        <div class="sponsorship-footer-note">
+          <p>For inquiries, confirmation of donations, or official partnership certificates, please contact our Registry at <strong style="color: var(--dark-navy);">0803 819 4611</strong> or email <strong style="color: var(--dark-navy);">dimabin233@gmail.com</strong>.</p>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="sponsorship-modal-footer">
+        <button type="button" class="btn btn-outline-blue btn-sm" id="btn-close-sponsorship-footer">
+          Close Window
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Pure Vanilla JavaScript -->
   <script type="module" src="js/main.js"></script>
 </body>

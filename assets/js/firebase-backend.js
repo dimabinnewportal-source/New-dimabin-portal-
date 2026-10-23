@@ -55,6 +55,7 @@ export const COLLECTIONS = Object.freeze({
   STUDENTS: "students",
   LECTURERS: "lecturers",
   COURSES: "courses",
+  SEMESTER_OFFERINGS: "semester_course_offerings",
   COURSE_ALLOCATIONS: "course_allocations",
   REGISTRATION_SETTINGS: "registration_settings",
   COURSE_REGISTRATIONS: "course_registrations",
@@ -1402,6 +1403,16 @@ export function getLecturerSemesterTeachingDossier(lecturerStaffId, session, sem
   const myCourseCodes = new Set(assignedCourses.map((a) => (a.courseCode || "").trim().toUpperCase()));
   const myCourseIds = new Set(assignedCourses.map((a) => a.courseId).filter(Boolean));
 
+  const offerings = getSemesterCourseOfferings(normSession, normSemester, { includeArchived: true });
+  const offeringMap = new Map();
+  offerings.forEach((o) => offeringMap.set(normalizeCourseCode(o.courseCode), o));
+
+  assignedCourses.forEach((a) => {
+    const off = offeringMap.get(normalizeCourseCode(a.courseCode));
+    a.offeringStatus = off ? off.status : (a.offeringStatus || "active");
+    a.isOfferingRemoved = a.offeringStatus === "removed" || a.offeringStatus === "archived";
+  });
+
   // Enrolled students in this semester & session
   const allRegistrations = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
   const enrolledStudents = [];
@@ -1411,6 +1422,7 @@ export function getLecturerSemesterTeachingDossier(lecturerStaffId, session, sem
     if (!matchSess || !matchSem) return;
 
     (reg.courses || []).forEach((c) => {
+      if (c.isRemovedFromOffering) return;
       const cCode = (c.courseCode || "").trim().toUpperCase();
       const cId = c.courseId;
       if (myCourseCodes.has(cCode) || (cId && myCourseIds.has(cId))) {
@@ -2360,18 +2372,39 @@ export async function checkCourseDependencies(courseCode, courseId) {
     references.push(`${allocMatches.length} Faculty Teaching Allocation(s)`);
   }
 
-  // 2. Check academic results
+  // 2. Check course registrations
+  const registrations = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  let regCount = 0;
+  registrations.forEach((r) => {
+    if ((r.courses || []).some((c) => normalizeCourseCode(c.courseCode) === code || c.courseId === courseId)) {
+      regCount++;
+    }
+  });
+  if (regCount > 0) {
+    references.push(`${regCount} Student Course Registration(s)`);
+  }
+
+  // 3. Check academic results
   const results = getCachedCollection(COLLECTIONS.RESULTS) || [];
   const resultMatches = results.filter((r) => normalizeCourseCode(r.courseCode) === code);
   if (resultMatches.length > 0) {
     references.push(`${resultMatches.length} Student Academic Result Record(s)`);
   }
 
+  // 4. Check CBT Assessments
+  const cbts = getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || [];
+  const cbtMatches = cbts.filter((c) => normalizeCourseCode(c.courseCode) === code);
+  if (cbtMatches.length > 0) {
+    references.push(`${cbtMatches.length} CBT Assessment(s)`);
+  }
+
   return {
     hasDependencies: references.length > 0,
     references,
     allocationsCount: allocMatches.length,
-    resultsCount: resultMatches.length
+    registrationsCount: regCount,
+    resultsCount: resultMatches.length,
+    cbtCount: cbtMatches.length
   };
 }
 
@@ -2411,6 +2444,540 @@ export async function deleteCoursePermanently(courseId) {
   });
 
   return { success: true, courseId, courseCode: code };
+}
+
+/**
+ * =========================================================================
+ * 6B. SEMESTER-SPECIFIC COURSE OFFERINGS
+ * Configured Course Offerings per Academic Session and Semester
+ * Keeps central catalogue distinct while allowing multi-semester offerings
+ * =========================================================================
+ */
+
+export function getSemesterCourseOfferings(session, semester, options = {}) {
+  const normSession = (session || "2026/2027").trim();
+  const normSemester = (semester || "First Semester").trim();
+  const studyCentre = (options.studyCentre || "").trim().toLowerCase();
+
+  const offerings = getCachedCollection(COLLECTIONS.SEMESTER_OFFERINGS) || [];
+  
+  // Find all explicit offerings matching session and semester
+  const semesterOfferings = offerings.filter((o) => {
+    const matchSess = (o.academicSession || "2026/2027").trim() === normSession;
+    const matchSem = (o.semester || "First Semester").trim() === normSemester;
+    const matchCentre =
+      !studyCentre ||
+      studyCentre === "all" ||
+      !o.studyCentre ||
+      o.studyCentre.toLowerCase() === "all" ||
+      o.studyCentre.toLowerCase() === studyCentre;
+    return matchSess && matchSem && matchCentre;
+  });
+
+  if (semesterOfferings.length > 0) {
+    if (options.includeArchived) {
+      return semesterOfferings;
+    }
+    return semesterOfferings.filter((o) => o.status === "active");
+  }
+
+  // If no explicit offerings configured yet for this session & semester, seamlessly derive from central catalogue
+  const cachedCourses = getCachedCollection(COLLECTIONS.COURSES);
+  const catalog = Array.isArray(cachedCourses) && cachedCourses.length > 0 ? cachedCourses : [...DEFAULT_DIMABIN_COURSES];
+  const derived = catalog
+    .filter((c) => {
+      const matchSess = (c.academicSession || "2026/2027").trim() === normSession;
+      const matchSem = (c.semester || "First Semester").trim() === normSemester;
+      const matchCentre =
+        !studyCentre ||
+        studyCentre === "all" ||
+        !c.studyCentre ||
+        c.studyCentre.toLowerCase() === "all" ||
+        c.studyCentre.toLowerCase() === studyCentre;
+      const isNotInactive = options.includeArchived ? true : c.status !== "inactive";
+      return matchSess && matchSem && matchCentre && isNotInactive;
+    })
+    .map((c) => ({
+      id: `derived_offering_${c.courseCode}_${normSession.replace(/[^0-9]/g, "_")}_${normSemester.replace(/\s+/g, "_")}`,
+      courseId: c.id,
+      courseCode: c.courseCode,
+      courseTitle: c.title || c.courseTitle,
+      creditUnits: parseInt(c.creditUnits || c.creditUnit || 3, 10),
+      department: c.department || "Biblical Studies & Theology",
+      programme: c.programme || "Diploma in Theology (Dipl.Th.)",
+      level: c.level || "100",
+      academicSession: normSession,
+      semester: normSemester,
+      studyCentre: c.studyCentre || "all",
+      status: c.status || "active",
+      isDerived: true
+    }));
+  return derived;
+}
+
+export function subscribeSemesterCourseOfferings(session, semester, callback) {
+  if (typeof callback !== "function") return () => {};
+
+  const notify = () => {
+    callback(getSemesterCourseOfferings(session, semester, { includeArchived: true }));
+  };
+
+  notify();
+
+  const localListener = () => notify();
+  window.addEventListener(`dimabin:db:${COLLECTIONS.SEMESTER_OFFERINGS}`, localListener);
+  window.addEventListener(`dimabin:db:${COLLECTIONS.COURSES}`, localListener);
+
+  let unsubscribe = () => {};
+  try {
+    const collRef = collection(db, COLLECTIONS.SEMESTER_OFFERINGS);
+    unsubscribe = onSnapshot(
+      collRef,
+      (snapshot) => {
+        if (snapshot && !snapshot.empty) {
+          const list = [];
+          snapshot.forEach((docSnap) => {
+            list.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          setCachedCollection(COLLECTIONS.SEMESTER_OFFERINGS, list);
+          notify();
+        }
+      },
+      (err) => console.warn(`[DIMABIN Semester Offerings] snapshot note: ${err.message}`)
+    );
+  } catch (_) {}
+
+  return () => {
+    try {
+      unsubscribe();
+    } catch (_) {}
+    window.removeEventListener(`dimabin:db:${COLLECTIONS.SEMESTER_OFFERINGS}`, localListener);
+    window.removeEventListener(`dimabin:db:${COLLECTIONS.COURSES}`, localListener);
+  };
+}
+
+export async function addCourseToSemesterOffering({
+  courseCode,
+  academicSession,
+  semester,
+  studyCentre = "all",
+  creditUnits = null,
+  notes = ""
+}) {
+  const code = normalizeCourseCode(courseCode);
+  if (!code) throw new Error("Course Code is required to create a semester course offering.");
+
+  const session = (academicSession || "2026/2027").trim();
+  const sem = (semester || "First Semester").trim();
+  if (!["First Semester", "Second Semester", "Third Semester"].includes(sem)) {
+    throw new Error("Invalid semester specified. Must be First Semester, Second Semester, or Third Semester.");
+  }
+
+  // Find course in central catalogue
+  const cachedCourses = getCachedCollection(COLLECTIONS.COURSES);
+  const catalog = Array.isArray(cachedCourses) && cachedCourses.length > 0 ? cachedCourses : [...DEFAULT_DIMABIN_COURSES];
+  const catalogCourse = catalog.find((c) => normalizeCourseCode(c.courseCode) === code);
+
+  if (!catalogCourse) {
+    throw new Error(`Course [${code}] does not exist in the Central Course Catalogue. Please register it in the catalogue first.`);
+  }
+
+  const existingOfferings = getCachedCollection(COLLECTIONS.SEMESTER_OFFERINGS) || [];
+  const existingRecord = existingOfferings.find((o) => {
+    return (
+      normalizeCourseCode(o.courseCode) === code &&
+      (o.academicSession || "2026/2027").trim() === session &&
+      (o.semester || "First Semester").trim() === sem &&
+      (o.studyCentre || "all").trim().toLowerCase() === (studyCentre || "all").trim().toLowerCase()
+    );
+  });
+
+  if (existingRecord && existingRecord.status === "active") {
+    throw new Error(`Course [${code}] is already actively offered for ${sem} (${session}) at ${studyCentre || "all centres"}.`);
+  }
+
+  const units =
+    creditUnits !== null && !isNaN(parseInt(creditUnits, 10))
+      ? parseInt(creditUnits, 10)
+      : parseInt(catalogCourse.creditUnits || catalogCourse.creditUnit || 3, 10);
+
+  const nowIso = new Date().toISOString();
+  const localId = existingRecord ? existingRecord.id : `offering_${code.replace(/[^A-Z0-9]/g, "_")}_${session.replace(/[^0-9]/g, "_")}_${sem.replace(/\s+/g, "_")}_${(studyCentre || "all").replace(/[^a-zA-Z0-9]/g, "_")}`;
+
+  // If this semester had no explicit offerings yet, seed all other active catalog courses for this semester
+  const existingForSemester = existingOfferings.filter((o) => {
+    return (o.academicSession || "2026/2027").trim() === session && (o.semester || "First Semester").trim() === sem;
+  });
+
+  if (existingForSemester.length === 0) {
+    const otherCourses = catalog.filter((c) => {
+      const matchSess = (c.academicSession || "2026/2027").trim() === session;
+      const matchSem = (c.semester || "First Semester").trim() === sem;
+      const notThis = normalizeCourseCode(c.courseCode) !== code;
+      return matchSess && matchSem && notThis && c.status !== "inactive";
+    });
+
+    otherCourses.forEach((c) => {
+      const explicitId = `offering_${c.courseCode}_${session.replace(/[^0-9]/g, "_")}_${sem.replace(/\s+/g, "_")}_all`;
+      const explicitRec = {
+        id: explicitId,
+        courseId: c.id,
+        courseCode: c.courseCode,
+        courseTitle: c.title || c.courseTitle,
+        creditUnits: parseInt(c.creditUnits || c.creditUnit || 3, 10),
+        department: c.department || "Biblical Studies & Theology",
+        programme: c.programme || "Diploma in Theology (Dipl.Th.)",
+        level: c.level || "100",
+        academicSession: session,
+        semester: sem,
+        studyCentre: c.studyCentre || "all",
+        status: "active",
+        createdAt: nowIso,
+        updatedAt: nowIso
+      };
+      upsertCachedItem(COLLECTIONS.SEMESTER_OFFERINGS, explicitRec);
+    });
+  }
+
+  const offeringRecord = {
+    ...(existingRecord || {}),
+    id: localId,
+    courseId: catalogCourse.id || localId,
+    courseCode: code,
+    courseTitle: catalogCourse.title || catalogCourse.courseTitle || code,
+    creditUnits: units,
+    department: catalogCourse.department || "Biblical Studies & Theology",
+    programme: catalogCourse.programme || "Diploma in Theology (Dipl.Th.)",
+    level: catalogCourse.level || "100",
+    academicSession: session,
+    semester: sem,
+    studyCentre: studyCentre || "all",
+    notes: (notes || "").trim(),
+    status: "active",
+    isDerived: false,
+    removedAt: null,
+    removedBy: null,
+    removalReason: null,
+    createdAt: existingRecord?.createdAt || nowIso,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.SEMESTER_OFFERINGS, offeringRecord);
+
+  let savedId = localId;
+  try {
+    const docRef = await addDoc(collection(db, COLLECTIONS.SEMESTER_OFFERINGS), {
+      ...offeringRecord,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    savedId = docRef.id;
+    removeCachedItem(COLLECTIONS.SEMESTER_OFFERINGS, localId);
+    upsertCachedItem(COLLECTIONS.SEMESTER_OFFERINGS, { ...offeringRecord, id: savedId });
+  } catch (err) {
+    console.warn(`[DIMABIN Semester Offerings] Firestore add note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "semester_course_offering_configured",
+    description: `Configured central course [${code}] "${offeringRecord.courseTitle}" for ${sem} (${session}) offering across ${studyCentre}.`,
+    targetCollection: COLLECTIONS.SEMESTER_OFFERINGS,
+    targetDocumentId: savedId
+  });
+
+  return { success: true, id: savedId, offering: offeringRecord };
+}
+
+export function getCourseOfferingDependencies(courseCode, session, semester, studyCentre = "all") {
+  const code = normalizeCourseCode(courseCode);
+  const normSession = (session || "2026/2027").trim();
+  const normSemester = (semester || "First Semester").trim();
+  const normCentre = (studyCentre || "all").trim().toLowerCase();
+
+  const references = [];
+
+  // 1. Registered students
+  const registrations = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  let registeredStudentCount = 0;
+  registrations.forEach((reg) => {
+    const matchSess = (reg.academicSession || "2026/2027").trim() === normSession;
+    const matchSem = (reg.semester || "First Semester").trim() === normSemester;
+    if (!matchSess || !matchSem) return;
+
+    if (normCentre !== "all" && (reg.studyCentre || "").trim().toLowerCase() !== normCentre) return;
+
+    const hasCourse = (reg.courses || []).some((c) => normalizeCourseCode(c.courseCode) === code);
+    if (hasCourse) registeredStudentCount++;
+  });
+  if (registeredStudentCount > 0) {
+    references.push(`${registeredStudentCount} Student Course Registration(s)`);
+  }
+
+  // 2. Lecturer allocations
+  const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+  const allocMatches = allocations.filter((a) => {
+    const matchCode = normalizeCourseCode(a.courseCode) === code;
+    const matchSess = (a.academicSession || "2026/2027").trim() === normSession;
+    const matchSem = (a.semester || "First Semester").trim() === normSemester;
+    const matchCentre = normCentre === "all" || (a.studyCentre || "").trim().toLowerCase() === normCentre;
+    return matchCode && matchSess && matchSem && matchCentre && a.status !== "ended";
+  });
+  if (allocMatches.length > 0) {
+    references.push(`${allocMatches.length} Faculty Teaching Allocation(s)`);
+  }
+
+  // 3. Results
+  const results = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const resultMatches = results.filter((r) => {
+    const matchCode = normalizeCourseCode(r.courseCode) === code;
+    const matchSess = (r.academicSession || "2026/2027").trim() === normSession;
+    const matchSem = (r.semester || "First Semester").trim() === normSemester;
+    return matchCode && matchSess && matchSem;
+  });
+  if (resultMatches.length > 0) {
+    references.push(`${resultMatches.length} Student Academic Result(s)`);
+  }
+
+  // 4. CBT Assessments
+  const cbts = getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || [];
+  const cbtMatches = cbts.filter((c) => {
+    const matchCode = normalizeCourseCode(c.courseCode) === code;
+    const matchSess = (c.academicSession || "2026/2027").trim() === normSession;
+    const matchSem = (c.semester || "First Semester").trim() === normSemester;
+    return matchCode && matchSess && matchSem;
+  });
+  if (cbtMatches.length > 0) {
+    references.push(`${cbtMatches.length} CBT Assessment(s)`);
+  }
+
+  return {
+    hasDependencies: references.length > 0,
+    references,
+    registeredStudentCount,
+    allocationsCount: allocMatches.length,
+    resultsCount: resultMatches.length,
+    cbtCount: cbtMatches.length
+  };
+}
+
+export async function removeCourseFromSemesterOffering(offeringId, { forceArchive = false, reason = "", adminId = ADMIN_CREDENTIALS.ADMIN_ID } = {}) {
+  if (!offeringId) throw new Error("Offering ID is required.");
+
+  const offerings = getCachedCollection(COLLECTIONS.SEMESTER_OFFERINGS) || [];
+  let target = offerings.find((o) => o.id === offeringId);
+
+  // If not found in explicit offerings collection, check if it's derived or matched by ID
+  if (!target && offeringId.startsWith("derived_offering_")) {
+    const parts = offeringId.replace("derived_offering_", "").split("_");
+    const code = parts[0];
+    const session = "2026/2027";
+    const semester = parts.slice(2).join(" ");
+    target = {
+      id: offeringId,
+      courseCode: code,
+      academicSession: session,
+      semester: semester || "First Semester",
+      studyCentre: "all"
+    };
+  }
+
+  const code = normalizeCourseCode(target ? target.courseCode : "");
+  const session = target ? (target.academicSession || "2026/2027").trim() : "2026/2027";
+  const semester = target ? (target.semester || "First Semester").trim() : "First Semester";
+  const centre = target ? target.studyCentre : "all";
+
+  // Check dependencies (student registrations, allocations, results, CBTs)
+  const depCheck = getCourseOfferingDependencies(code, session, semester, centre);
+
+  if (depCheck.hasDependencies && !forceArchive) {
+    return {
+      success: false,
+      hasDependencies: true,
+      canArchive: true,
+      dependencies: depCheck.references,
+      registeredStudentCount: depCheck.registeredStudentCount,
+      message: `Course [${code}] cannot be deleted outright from ${semester} (${session}): It is actively referenced in ${depCheck.references.join(", ")}. To safeguard academic integrity, you can Remove / Withdraw this offering from active student lists while safely preserving historical records.`
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+
+  // If this semester had only derived offerings, seed all other catalog courses for this semester as active offerings
+  const existingForSemester = offerings.filter((o) => {
+    return (o.academicSession || "2026/2027").trim() === session && (o.semester || "First Semester").trim() === semester;
+  });
+
+  if (existingForSemester.length === 0) {
+    const cachedCourses = getCachedCollection(COLLECTIONS.COURSES);
+    const catalog = Array.isArray(cachedCourses) && cachedCourses.length > 0 ? cachedCourses : [...DEFAULT_DIMABIN_COURSES];
+    const otherCourses = catalog.filter((c) => {
+      const matchSess = (c.academicSession || "2026/2027").trim() === session;
+      const matchSem = (c.semester || "First Semester").trim() === semester;
+      const notThis = normalizeCourseCode(c.courseCode) !== code;
+      return matchSess && matchSem && notThis && c.status !== "inactive";
+    });
+
+    otherCourses.forEach((c) => {
+      const explicitId = `offering_${c.courseCode}_${session.replace(/[^0-9]/g, "_")}_${semester.replace(/\s+/g, "_")}_all`;
+      const explicitRec = {
+        id: explicitId,
+        courseId: c.id,
+        courseCode: c.courseCode,
+        courseTitle: c.title || c.courseTitle,
+        creditUnits: parseInt(c.creditUnits || c.creditUnit || 3, 10),
+        department: c.department || "Biblical Studies & Theology",
+        programme: c.programme || "Diploma in Theology (Dipl.Th.)",
+        level: c.level || "100",
+        academicSession: session,
+        semester: semester,
+        studyCentre: c.studyCentre || "all",
+        status: "active",
+        createdAt: nowIso,
+        updatedAt: nowIso
+      };
+      upsertCachedItem(COLLECTIONS.SEMESTER_OFFERINGS, explicitRec);
+    });
+  }
+
+  // Record safe removal in SEMESTER_OFFERINGS
+  const targetId = target?.id || offeringId;
+  const removedRecord = {
+    ...(target || {}),
+    id: targetId,
+    courseCode: code,
+    academicSession: session,
+    semester: semester,
+    studyCentre: centre || "all",
+    status: "removed",
+    removedAt: nowIso,
+    removedBy: adminId,
+    removalReason: reason || "Removed from active semester offering by Administrator",
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.SEMESTER_OFFERINGS, removedRecord);
+  try {
+    const docRef = doc(db, COLLECTIONS.SEMESTER_OFFERINGS, targetId);
+    await setDoc(docRef, { ...removedRecord, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (err) {
+    console.warn(`[DIMABIN Semester Offerings] Remove note: ${err.message}`);
+  }
+
+  // Immediately update active student course lists and registrations
+  const allRegistrations = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  let affectedStudentCount = 0;
+
+  for (const reg of allRegistrations) {
+    const matchSess = (reg.academicSession || "2026/2027").trim() === session;
+    const matchSem = (reg.semester || "First Semester").trim() === semester;
+    if (!matchSess || !matchSem) continue;
+
+    const hasCourse = (reg.courses || []).some((c) => normalizeCourseCode(c.courseCode) === code);
+    if (!hasCourse) continue;
+
+    affectedStudentCount++;
+    const originalCourses = reg.originalCourses || [...(reg.courses || [])];
+
+    // Mark the course within courses list
+    const updatedCourses = (reg.courses || []).map((c) => {
+      if (normalizeCourseCode(c.courseCode) === code) {
+        return {
+          ...c,
+          isRemovedFromOffering: true,
+          removedAt: nowIso,
+          removalReason: reason || "Removed from active semester offering by Administrator"
+        };
+      }
+      return c;
+    });
+
+    // Compute active registered courses and recalculated credit units
+    const activeCourses = updatedCourses.filter((c) => !c.isRemovedFromOffering);
+    const activeTotalCredits = activeCourses.reduce((sum, c) => sum + (parseInt(c.creditUnits, 10) || 3), 0);
+
+    const snapshots = Array.isArray(reg.slipSnapshots)
+      ? [...reg.slipSnapshots]
+      : [{ version: 1, issuedAt: reg.submittedAt || nowIso, courses: [...originalCourses], totalCredits: reg.totalCredits, status: reg.status }];
+
+    snapshots.push({
+      version: snapshots.length + 1,
+      issuedAt: nowIso,
+      action: "course_removed_from_offering",
+      removedCourseCode: code,
+      removalReason: reason || "Withdrawn from active semester offering",
+      activeCourses: [...activeCourses],
+      activeTotalCredits: activeTotalCredits
+    });
+
+    const updatedReg = {
+      ...reg,
+      courses: updatedCourses,
+      originalCourses: originalCourses,
+      activeCourses: activeCourses,
+      courseCount: activeCourses.length,
+      activeCourseCount: activeCourses.length,
+      totalCredits: activeTotalCredits,
+      activeTotalCredits: activeTotalCredits,
+      slipSnapshots: snapshots,
+      updatedAt: nowIso,
+      history: [
+        ...(Array.isArray(reg.history) ? reg.history : []),
+        {
+          timestamp: nowIso,
+          action: "course_removed_from_offering",
+          courseCode: code,
+          reason: reason || "Administrator removed course offering"
+        }
+      ]
+    };
+
+    upsertCachedItem(COLLECTIONS.COURSE_REGISTRATIONS, updatedReg);
+    try {
+      const regDocRef = doc(db, COLLECTIONS.COURSE_REGISTRATIONS, reg.id);
+      await setDoc(regDocRef, { ...updatedReg, updatedAt: serverTimestamp() }, { merge: true });
+    } catch (err) {
+      console.warn(`[DIMABIN Registrations] Registration update note: ${err.message}`);
+    }
+  }
+
+  // Update allocations to reflect removed offering status
+  const allAllocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+  allAllocations.forEach((alloc) => {
+    const matchCode = normalizeCourseCode(alloc.courseCode) === code;
+    const matchSess = (alloc.academicSession || "2026/2027").trim() === session;
+    const matchSem = (alloc.semester || "First Semester").trim() === semester;
+    if (matchCode && matchSess && matchSem) {
+      alloc.offeringStatus = "removed";
+      alloc.isOfferingRemoved = true;
+      alloc.updatedAt = nowIso;
+      upsertCachedItem(COLLECTIONS.COURSE_ALLOCATIONS, alloc);
+    }
+  });
+
+  await logActivity({
+    action: "semester_course_offering_removed",
+    description: `Administrator removed course offering [${code}] from ${semester} (${session}). Withdrawn immediately from ${affectedStudentCount} active student course lists while keeping historical marks and records preserved.`,
+    targetCollection: COLLECTIONS.SEMESTER_OFFERINGS,
+    targetDocumentId: targetId
+  });
+
+  // Notify real-time listeners across all portals
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(`dimabin:db:${COLLECTIONS.SEMESTER_OFFERINGS}`));
+    window.dispatchEvent(new CustomEvent(`dimabin:db:${COLLECTIONS.COURSE_REGISTRATIONS}`));
+    window.dispatchEvent(new CustomEvent(`dimabin:db:${COLLECTIONS.COURSE_ALLOCATIONS}`));
+  }
+  refreshLecturerDashboardData();
+
+  return {
+    success: true,
+    action: "removed",
+    code,
+    session,
+    semester,
+    affectedStudentCount,
+    message: `Course offering [${code}] successfully removed from ${semester} (${session}). Withdrawn from ${affectedStudentCount} active student course lists. Historical records and results remain preserved.`
+  };
 }
 
 /**
@@ -2480,9 +3047,18 @@ export async function assignCourseOffering(allocData) {
     throw new Error("Assigned Lecturer (Full Name and Institutional Staff ID) is required.");
   }
 
+  // Validate that the course is actively offered for this session and semester (not removed or inactive)
+  const activeOfferings = getSemesterCourseOfferings(session, semester, { studyCentre });
+  const isActivelyOffered = activeOfferings.some((o) => normalizeCourseCode(o.courseCode) === courseCode && o.status === "active");
+  if (!isActivelyOffered) {
+    throw new Error(
+      `Course [${courseCode}] is not actively offered for ${semester} (${session}). Cannot allocate instructor to an un-offered or removed course offering.`
+    );
+  }
+
   // Prevent duplicate active assignments for the same course offering:
   // An offering is uniquely identified by (courseCode, studyCentre, academicSession, semester)
-  const currentAllocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS);
+  const currentAllocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
   const existingActive = currentAllocations.find((a) => {
     return (
       normalizeCourseCode(a.courseCode) === courseCode &&
@@ -2681,6 +3257,106 @@ export async function deleteCourseAllocation(allocId) {
 
   refreshLecturerDashboardData();
   return { success: true, allocId };
+}
+
+export function getCourseAllocationDependencies(allocId) {
+  const currentAllocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+  const existing = currentAllocations.find((a) => a.id === allocId);
+  if (!existing) return { hasDependencies: false, references: [] };
+
+  const code = normalizeCourseCode(existing.courseCode);
+  const session = (existing.academicSession || "2026/2027").trim();
+  const semester = (existing.semester || "First Semester").trim();
+  const references = [];
+
+  const results = getCachedCollection(COLLECTIONS.RESULTS) || [];
+  const resMatches = results.filter((r) => {
+    return normalizeCourseCode(r.courseCode) === code && (r.academicSession || "2026/2027").trim() === session && (r.semester || "First Semester").trim() === semester;
+  });
+  if (resMatches.length > 0) references.push(`${resMatches.length} Recorded Academic Result(s)`);
+
+  const cbts = getCachedCollection(COLLECTIONS.CBT_ASSESSMENTS) || [];
+  const cbtMatches = cbts.filter((c) => {
+    return normalizeCourseCode(c.courseCode) === code && (c.academicSession || "2026/2027").trim() === session && (c.semester || "First Semester").trim() === semester;
+  });
+  if (cbtMatches.length > 0) references.push(`${cbtMatches.length} CBT Assessment(s)`);
+
+  return {
+    hasDependencies: references.length > 0,
+    references,
+    resultsCount: resMatches.length,
+    cbtCount: cbtMatches.length
+  };
+}
+
+export async function removeCourseFromStudentRegistration(registrationId, courseCode, { reason = "", adminId = ADMIN_CREDENTIALS.ADMIN_ID } = {}) {
+  if (!registrationId || !courseCode) throw new Error("Registration ID and Course Code are required.");
+  const allRegistrations = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  const reg = allRegistrations.find((r) => r.id === registrationId);
+  if (!reg) throw new Error("Student registration record not found.");
+
+  const code = normalizeCourseCode(courseCode);
+  const nowIso = new Date().toISOString();
+  const originalCourses = reg.originalCourses || [...(reg.courses || [])];
+
+  const updatedCourses = (reg.courses || []).map((c) => {
+    if (normalizeCourseCode(c.courseCode) === code) {
+      return {
+        ...c,
+        isRemovedFromOffering: true,
+        removedAt: nowIso,
+        removalReason: reason || "Administrative individual course withdrawal"
+      };
+    }
+    return c;
+  });
+
+  const activeCourses = updatedCourses.filter((c) => !c.isRemovedFromOffering);
+  const activeTotalCredits = activeCourses.reduce((sum, c) => sum + (parseInt(c.creditUnits, 10) || 3), 0);
+
+  const snapshots = Array.isArray(reg.slipSnapshots)
+    ? [...reg.slipSnapshots]
+    : [{ version: 1, issuedAt: reg.submittedAt || nowIso, courses: [...originalCourses], totalCredits: reg.totalCredits, status: reg.status }];
+
+  snapshots.push({
+    version: snapshots.length + 1,
+    issuedAt: nowIso,
+    action: "course_withdrawn",
+    removedCourseCode: code,
+    removalReason: reason || "Administrative individual course withdrawal",
+    activeCourses: [...activeCourses],
+    activeTotalCredits: activeTotalCredits
+  });
+
+  const updatedReg = {
+    ...reg,
+    courses: updatedCourses,
+    originalCourses,
+    activeCourses,
+    courseCount: activeCourses.length,
+    activeCourseCount: activeCourses.length,
+    totalCredits: activeTotalCredits,
+    activeTotalCredits: activeTotalCredits,
+    slipSnapshots: snapshots,
+    updatedAt: nowIso
+  };
+
+  upsertCachedItem(COLLECTIONS.COURSE_REGISTRATIONS, updatedReg);
+  try {
+    const docRef = doc(db, COLLECTIONS.COURSE_REGISTRATIONS, reg.id);
+    await setDoc(docRef, { ...updatedReg, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (err) {
+    console.warn(`[DIMABIN Registrations] Individual remove note: ${err.message}`);
+  }
+
+  await logActivity({
+    action: "student_course_withdrawn",
+    description: `Withdrew course [${code}] from student [${reg.studentId || reg.admissionNumber}] registration for ${reg.semester} (${reg.academicSession}). Total units recalculated to ${activeTotalCredits}.`,
+    targetCollection: COLLECTIONS.COURSE_REGISTRATIONS,
+    targetDocumentId: reg.id
+  });
+
+  return { success: true, registration: updatedReg };
 }
 
 export function refreshLecturerDashboardData() {
@@ -2962,18 +3638,36 @@ export function subscribeCourseRegistrations(callback) {
   };
 }
 
-export function getStudentCourseRegistration(studentUid, session, semester) {
-  if (!studentUid) return null;
+export function getStudentCourseRegistration(studentUidOrId, session, semester) {
+  if (!studentUidOrId) return null;
   const list = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
   const normSession = (session || "2026/2027").trim();
   const normSemester = (semester || "First Semester").trim();
+  const idStr = String(studentUidOrId).trim().toUpperCase();
 
   return list.find((r) => {
-    const matchesUser = r.studentUid === studentUid || r.userId === studentUid;
-    const matchesSession = !normSession || r.academicSession === normSession;
-    const matchesSemester = !normSemester || r.semester === normSemester;
+    const matchesUser =
+      (r.studentUid && r.studentUid.toUpperCase() === idStr) ||
+      (r.userId && r.userId.toUpperCase() === idStr) ||
+      (r.studentId && r.studentId.toUpperCase() === idStr) ||
+      (r.admissionNumber && r.admissionNumber.toUpperCase() === idStr);
+    const matchesSession = !normSession || (r.academicSession || "").trim() === normSession;
+    const matchesSemester = !normSemester || (r.semester || "").trim() === normSemester;
     return matchesUser && matchesSession && matchesSemester;
   }) || null;
+}
+
+export function getStudentActiveRegisteredCourses(studentUidOrId, session, semester) {
+  const reg = getStudentCourseRegistration(studentUidOrId, session, semester);
+  if (!reg) return [];
+  const normSession = (session || reg.academicSession || "2026/2027").trim();
+  const normSemester = (semester || reg.semester || "First Semester").trim();
+  const activeOfferings = getSemesterCourseOfferings(normSession, normSemester, { studyCentre: reg.studyCentre });
+  const activeCodes = new Set(activeOfferings.map((o) => normalizeCourseCode(o.courseCode)));
+
+  return (reg.courses || []).filter((c) => {
+    return !c.isRemovedFromOffering && activeCodes.has(normalizeCourseCode(c.courseCode));
+  });
 }
 
 export async function submitStudentCourseRegistration({
@@ -3011,7 +3705,14 @@ export async function submitStudentCourseRegistration({
     throw new Error("Please select at least one course to complete your registration.");
   }
 
-  // 3. Fetch central catalogue to validate courses
+  // 3. Fetch active semester offerings and central catalogue to validate courses
+  const studentCentre = (studentProfile.studyCentre || "Abeokuta Main Campus").trim();
+  const activeOfferings = getSemesterCourseOfferings(session, sem, { studyCentre: studentCentre });
+  const activeOfferingsMap = new Map();
+  activeOfferings.forEach((o) => {
+    activeOfferingsMap.set(normalizeCourseCode(o.courseCode), o);
+  });
+
   const cachedCourses = getCachedCollection(COLLECTIONS.COURSES);
   const allCourses = Array.isArray(cachedCourses) && cachedCourses.length > 0 ? cachedCourses : [...DEFAULT_DIMABIN_COURSES];
   const allAllocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
@@ -3019,8 +3720,7 @@ export async function submitStudentCourseRegistration({
   // Deduplicate selected IDs
   const uniqueCourseIds = Array.from(new Set(selectedCourseIds));
 
-  // Find and validate each course in central catalogue
-  const studentCentre = (studentProfile.studyCentre || "Abeokuta Main Campus").trim();
+  // Find and validate each course in central catalogue and active semester offerings
   const compiledCourses = [];
   let totalCredits = 0;
 
@@ -3034,16 +3734,16 @@ export async function submitStudentCourseRegistration({
       throw new Error(`Course [${courseObj.courseCode}] "${courseObj.title}" is currently deactivated and cannot be registered.`);
     }
 
-    // Verify course belongs to this semester and session
-    if (courseObj.semester !== sem) {
-      throw new Error(`Course [${courseObj.courseCode}] is catalogued for ${courseObj.semester}, not ${sem}.`);
+    const normCode = normalizeCourseCode(courseObj.courseCode);
+    const offering = activeOfferingsMap.get(normCode);
+    if (!offering || offering.status !== "active") {
+      throw new Error(`Course [${courseObj.courseCode}] is not actively offered for ${sem} (${session}) and cannot be registered.`);
     }
 
-    const credits = parseInt(courseObj.creditUnits || courseObj.creditUnit || 3, 10);
+    const credits = parseInt(offering.creditUnits || courseObj.creditUnits || courseObj.creditUnit || 3, 10);
     totalCredits += credits;
 
     // Resolve assigned lecturer from allocations (checking student's centre first, then central/any)
-    const normCode = normalizeCourseCode(courseObj.courseCode);
     const centreAlloc = allAllocations.find((a) => {
       const matchCode = normalizeCourseCode(a.courseCode) === normCode || a.courseId === courseObj.id;
       const matchSem = a.semester === sem;
@@ -3071,7 +3771,8 @@ export async function submitStudentCourseRegistration({
       department: courseObj.department || "Biblical Studies & Theology",
       programme: courseObj.programme || "Diploma in Theology (Dipl.Th.)",
       lecturerName: lecturerName,
-      lecturerId: lecturerId
+      lecturerId: lecturerId,
+      isRemovedFromOffering: false
     });
   }
 
@@ -3109,12 +3810,19 @@ export async function submitStudentCourseRegistration({
     semester: sem,
     courseIds: compiledCourses.map((c) => c.courseId),
     courses: compiledCourses,
+    activeCourses: compiledCourses,
+    originalCourses: existingReg && Array.isArray(existingReg.originalCourses) ? existingReg.originalCourses : [...compiledCourses],
     totalCredits: totalCredits,
+    activeTotalCredits: totalCredits,
     courseCount: compiledCourses.length,
+    activeCourseCount: compiledCourses.length,
     status: existingReg && existingReg.status === "returned" ? "resubmitted" : "submitted",
     submittedAt: existingReg ? (existingReg.submittedAt || nowIso) : nowIso,
     updatedAt: nowIso,
-    history: existingReg && Array.isArray(existingReg.history) ? [...existingReg.history, { timestamp: nowIso, action: "resubmitted" }] : [{ timestamp: nowIso, action: "initial_submission" }]
+    history: existingReg && Array.isArray(existingReg.history) ? [...existingReg.history, { timestamp: nowIso, action: "resubmitted" }] : [{ timestamp: nowIso, action: "initial_submission" }],
+    slipSnapshots: existingReg && Array.isArray(existingReg.slipSnapshots)
+      ? [...existingReg.slipSnapshots, { version: existingReg.slipSnapshots.length + 1, issuedAt: nowIso, courses: [...compiledCourses], totalCredits, status: "submitted" }]
+      : [{ version: 1, issuedAt: nowIso, courses: [...compiledCourses], totalCredits, status: "submitted" }]
   };
 
   upsertCachedItem(COLLECTIONS.COURSE_REGISTRATIONS, registrationRecord);
@@ -7100,6 +7808,10 @@ if (typeof window !== "undefined") {
     getLecturerSemesterTeachingDossier,
     saveLecturerGradeRecord,
     approveAndPublishCourseResults,
-    rejectCourseResultsWithFeedback
+    rejectCourseResultsWithFeedback,
+    getSemesterCourseOfferings,
+    addCourseToSemesterOffering,
+    removeCourseFromSemesterOffering,
+    getStudentActiveRegisteredCourses
   });
 }

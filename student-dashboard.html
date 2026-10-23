@@ -900,6 +900,9 @@
                     </div>
                   </div>
 
+                  <!-- Notice for Withdrawn/Removed Courses (if any) -->
+                  <div id="slip-removed-notice" style="display: none; background: #FFFBEB; border: 1.5px solid #FCD34D; color: #92400E; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.8125rem; margin-bottom: 1rem; line-height: 1.5;"></div>
+
                   <!-- Registered Courses Table -->
                   <div class="student-table-wrap" style="margin-bottom: 1rem;">
                     <table class="student-table" style="font-size: 0.8125rem;">
@@ -1964,6 +1967,70 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODAL: REVIEW & CONFIRM COURSE REGISTRATION
+       Phase 5: Student Explicit Course Confirmation Workflow
+       ====================================================================== -->
+  <div class="student-modal" id="modal-confirm-course-reg" style="display: none; position: fixed; inset: 0; background: rgba(10, 22, 51, 0.72); z-index: 1060; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto;">
+    <div style="background: #FFFFFF; border-radius: 8px; max-width: 680px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 1.75rem; box-shadow: 0 10px 30px rgba(0,0,0,0.25); border-top: 6px solid var(--student-blue);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
+        <div>
+          <span style="font-size: 0.72rem; font-weight: 800; color: var(--student-gold); text-transform: uppercase; letter-spacing: 0.06em;">Formal Registration Review</span>
+          <h3 style="font-size: 1.15rem; font-weight: 900; color: var(--student-navy); margin: 0.2rem 0 0 0;">
+            Confirm Course Registration Selection
+          </h3>
+        </div>
+        <button type="button" class="student-modal-close" id="btn-close-confirm-modal" aria-label="Close" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: #94A3B8;">✕</button>
+      </div>
+
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 0.85rem 1rem; margin-bottom: 1.25rem; font-size: 0.8125rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem 1rem;">
+          <div><span style="color: var(--student-text-muted);">Session &amp; Semester:</span> <strong id="confirm-modal-term" style="color: var(--student-navy);">-</strong></div>
+          <div><span style="color: var(--student-text-muted);">Study Centre:</span> <strong id="confirm-modal-centre">-</strong></div>
+          <div><span style="color: var(--student-text-muted);">Candidate:</span> <strong id="confirm-modal-student">-</strong></div>
+          <div><span style="color: var(--student-text-muted);">Matriculation:</span> <strong id="confirm-modal-matric">-</strong></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h4 style="font-size: 0.875rem; font-weight: 800; color: var(--student-navy); margin: 0;">Selected Courses To Register (<span id="confirm-modal-count">0</span>)</h4>
+          <span id="confirm-modal-credits-badge" style="font-size: 0.75rem; font-weight: 800; background: #EEF2FF; color: var(--student-blue); padding: 0.2rem 0.65rem; border-radius: 9999px;">0 Total Credits</span>
+        </div>
+        <div class="student-table-wrap" style="max-height: 260px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 6px;">
+          <table class="student-table" style="font-size: 0.8125rem; margin-bottom: 0;">
+            <thead>
+              <tr>
+                <th style="width: 30px; text-align: center;">#</th>
+                <th>Code</th>
+                <th>Course Title</th>
+                <th style="text-align: center;">Units</th>
+                <th>Lecturer</th>
+              </tr>
+            </thead>
+            <tbody id="confirm-modal-tbody">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="background: #EEF3FF; border: 1px solid #BFDBFE; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.78rem; color: #1E3A8A; line-height: 1.5;">
+        ℹ️ <strong>Submission Policy:</strong> Only the courses explicitly selected above will be registered. Once submitted, your registration is transmitted to the Academic Registry and your course allocations are updated in faculty gradebooks.
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
+        <button type="button" class="student-card-action-btn" id="btn-cancel-confirm-modal" style="padding: 0.6rem 1.25rem; font-weight: 700; font-size: 0.8125rem;">
+          ← Back to Edit Selection
+        </button>
+        <button type="button" class="student-btn-gold" id="btn-proceed-submit-course-reg" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.6rem 1.5rem; font-weight: 800; font-size: 0.875rem;">
+          <span>✓</span>
+          <span id="btn-proceed-submit-text">Confirm &amp; Submit Registration</span>
+        </button>
+      </div>
     </div>
   </div>
 

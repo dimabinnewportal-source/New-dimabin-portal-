@@ -43,7 +43,10 @@ import {
   getStudentResults,
   getStudentAcademicTranscript,
   getCourseAcademicHistory,
-  getSemesterAcademicRecords
+  getSemesterAcademicRecords,
+  getSemesterCourseOfferings,
+  subscribeSemesterCourseOfferings,
+  normalizeCourseCode
 } from "./firebase-backend.js";
 import {
   mountPrintableRegistrationSlip,
@@ -717,12 +720,16 @@ function initStudentCourseRegistration(studentProfile, userUid) {
       }
 
       if (slipCoursesTbody) {
-        const courses = Array.isArray(currentReg.courses) ? currentReg.courses : [];
-        if (courses.length === 0) {
-          slipCoursesTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--student-text-muted); padding: 1.5rem;">No enrolled courses recorded.</td></tr>`;
+        // Exclude courses that have been removed from offerings or marked withdrawn
+        const activeCourses = (Array.isArray(currentReg.courses) ? currentReg.courses : []).filter(
+          (c) => !c.isRemovedFromOffering && c.status !== "removed"
+        );
+        if (activeCourses.length === 0) {
+          slipCoursesTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--student-text-muted); padding: 1.5rem;">No active registered courses remaining for this semester.</td></tr>`;
+          if (slipTotalUnits) slipTotalUnits.textContent = "0 Units";
         } else {
           let calculatedTotalUnits = 0;
-          slipCoursesTbody.innerHTML = courses
+          slipCoursesTbody.innerHTML = activeCourses
             .map((c, idx) => {
               const units = parseInt(c.creditUnits !== undefined ? c.creditUnits : (c.creditUnit || 3), 10) || 3;
               calculatedTotalUnits += units;
@@ -819,12 +826,20 @@ function initStudentCourseRegistration(studentProfile, userUid) {
         if (openSemText) openSemText.textContent = `${activeSemester} (${session})`;
         if (maxCreditsLimitEl) maxCreditsLimitEl.textContent = setting.maxCredits || 24;
 
-        // Central courses for this session & semester
+        // Central courses for this session & semester that are actively offered
+        const activeOfferings = getSemesterCourseOfferings(session, activeSemester, { studyCentre: studentCentre });
+        const activeOfferingsMap = new Map();
+        activeOfferings.forEach((o) => activeOfferingsMap.set(normalizeCourseCode(o.courseCode), o));
+
         const eligibleCourses = coursesList.filter((c) => {
           const matchSess = (c.academicSession || "2026/2027").trim() === session;
           const matchSem = (c.semester || "First Semester").trim() === activeSemester;
           const isActive = c.status !== "inactive";
-          return matchSess && matchSem && isActive;
+          const off = activeOfferingsMap.get(normalizeCourseCode(c.courseCode));
+          const isActivelyOffered = off ? off.status === "active" : false;
+          // If no explicit offerings exist yet, fallback to active catalog courses
+          const isOffered = activeOfferings.length === 0 ? isActive : isActivelyOffered;
+          return matchSess && matchSem && isActive && isOffered;
         });
 
         if (eligibleCourses.length === 0) {
@@ -912,6 +927,7 @@ function initStudentCourseRegistration(studentProfile, userUid) {
     myRegs.forEach((r) => {
       if (Array.isArray(r.courses)) {
         r.courses.forEach((c) => {
+          if (c.isRemovedFromOffering || c.status === "removed") return;
           allRegisteredCourses.push({
             ...c,
             semester: r.semester,
@@ -1118,6 +1134,20 @@ function initStudentCourseRegistration(studentProfile, userUid) {
 
   subscribeCourses((courses) => {
     coursesList = courses || [];
+    renderView();
+  });
+
+  subscribeCourseRegistrations((regs) => {
+    registrationsList = regs || [];
+    renderView();
+  });
+
+  subscribeCourseAllocations((allocs) => {
+    allocationsList = allocs || [];
+    renderView();
+  });
+
+  subscribeSemesterCourseOfferings(session, activeSemester, () => {
     renderView();
   });
 

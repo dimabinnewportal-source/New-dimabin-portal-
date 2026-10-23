@@ -54,6 +54,18 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Semester-Specific Course Offerings
+    match /semester_course_offerings/{offeringId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Registration Window Settings
+    match /registration_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Course Allocations (Semester & Session Specific)
     match /course_allocations/{allocId} {
       allow read: if true;

@@ -77,7 +77,13 @@ import {
   publishSessionRollover,
   getSemesterDetails,
   getThreeSemestersForSession,
-  migrateSemesterAcademicRecords
+  migrateSemesterAcademicRecords,
+  getSemesterCourseOfferings,
+  subscribeSemesterCourseOfferings,
+  addCourseToSemesterOffering,
+  removeCourseFromSemesterOffering,
+  getCourseOfferingDependencies,
+  getCourseAllocationDependencies
 } from "./firebase-backend.js";
 import { printApplicationForm, downloadApplicationPdf } from "./admission-print-pdf.js";
 
@@ -996,6 +1002,7 @@ export function initCourseManagement() {
   let allCourses = [];
   let pendingStatusCourse = null;
   let pendingDeleteCourse = null;
+  let viewMode = "catalog"; // "catalog" or "offerings"
 
   const filters = {
     search: "",
@@ -1038,9 +1045,41 @@ export function initCourseManagement() {
   const errorEl = document.getElementById("courses-table-error");
   const emptyHeading = document.getElementById("courses-empty-heading");
 
-  // Header Buttons
+  // Header Buttons & Mode Switchers
   const listViewBtn = document.getElementById("btn-course-list-view");
   const addCourseBtn = document.getElementById("btn-open-add-course");
+  const btnOpenAddOffering = document.getElementById("btn-open-add-offering");
+  const tabBtnCatalog = document.getElementById("tab-btn-course-catalog");
+  const tabBtnOfferings = document.getElementById("tab-btn-course-offerings");
+
+  // Add Offering Modal Elements
+  const modalAddOffering = document.getElementById("modal-add-course-offering");
+  const addOffCourseSelect = document.getElementById("add-offering-course-select");
+  const addOffSessionSelect = document.getElementById("add-offering-session-select");
+  const addOffSemesterSelect = document.getElementById("add-offering-semester-select");
+  const addOffCentreSelect = document.getElementById("add-offering-centre-select");
+  const addOffCredits = document.getElementById("add-offering-credits");
+  const addOffNotes = document.getElementById("add-offering-notes");
+  const addOffAlert = document.getElementById("add-offering-modal-alert");
+  const confirmAddOffBtn = document.getElementById("btn-confirm-add-offering");
+  const cancelAddOffBtn = document.getElementById("btn-cancel-add-offering");
+  const closeAddOffModalBtn = document.getElementById("btn-close-add-offering-modal");
+
+  // Remove Offering Modal Elements
+  const modalRemoveOffering = document.getElementById("modal-remove-course-offering");
+  const removeOffId = document.getElementById("remove-offering-id");
+  const removeOffCode = document.getElementById("remove-offering-code");
+  const removeOffSession = document.getElementById("remove-offering-session");
+  const removeOffSemester = document.getElementById("remove-offering-semester");
+  const removeOffTitle = document.getElementById("remove-offering-modal-course-title");
+  const removeOffMeta = document.getElementById("remove-offering-modal-meta");
+  const removeOffDepWarning = document.getElementById("remove-offering-modal-dep-warning");
+  const removeOffReason = document.getElementById("remove-offering-reason");
+  const confirmRemoveOffBtn = document.getElementById("btn-confirm-remove-offering");
+  const cancelRemoveOffBtn = document.getElementById("btn-cancel-remove-offering");
+  const closeRemoveOffModalBtn = document.getElementById("btn-close-remove-offering-modal");
+  const removeOffSpinner = document.getElementById("remove-offering-spinner");
+  const removeOffBtnText = document.getElementById("remove-offering-btn-text");
 
   // Add / Edit Modal Elements
   const modalForm = document.getElementById("modal-course-form");
@@ -1102,7 +1141,7 @@ export function initCourseManagement() {
   };
 
   // Close modals on overlay backdrop click
-  [modalForm, modalStatus, modalDelete].forEach((overlay) => {
+  [modalForm, modalStatus, modalDelete, modalAddOffering, modalRemoveOffering].forEach((overlay) => {
     if (overlay) {
       overlay.addEventListener("click", (e) => {
         if (e.target === overlay) closeModal(overlay);
@@ -1116,6 +1155,41 @@ export function initCourseManagement() {
   if (cancelStatusBtn) cancelStatusBtn.addEventListener("click", () => closeModal(modalStatus));
   if (closeDeleteModalBtn) closeDeleteModalBtn.addEventListener("click", () => closeModal(modalDelete));
   if (cancelDeleteBtn) cancelDeleteBtn.addEventListener("click", () => closeModal(modalDelete));
+  if (closeAddOffModalBtn) closeAddOffModalBtn.addEventListener("click", () => closeModal(modalAddOffering));
+  if (cancelAddOffBtn) cancelAddOffBtn.addEventListener("click", () => closeModal(modalAddOffering));
+  if (closeRemoveOffModalBtn) closeRemoveOffModalBtn.addEventListener("click", () => closeModal(modalRemoveOffering));
+  if (cancelRemoveOffBtn) cancelRemoveOffBtn.addEventListener("click", () => closeModal(modalRemoveOffering));
+
+  // View Mode Switcher Listeners
+  if (tabBtnCatalog) {
+    tabBtnCatalog.addEventListener("click", () => {
+      viewMode = "catalog";
+      tabBtnCatalog.style.background = "var(--primary-blue)";
+      tabBtnCatalog.style.color = "#ffffff";
+      tabBtnCatalog.style.borderColor = "var(--primary-blue)";
+      if (tabBtnOfferings) {
+        tabBtnOfferings.style.background = "#ffffff";
+        tabBtnOfferings.style.color = "var(--dark-navy)";
+        tabBtnOfferings.style.borderColor = "#CBD5E1";
+      }
+      renderTable();
+    });
+  }
+
+  if (tabBtnOfferings) {
+    tabBtnOfferings.addEventListener("click", () => {
+      viewMode = "offerings";
+      tabBtnOfferings.style.background = "var(--primary-blue)";
+      tabBtnOfferings.style.color = "#ffffff";
+      tabBtnOfferings.style.borderColor = "var(--primary-blue)";
+      if (tabBtnCatalog) {
+        tabBtnCatalog.style.background = "#ffffff";
+        tabBtnCatalog.style.color = "var(--dark-navy)";
+        tabBtnCatalog.style.borderColor = "#CBD5E1";
+      }
+      renderTable();
+    });
+  }
 
   // Update Summary Statistics (Dynamically from Real Records)
   const updateStats = () => {
@@ -1137,6 +1211,124 @@ export function initCourseManagement() {
   // Render Table
   const renderTable = () => {
     if (!tbody) return;
+
+    if (viewMode === "offerings") {
+      const activeSession = filters.session === "all" ? (ADMIN_CONFIG.SESSION || "2026/2027") : filters.session;
+      const activeSemester = filters.semester === "all" ? (ADMIN_CONFIG.SEMESTER || "First Semester") : filters.semester;
+      let offerings = getSemesterCourseOfferings(activeSession, activeSemester, { includeArchived: true, studyCentre: filters.centre });
+
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        offerings = offerings.filter((o) => {
+          return (
+            (o.courseCode || "").toLowerCase().includes(q) ||
+            (o.courseTitle || "").toLowerCase().includes(q) ||
+            (o.department || "").toLowerCase().includes(q)
+          );
+        });
+      }
+
+      if (filters.status !== "all") {
+        offerings = offerings.filter((o) => o.status === filters.status);
+      }
+
+      if (countPill) countPill.textContent = `${offerings.length} Offering${offerings.length === 1 ? "" : "s"}`;
+      if (filterSummary) {
+        filterSummary.textContent = `Showing Semester Offerings for ${activeSemester} (${activeSession})`;
+      }
+
+      if (offerings.length === 0) {
+        tbody.innerHTML = "";
+        if (emptyEl) {
+          emptyEl.style.display = "block";
+          if (emptyHeading) {
+            emptyHeading.textContent = `No course offerings configured for ${activeSemester} (${activeSession}). Click 'Offer Course in Semester (+)' to add courses.`;
+          }
+        }
+        return;
+      }
+
+      if (emptyEl) emptyEl.style.display = "none";
+
+      const rowsHtml = offerings
+        .map((o) => {
+          const code = o.courseCode;
+          const title = o.courseTitle;
+          const dept = o.department || "Biblical Studies & Theology";
+          const prog = o.programme || "Diploma in Theology (Dipl.Th.)";
+          const level = o.level ? `${o.level} Lvl` : "100 Lvl";
+          const units = o.creditUnits || 3;
+          const sem = o.semester || activeSemester;
+          const isRemoved = o.status === "removed";
+          const isActive = o.status === "active";
+
+          const depCheck = getCourseOfferingDependencies(code, o.academicSession || activeSession, sem, o.studyCentre);
+          const registeredCount = depCheck.registeredStudentCount || 0;
+
+          let statusBadge = "";
+          if (isActive) {
+            statusBadge = `<span class="badge-course-active">● Active Offering</span>`;
+          } else if (isRemoved) {
+            statusBadge = `<span class="badge-course-inactive" style="color: #DC2626; background: #FEE2E2; border: 1px solid #FCA5A5;">✕ Removed</span>`;
+          } else {
+            statusBadge = `<span class="badge-course-inactive">○ Inactive</span>`;
+          }
+
+          const semClass = sem.includes("Second") ? "sem-2" : sem.includes("Third") ? "sem-3" : "sem-1";
+
+          return `
+          <tr data-offering-id="${o.id}">
+            <td><strong style="color: var(--primary-blue); font-size: 0.875rem;">${code}</strong></td>
+            <td>
+              <div style="font-weight: 700; color: var(--dark-navy);">${title}</div>
+              <div style="font-size: 0.72rem; color: var(--admin-text-muted);">${dept} · ${prog}</div>
+            </td>
+            <td><span style="color: var(--admin-text-main); font-size: 0.8125rem;">${dept}</span></td>
+            <td><span style="font-size: 0.75rem; color: var(--admin-text-muted);">${prog}</span></td>
+            <td><span class="badge-credit-pill">${level}</span></td>
+            <td><span class="badge-semester-tag ${semClass}">${sem}</span></td>
+            <td><span class="badge-credit-pill" style="font-weight: 800; color: var(--primary-blue);">${units} Units</span></td>
+            <td>
+              <span class="badge-credit-pill" style="background: #EFF6FF; color: var(--primary-blue); font-weight: 700;">
+                👥 ${registeredCount} Registered
+              </span>
+            </td>
+            <td>${statusBadge}</td>
+            <td>
+              <div class="course-actions-cell">
+                ${
+                  isActive
+                    ? `<button type="button" class="btn-course-action btn-course-delete action-remove-offering-btn" 
+                        data-id="${o.id}" 
+                        data-code="${code}" 
+                        data-title="${title}" 
+                        data-session="${o.academicSession || activeSession}" 
+                        data-semester="${sem}" 
+                        data-centre="${o.studyCentre || "all"}"
+                        title="Remove course from active semester offering">
+                        Remove
+                      </button>`
+                    : `<button type="button" class="btn-course-action btn-course-activate action-restore-offering-btn" 
+                        data-id="${o.id}" 
+                        data-code="${code}" 
+                        data-session="${o.academicSession || activeSession}" 
+                        data-semester="${sem}" 
+                        data-centre="${o.studyCentre || "all"}"
+                        title="Restore course to active semester offering">
+                        Re-Offer
+                      </button>`
+                }
+              </div>
+            </td>
+          </tr>
+        `;
+        })
+        .join("");
+
+      tbody.innerHTML = rowsHtml;
+      attachRowListeners();
+      return;
+    }
 
     // Filter
     let list = allCourses.filter((c) => {
@@ -1358,7 +1550,195 @@ export function initCourseManagement() {
         openDeleteConfirmModal(course);
       });
     });
+
+    // 4. Remove Offering
+    tbody.querySelectorAll(".action-remove-offering-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const code = btn.getAttribute("data-code");
+        const title = btn.getAttribute("data-title");
+        const session = btn.getAttribute("data-session");
+        const semester = btn.getAttribute("data-semester");
+        const centre = btn.getAttribute("data-centre") || "all";
+        openRemoveOfferingModal({ id, courseCode: code, courseTitle: title, academicSession: session, semester, studyCentre: centre });
+      });
+    });
+
+    // 5. Restore Offering
+    tbody.querySelectorAll(".action-restore-offering-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const code = btn.getAttribute("data-code");
+        const session = btn.getAttribute("data-session");
+        const semester = btn.getAttribute("data-semester");
+        const centre = btn.getAttribute("data-centre") || "all";
+        try {
+          await addCourseToSemesterOffering({ courseCode: code, academicSession: session, semester, studyCentre: centre });
+          showAdminToast("success", `Course offering [${code}] restored to ${semester} (${session}).`);
+          renderTable();
+        } catch (err) {
+          showAdminToast("error", err.message || "Failed to restore course offering.");
+        }
+      });
+    });
   };
+
+  // Open Remove Offering Modal
+  const openRemoveOfferingModal = (offering) => {
+    if (!modalRemoveOffering) return;
+    if (removeOffId) removeOffId.value = offering.id;
+    if (removeOffCode) removeOffCode.value = offering.courseCode;
+    if (removeOffSession) removeOffSession.value = offering.academicSession;
+    if (removeOffSemester) removeOffSemester.value = offering.semester;
+    if (removeOffTitle) removeOffTitle.textContent = `${offering.courseCode} — ${offering.courseTitle || offering.courseCode}`;
+    if (removeOffMeta) {
+      removeOffMeta.textContent = `Academic Session: ${offering.academicSession} · Semester: ${offering.semester} · Campus: ${offering.studyCentre || "All Centres"}`;
+    }
+
+    const dep = getCourseOfferingDependencies(offering.courseCode, offering.academicSession, offering.semester, offering.studyCentre);
+    if (removeOffDepWarning) {
+      if (dep.registeredStudentCount > 0) {
+        removeOffDepWarning.innerHTML = `⚠️ Currently registered by <strong>${dep.registeredStudentCount} student(s)</strong>. Removal will withdraw this course immediately from their active registered course slips and deduct credit units.`;
+        removeOffDepWarning.style.color = "#B91C1C";
+      } else {
+        removeOffDepWarning.textContent = "✓ Course currently has 0 active student registrations.";
+        removeOffDepWarning.style.color = "#166534";
+      }
+    }
+
+    if (removeOffReason) removeOffReason.value = "";
+    openModal(modalRemoveOffering);
+  };
+  window.openRemoveCourseOfferingModal = openRemoveOfferingModal;
+
+  // Confirm Remove Offering Handler
+  if (confirmRemoveOffBtn) {
+    confirmRemoveOffBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const id = removeOffId?.value;
+      const code = removeOffCode?.value;
+      const session = removeOffSession?.value;
+      const semester = removeOffSemester?.value;
+      const reason = (removeOffReason?.value || "").trim();
+
+      if (!reason) {
+        alert("Please provide a reason for removing this course from the semester offering.");
+        removeOffReason?.focus();
+        return;
+      }
+
+      confirmRemoveOffBtn.disabled = true;
+      if (removeOffSpinner) removeOffSpinner.style.display = "inline-block";
+
+      try {
+        const res = await removeCourseFromSemesterOffering(id, {
+          forceArchive: true,
+          reason,
+          adminId: ADMIN_CONFIG.ADMIN_ID
+        });
+
+        showAdminToast("success", res.message || `Course offering [${code}] successfully removed.`);
+        closeModal(modalRemoveOffering);
+        renderTable();
+      } catch (err) {
+        alert(err.message || "Failed to remove course offering.");
+      } finally {
+        confirmRemoveOffBtn.disabled = false;
+        if (removeOffSpinner) removeOffSpinner.style.display = "none";
+      }
+    });
+  }
+
+  // Open Add Offering Modal
+  const openAddOfferingModal = () => {
+    if (!modalAddOffering) return;
+    if (addOffAlert) addOffAlert.style.display = "none";
+    if (addOffCourseSelect) {
+      addOffCourseSelect.innerHTML = `<option value="">-- Select Course from Catalogue --</option>`;
+      allCourses.forEach((c) => {
+        const opt = document.createElement("option");
+        opt.value = c.courseCode;
+        opt.textContent = `[${c.courseCode}] ${c.title || c.courseTitle} (${c.creditUnits || 3} Units)`;
+        opt.dataset.credits = c.creditUnits || 3;
+        addOffCourseSelect.appendChild(opt);
+      });
+    }
+
+    if (addOffSessionSelect) addOffSessionSelect.value = filters.session === "all" ? (ADMIN_CONFIG.SESSION || "2026/2027") : filters.session;
+    if (addOffSemesterSelect) addOffSemesterSelect.value = filters.semester === "all" ? "First Semester" : filters.semester;
+    if (addOffCredits) addOffCredits.value = "3";
+    if (addOffNotes) addOffNotes.value = "";
+
+    // Study centres
+    if (addOffCentreSelect) {
+      addOffCentreSelect.innerHTML = `<option value="all">All Study Centres (Institution-Wide)</option>`;
+      const centres = getStudyCentres() || [];
+      centres.forEach((centre) => {
+        const opt = document.createElement("option");
+        opt.value = centre.centreName;
+        opt.textContent = centre.centreName;
+        addOffCentreSelect.appendChild(opt);
+      });
+    }
+
+    openModal(modalAddOffering);
+  };
+  window.openAddCourseOfferingModal = openAddOfferingModal;
+
+  if (addOffCourseSelect) {
+    addOffCourseSelect.addEventListener("change", () => {
+      const selOpt = addOffCourseSelect.options[addOffCourseSelect.selectedIndex];
+      if (selOpt && selOpt.dataset.credits && addOffCredits) {
+        addOffCredits.value = selOpt.dataset.credits;
+      }
+    });
+  }
+
+  if (btnOpenAddOffering) btnOpenAddOffering.addEventListener("click", openAddOfferingModal);
+
+  if (confirmAddOffBtn) {
+    confirmAddOffBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const code = addOffCourseSelect?.value;
+      const session = addOffSessionSelect?.value;
+      const semester = addOffSemesterSelect?.value;
+      const centre = addOffCentreSelect?.value || "all";
+      const credits = parseInt(addOffCredits?.value, 10) || 3;
+      const notes = (addOffNotes?.value || "").trim();
+
+      if (!code) {
+        if (addOffAlert) {
+          addOffAlert.textContent = "Please select a course from the central catalogue.";
+          addOffAlert.className = "course-modal-feedback error";
+          addOffAlert.style.display = "block";
+        }
+        return;
+      }
+
+      confirmAddOffBtn.disabled = true;
+      try {
+        await addCourseToSemesterOffering({
+          courseCode: code,
+          academicSession: session,
+          semester,
+          studyCentre: centre,
+          creditUnits: credits,
+          notes
+        });
+
+        showAdminToast("success", `Course [${code}] successfully configured for ${semester} (${session}) offering.`);
+        closeModal(modalAddOffering);
+        renderTable();
+      } catch (err) {
+        if (addOffAlert) {
+          addOffAlert.textContent = err.message || "Failed to configure course offering.";
+          addOffAlert.className = "course-modal-feedback error";
+          addOffAlert.style.display = "block";
+        }
+      } finally {
+        confirmAddOffBtn.disabled = false;
+      }
+    });
+  }
 
   // Open Add Course Modal
   const openAddCourseModal = () => {
