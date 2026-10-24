@@ -1096,14 +1096,31 @@
                       </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-session">Academic Session *</label>
+                        <select class="student-form-select" id="cbt-form-session" required>
+                          <option value="2026/2027">2026/2027 (Current)</option>
+                          <option value="2025/2026">2025/2026 (Historical)</option>
+                        </select>
+                      </div>
+
+                      <div class="student-form-group">
+                        <label class="student-form-label" for="cbt-form-semester">Semester *</label>
+                        <select class="student-form-select" id="cbt-form-semester" required>
+                          <option value="First Semester">First Semester</option>
+                          <option value="Second Semester">Second Semester</option>
+                          <option value="Third Semester">Third Semester</option>
+                        </select>
+                      </div>
+
                       <div class="student-form-group">
                         <label class="student-form-label" for="cbt-form-course">Course Offering *</label>
                         <select class="student-form-select" id="cbt-form-course" required>
                           <option value="">-- Choose Assigned Course --</option>
                         </select>
                       </div>
-
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                       <div class="student-form-group">
                         <label class="student-form-label" for="cbt-form-topic">Topic or Syllabus Coverage</label>
                         <input type="text" class="student-form-input" id="cbt-form-topic" placeholder="e.g. Modules 1 to 4: Canonical History">
@@ -1254,8 +1271,14 @@
                    TAB 4: SCHEDULED CBTs
                    ============================================================== -->
               <div class="cbt-tab-pane" id="cbt-pane-scheduled" style="display: none;">
-                <div class="portal-filter-bar no-print" style="margin-bottom: 1rem;">
-                  <select class="portal-filter-select" id="filter-scheduled-course">
+                <div class="portal-filter-bar no-print" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <select class="portal-filter-select" id="filter-scheduled-semester" style="flex: 1; min-width: 150px;">
+                    <option value="all">All Semesters</option>
+                    <option value="First Semester">First Semester</option>
+                    <option value="Second Semester">Second Semester</option>
+                    <option value="Third Semester">Third Semester</option>
+                  </select>
+                  <select class="portal-filter-select" id="filter-scheduled-course" style="flex: 1; min-width: 180px;">
                     <option value="all">All Assigned Courses</option>
                   </select>
                 </div>
@@ -1283,8 +1306,14 @@
                    TAB 6: COMPLETED CBTs
                    ============================================================== -->
               <div class="cbt-tab-pane" id="cbt-pane-completed" style="display: none;">
-                <div class="portal-filter-bar no-print" style="margin-bottom: 1rem;">
-                  <select class="portal-filter-select" id="filter-completed-course">
+                <div class="portal-filter-bar no-print" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <select class="portal-filter-select" id="filter-completed-semester" style="flex: 1; min-width: 150px;">
+                    <option value="all">All Semesters</option>
+                    <option value="First Semester">First Semester</option>
+                    <option value="Second Semester">Second Semester</option>
+                    <option value="Third Semester">Third Semester</option>
+                  </select>
+                  <select class="portal-filter-select" id="filter-completed-course" style="flex: 1; min-width: 180px;">
                     <option value="all">All Assigned Courses</option>
                   </select>
                 </div>
@@ -1300,6 +1329,12 @@
                 <!-- Filter Bar -->
                 <div class="portal-filter-bar no-print" style="margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
                   <input type="text" class="portal-search-input" id="submissions-search" placeholder="Filter by candidate name or matric..." style="flex: 2; min-width: 200px;">
+                  <select class="portal-filter-select" id="submissions-filter-semester" style="flex: 1; min-width: 150px;">
+                    <option value="all">All Semesters</option>
+                    <option value="First Semester">First Semester</option>
+                    <option value="Second Semester">Second Semester</option>
+                    <option value="Third Semester">Third Semester</option>
+                  </select>
                   <select class="portal-filter-select" id="submissions-filter-assessment" style="flex: 2; min-width: 200px;">
                     <option value="all">All Assessments</option>
                   </select>
@@ -1342,6 +1377,12 @@
                 <!-- Results Filter Bar -->
                 <div class="portal-filter-bar no-print" style="margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
                   <input type="text" class="portal-search-input" id="results-search" placeholder="Search candidate name or matric..." style="flex: 2; min-width: 180px;">
+                  <select class="portal-filter-select" id="results-filter-semester" style="flex: 1; min-width: 150px;">
+                    <option value="all">All Semesters</option>
+                    <option value="First Semester">First Semester</option>
+                    <option value="Second Semester">Second Semester</option>
+                    <option value="Third Semester">Third Semester</option>
+                  </select>
                   <select class="portal-filter-select" id="results-filter-assessment" style="flex: 2; min-width: 180px;">
                     <option value="all">All Assessments</option>
                   </select>

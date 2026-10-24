@@ -4472,20 +4472,55 @@ export async function saveLecturerGradeRecord(gradeData) {
   else if (totalScore >= 45) { grade = "D"; gradePoint = 2.0; remarks = "Fair"; }
   else if (totalScore >= 40) { grade = "E"; gradePoint = 1.0; remarks = "Pass"; }
 
-  const status = (gradeData.status || "draft").toLowerCase(); // draft | submitted | approved | published | rejected
   const matricNumber = (gradeData.matricNumber || "").trim().toUpperCase();
+  if (!matricNumber) throw new Error("Student Matriculation Number is required.");
+
   const courseCode = (gradeData.courseCode || "").trim().toUpperCase();
-  const session = gradeData.academicSession || "2026/2027";
-  const semester = gradeData.semester || "First Semester";
+  if (!courseCode) throw new Error("Course Code is required.");
+
+  const session = (gradeData.academicSession || getActiveAcademicSession()?.currentSession || "2026/2027").trim();
+  const semester = (gradeData.semester || getActiveAcademicSession()?.currentSemester || "First Semester").trim();
+  if (!["First Semester", "Second Semester", "Third Semester"].includes(semester)) {
+    throw new Error("Invalid semester for grading record. Must be First Semester, Second Semester, or Third Semester.");
+  }
+
+  // Lecturer Course Allocation Authorization Check
+  if (gradeData.lecturerStaffId && !gradeData.isAdmin && !gradeData.isAdminOverride) {
+    const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+    const isAllocated = allocations.some((a) => {
+      const matchLec = (a.lecturerStaffId || a.staffId || "").trim().toUpperCase() === gradeData.lecturerStaffId.trim().toUpperCase() ||
+                       (a.lecturerEmail || "").toLowerCase() === (gradeData.lecturerEmail || "").toLowerCase();
+      const matchCourse = normalizeCourseCode(a.courseCode) === courseCode;
+      const matchSess = (a.academicSession || "2026/2027").trim() === session;
+      const matchSem = (a.semester || "First Semester").trim() === semester;
+      return matchLec && matchCourse && matchSess && matchSem && a.status !== "ended";
+    });
+
+    if (allocations.length > 0 && !isAllocated) {
+      throw new Error(`Lecturer [${gradeData.lecturerStaffId}] is not authorized to grade course [${courseCode}] for ${semester} (${session}).`);
+    }
+  }
+
+  // Prevent lecturers from self-approving or publishing final results
+  let requestedStatus = (gradeData.status || "draft").toLowerCase(); // draft | submitted | approved | published | rejected
+  if (!gradeData.isAdmin && (requestedStatus === "approved" || requestedStatus === "published")) {
+    requestedStatus = "submitted"; // Downgrade self-approval attempt to submitted for registry review
+  }
+  const status = requestedStatus;
 
   const existingResults = getCachedCollection(COLLECTIONS.RESULTS) || [];
   const existing = existingResults.find(
     (r) =>
       (r.matricNumber || "").trim().toUpperCase() === matricNumber &&
       (r.courseCode || "").trim().toUpperCase() === courseCode &&
-      (r.academicSession || "") === session &&
-      (r.semester || "") === semester
+      (r.academicSession || "").trim() === session &&
+      (r.semester || "").trim() === semester
   );
+
+  // Safeguard: Do not allow altering already approved or published results without administrator clearance
+  if (existing && (existing.status === "approved" || existing.status === "published") && !gradeData.isAdmin && !gradeData.isAdminOverride) {
+    throw new Error(`Cannot modify grades for ${matricNumber} in ${courseCode}: Results for ${semester} (${session}) have already been approved by Academic Registry.`);
+  }
 
   const nowIso = new Date().toISOString();
   const caPublished = gradeData.caPublished !== undefined 
@@ -4501,6 +4536,8 @@ export async function saveLecturerGradeRecord(gradeData) {
     studyCentre: gradeData.studyCentre || (existing ? existing.studyCentre : "") || "",
     academicSession: session,
     semester,
+    hasMissingSemester: false,
+    semesterReviewRequired: false,
     // CA Granular
     cbtScore: cbtScore !== undefined ? cbtScore : (existing?.cbtScore !== undefined ? existing.cbtScore : 0),
     attendanceScore: attendanceScore !== undefined ? attendanceScore : (existing?.attendanceScore !== undefined ? existing.attendanceScore : 0),
@@ -6663,6 +6700,30 @@ export async function createCbtAssessment(assessmentData) {
   if (!normCourse) throw new Error("Course Code is required.");
   if (!assessmentData.title || !assessmentData.title.trim()) throw new Error("Assessment Title is required.");
 
+  const activeDoc = getActiveAcademicSession();
+  const session = (assessmentData.academicSession || activeDoc?.currentSession || "2026/2027").trim();
+  const semester = (assessmentData.semester || activeDoc?.currentSemester || "First Semester").trim();
+  if (!["First Semester", "Second Semester", "Third Semester"].includes(semester)) {
+    throw new Error("Invalid semester for CBT assessment. Must be First Semester, Second Semester, or Third Semester.");
+  }
+
+  // Lecturer Course Allocation Authorization Check
+  if (assessmentData.lecturerStaffId && !assessmentData.isAdmin && !assessmentData.isAdminOverride) {
+    const allocations = getCachedCollection(COLLECTIONS.COURSE_ALLOCATIONS) || [];
+    const isAllocated = allocations.some((a) => {
+      const matchLec = (a.lecturerStaffId || a.staffId || "").trim().toUpperCase() === assessmentData.lecturerStaffId.trim().toUpperCase() ||
+                       (a.lecturerEmail || "").toLowerCase() === (assessmentData.lecturerEmail || "").toLowerCase();
+      const matchCourse = normalizeCourseCode(a.courseCode) === normCourse;
+      const matchSess = (a.academicSession || "2026/2027").trim() === session;
+      const matchSem = (a.semester || "First Semester").trim() === semester;
+      return matchLec && matchCourse && matchSess && matchSem && a.status !== "ended";
+    });
+
+    if (allocations.length > 0 && !isAllocated) {
+      throw new Error(`Lecturer [${assessmentData.lecturerStaffId}] is not authorized to create CBT assessments for [${normCourse}] in ${semester} (${session}).`);
+    }
+  }
+
   const questionsSnapshot = Array.isArray(assessmentData.questions) ? assessmentData.questions : [];
   if (questionsSnapshot.length === 0) {
     throw new Error("At least one question must be selected for the assessment.");
@@ -6676,7 +6737,7 @@ export async function createCbtAssessment(assessmentData) {
   }
 
   const nowIso = new Date().toISOString();
-  const cbtId = `cbt_${normCourse.replace(/[^A-Z0-9]/g, "_")}_${Date.now()}`;
+  const cbtId = `cbt_${normCourse.replace(/[^A-Z0-9]/g, "_")}_${session.replace(/[^0-9]/g, "_")}_${semester.replace(/\s+/g, "_")}_${Date.now()}`;
 
   // Check if initial status should be scheduled or open
   let initialStatus = assessmentData.status || "draft"; // draft | scheduled | open | closed
@@ -6700,8 +6761,10 @@ export async function createCbtAssessment(assessmentData) {
     courseCode: normCourse,
     courseTitle: assessmentData.courseTitle || "",
     topic: assessmentData.topic || "Comprehensive Assessment",
-    academicSession: assessmentData.academicSession || "2026/2027",
-    semester: assessmentData.semester || "First Semester",
+    academicSession: session,
+    semester,
+    hasMissingSemester: false,
+    semesterReviewRequired: false,
     studyCentre: assessmentData.studyCentre || "all",
     instructions: assessmentData.instructions || "Answer all questions carefully. Time counts down automatically.",
     startDate: assessmentData.startDate || nowIso,
@@ -6907,6 +6970,35 @@ export async function startCbtAttempt({ studentId, studentName, matricNumber, st
   const normMatric = (matricNumber || studentId || "").trim().toUpperCase();
   const allSubmissions = getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || [];
 
+  // Verify student is registered for this course in the assessment's session and semester
+  const registrations = getCachedCollection(COLLECTIONS.COURSE_REGISTRATIONS) || [];
+  const hasMatchingReg = registrations.some((r) => {
+    const rMatric = (r.studentId || r.admissionNumber || r.matricNumber || "").trim().toUpperCase();
+    const rUid = (r.studentUid || r.userId || "").trim().toUpperCase();
+    const matchStudent = rMatric === normMatric || (studentId && rUid === studentId.trim().toUpperCase());
+    const matchSess = (r.academicSession || "").trim() === (assessment.academicSession || "2026/2027").trim();
+    const matchSem = (r.semester || "").trim() === (assessment.semester || "First Semester").trim();
+    if (!matchStudent || !matchSess || !matchSem) return false;
+    const courses = Array.isArray(r.courses) ? r.courses : [];
+    return courses.some((c) => {
+      const code = typeof c === "string" ? c : c.courseCode;
+      return normalizeCourseCode(code) === normalizeCourseCode(assessment.courseCode);
+    });
+  });
+
+  if (registrations.length > 0 && !hasMatchingReg) {
+    throw new Error(`Student ${normMatric} is not registered for ${assessment.courseCode} in ${assessment.semester} (${assessment.academicSession}).`);
+  }
+
+  // Sanitize questions to avoid leaking correct answers/answer keys to candidate client
+  const sanitizedAssessment = {
+    ...assessment,
+    questions: (assessment.questions || []).map((q) => {
+      const { correctOptionId, expectedAnswer, ...safeQ } = q;
+      return safeQ;
+    })
+  };
+
   // Check student attempts for this assessment
   const studentAttempts = allSubmissions.filter(
     (s) => s.assessmentId === assessmentId && (s.matricNumber || "").trim().toUpperCase() === normMatric
@@ -6923,7 +7015,7 @@ export async function startCbtAttempt({ studentId, studentName, matricNumber, st
       await submitCbtAttempt(activeAttempt.id, activeAttempt.answers || {});
       throw new Error("Your previous test attempt duration has expired and has been submitted automatically.");
     }
-    return { isResumed: true, attempt: activeAttempt, assessment };
+    return { isResumed: true, attempt: activeAttempt, assessment: sanitizedAssessment };
   }
 
   // Check attempt limit
@@ -6957,6 +7049,7 @@ export async function startCbtAttempt({ studentId, studentName, matricNumber, st
     courseTitle: assessment.courseTitle,
     academicSession: assessment.academicSession || "2026/2027",
     semester: assessment.semester || "First Semester",
+    hasMissingSemester: false,
     studentId: studentId || normMatric,
     studentName: studentName || "Candidate",
     matricNumber: normMatric,
@@ -6989,7 +7082,7 @@ export async function startCbtAttempt({ studentId, studentName, matricNumber, st
     console.warn(`[DIMABIN CBT] Start attempt note: ${err.message}`);
   }
 
-  return { isResumed: false, attempt: attemptPayload, assessment };
+  return { isResumed: false, attempt: attemptPayload, assessment: sanitizedAssessment };
 }
 
 /**
@@ -7373,9 +7466,20 @@ export function getStudentCbtAttempts(studentIdentifier, { session = null, semes
     const mUid = (s.studentUid || s.userId || "").trim().toLowerCase();
     const matchUser = mMatric === norm || mUid === norm;
     const matchSess = !session || (s.academicSession || "").trim() === session.trim();
-    const matchSem = !semester || (s.semester || "").trim() === semester.trim();
+    const matchSem = !semester || (!s.hasMissingSemester && (s.semester || "").trim() === semester.trim());
     const matchCourse = !courseCode || normalizeCourseCode(s.courseCode) === normalizeCourseCode(courseCode);
     return matchUser && matchSess && matchSem && matchCourse;
+  }).map((s) => {
+    // Sanitize question grading if test results have not been released
+    if (!s.resultsReleased && s.questionGrading) {
+      const sanitizedGrading = {};
+      Object.keys(s.questionGrading).forEach((qid) => {
+        const { correctOptionId, expectedAnswer, ...safeG } = s.questionGrading[qid];
+        sanitizedGrading[qid] = safeG;
+      });
+      return { ...s, questionGrading: sanitizedGrading };
+    }
+    return s;
   }).sort((a, b) => new Date(b.startedAt || b.submittedAt || 0) - new Date(a.startedAt || a.submittedAt || 0));
 }
 
@@ -7391,7 +7495,7 @@ export function getStudentResults(studentIdentifier, { session = null, semester 
   return list.filter((r) => {
     const matchMatric = (r.matricNumber || "").trim().toUpperCase() === norm;
     const matchSess = !session || (r.academicSession || "").trim() === session.trim();
-    const matchSem = !semester || (r.semester || "").trim() === semester.trim();
+    const matchSem = !semester || (!r.hasMissingSemester && (r.semester || "").trim() === semester.trim());
     const st = (r.status || "").toLowerCase();
     const matchAppr = !onlyApproved || st === "approved" || st === "published";
     return matchMatric && matchSess && matchSem && matchAppr;
@@ -7722,23 +7826,45 @@ export async function migrateSemesterAcademicRecords() {
       changed = true;
     }
     if (!a.semester || !a.semester.trim()) {
-      a.semester = fallbackSemester;
+      a.hasMissingSemester = true;
+      a.semesterReviewRequired = true;
+      audit.legacyOrUnclassified.push({
+        id: a.id,
+        type: "cbt_assessment",
+        title: a.title,
+        reason: "Missing authoritative semester metadata"
+      });
       changed = true;
     }
     if (changed) audit.migrated.assessments++;
   });
   setCachedCollection(COLLECTIONS.CBT_ASSESSMENTS, cbts);
 
-  // 5. Audit & normalize CBT Submissions (inherit from assessment if absent)
+  // 5. Audit & normalize CBT Submissions (inherit from assessment if valid and non-missing)
   const subs = getCachedCollection(COLLECTIONS.CBT_SUBMISSIONS) || [];
   audit.examined.submissions = subs.length;
   subs.forEach((s) => {
     let changed = false;
-    if (!s.academicSession || !s.semester) {
-      const parentAsmt = cbts.find((a) => a.id === s.assessmentId);
-      s.academicSession = s.academicSession || parentAsmt?.academicSession || fallbackSession;
-      s.semester = s.semester || parentAsmt?.semester || fallbackSemester;
+    const parentAsmt = cbts.find((a) => a.id === s.assessmentId);
+    if (!s.academicSession || !s.academicSession.trim()) {
+      s.academicSession = parentAsmt?.academicSession || fallbackSession;
       changed = true;
+    }
+    if (!s.semester || !s.semester.trim()) {
+      if (parentAsmt?.semester && !parentAsmt.hasMissingSemester) {
+        s.semester = parentAsmt.semester;
+        changed = true;
+      } else {
+        s.hasMissingSemester = true;
+        s.semesterReviewRequired = true;
+        audit.legacyOrUnclassified.push({
+          id: s.id,
+          type: "cbt_submission",
+          matricNumber: s.matricNumber,
+          reason: "Missing authoritative semester metadata"
+        });
+        changed = true;
+      }
     }
     if (changed) audit.migrated.submissions++;
   });
@@ -7754,7 +7880,15 @@ export async function migrateSemesterAcademicRecords() {
       changed = true;
     }
     if (!res.semester || !res.semester.trim()) {
-      res.semester = fallbackSemester;
+      res.hasMissingSemester = true;
+      res.semesterReviewRequired = true;
+      audit.legacyOrUnclassified.push({
+        id: res.id,
+        type: "result",
+        courseCode: res.courseCode,
+        matricNumber: res.matricNumber,
+        reason: "Missing authoritative semester metadata"
+      });
       changed = true;
     }
     if (changed) audit.migrated.results++;

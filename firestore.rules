@@ -90,7 +90,14 @@ service cloud.firestore {
 
     // Examination & CA Results (Protected academic grading)
     match /results/{resultId} {
-      allow read: if isAuthenticated();
+      // Students can read their own published/approved results or published CA
+      // Admins and Lecturers can read course score sheets
+      allow read: if isAuthenticated() && (
+        isAdmin() || isLecturer() ||
+        resource.data.status == "approved" ||
+        resource.data.status == "published" ||
+        resource.data.caPublished == true
+      );
       // Admins have full write/approve authority
       // Lecturers can create or submit grades, but CANNOT self-approve or publish final results
       allow write: if isAdmin() || (
@@ -103,17 +110,26 @@ service cloud.firestore {
 
     // CBT Assessments & Quizzes
     match /cbt_assessments/{asmtId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAdmin() || isLecturer();
     }
 
     // CBT Submissions & Attempts
     match /cbt_submissions/{subId} {
-      allow read: if isAuthenticated();
+      // Students can read only their own submissions; faculty/admin can view for assessment grading
+      allow read: if isAuthenticated() && (
+        isAdmin() || isLecturer() ||
+        resource.data.studentId == request.auth.uid ||
+        resource.data.studentUid == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
       allow create: if isAuthenticated();
+      // Students can update only while attempt is in_progress, and CANNOT tamper with final scores or release status
       allow update: if isAdmin() || isLecturer() || (
         isAuthenticated() &&
-        resource.data.status == "in_progress"
+        (resource.data.studentId == request.auth.uid || resource.data.studentUid == request.auth.uid || resource.data.userId == request.auth.uid) &&
+        resource.data.status == "in_progress" &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['autoScore', 'totalScore', 'grade', 'percentage', 'markingStatus', 'resultsReleased'])
       );
       allow delete: if isAdmin();
     }

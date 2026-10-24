@@ -1348,7 +1348,7 @@ body.drawer-open {
   .rector-profile {
     flex-direction: column;
     text-align: center;
-    width: 140px;
+    width: 170px;
   }
 }
 
@@ -1674,7 +1674,9 @@ body.drawer-open {
   gap: 0.875rem;
   font-size: 0.9375rem;
   color: var(--text-secondary);
-  line-height: 1.7;
+  line-height: 1.75;
+  margin-bottom: 1.75rem;
+  max-width: 52rem;
 }
 
 .program-thumb-box {

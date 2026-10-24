@@ -1749,6 +1749,7 @@ export function initStudentCbt(studentProfile, uid) {
   const avgScoreEl = document.getElementById("stu-cbt-avg-score");
   const cardsContainer = document.getElementById("stu-cbt-cards-container");
   const searchInput = document.getElementById("stu-cbt-search");
+  const semesterFilter = document.getElementById("stu-cbt-semester-filter");
   const courseFilter = document.getElementById("stu-cbt-course-filter");
   const typeFilter = document.getElementById("stu-cbt-type-filter");
   const statusTabs = document.querySelectorAll(".stu-cbt-tab-btn");
@@ -1869,6 +1870,7 @@ export function initStudentCbt(studentProfile, uid) {
   });
 
   if (searchInput) searchInput.addEventListener("input", renderAssessmentsView);
+  if (semesterFilter) semesterFilter.addEventListener("change", renderAssessmentsView);
   if (courseFilter) courseFilter.addEventListener("change", renderAssessmentsView);
   if (typeFilter) typeFilter.addEventListener("change", renderAssessmentsView);
 
@@ -1887,21 +1889,64 @@ export function initStudentCbt(studentProfile, uid) {
     // Active in-progress submission if any
     const activeInProgressSubmission = mySubmissions.find((s) => s.status === "in_progress");
 
-    // Filter assessments applicable to this student
+    // Fetch active session/semester and student course registrations
+    const activeDoc = typeof window.dimabinBackend?.getActiveAcademicSession === "function" 
+      ? window.dimabinBackend.getActiveAcademicSession() 
+      : null;
+    const currentActiveSession = activeDoc?.currentSession || "2026/2027";
+    const currentActiveSemester = activeDoc?.currentSemester || "First Semester";
+
+    const selSem = semesterFilter?.value || "active";
+    const targetSemester = selSem === "active" ? currentActiveSemester : (selSem === "all" ? null : selSem);
+
+    const myRegistrations = typeof window.dimabinBackend?.getStudentAllCourseRegistrations === "function"
+      ? window.dimabinBackend.getStudentAllCourseRegistrations(myMatric)
+      : [];
+
+    // Filter assessments applicable to this student, semester, and registered courses
     const cohortAssessments = allAssessments.filter((a) => {
       const matchCentre = !a.studyCentre || a.studyCentre === "all" || a.studyCentre.toLowerCase() === studyCentre.toLowerCase();
-      return matchCentre;
+      if (!matchCentre) return false;
+
+      // Filter by semester if targetSemester specified
+      if (targetSemester && (a.semester || "First Semester").trim() !== targetSemester.trim()) {
+        return false;
+      }
+
+      // Check registered courses in that semester:
+      if (myRegistrations.length > 0) {
+        const asmtSession = (a.academicSession || "2026/2027").trim();
+        const asmtSemester = (a.semester || "First Semester").trim();
+        const termReg = myRegistrations.find(
+          (r) => (r.academicSession || "2026/2027").trim() === asmtSession && (r.semester || "First Semester").trim() === asmtSemester
+        );
+        if (termReg && Array.isArray(termReg.courses)) {
+          const registeredCodes = termReg.courses.map((c) => {
+            const code = typeof c === "string" ? c : c.courseCode;
+            return (code || "").trim().toUpperCase();
+          });
+          const matchRegistered = registeredCodes.includes((a.courseCode || "").trim().toUpperCase());
+          if (!matchRegistered) return false;
+        }
+      }
+
+      return true;
     });
 
-    // Populate course select filter options dynamically
-    if (courseFilter && courseFilter.options.length <= 1) {
+    // Populate course select filter options dynamically based on available assessments
+    if (courseFilter) {
+      const currentSelectedCourse = courseFilter.value;
       const uniqueCourses = Array.from(new Set(cohortAssessments.map((a) => a.courseCode).filter(Boolean)));
+      courseFilter.innerHTML = `<option value="all">All Enrolled Courses</option>`;
       uniqueCourses.forEach((code) => {
         const opt = document.createElement("option");
         opt.value = code;
         opt.textContent = code;
         courseFilter.appendChild(opt);
       });
+      if (currentSelectedCourse && uniqueCourses.includes(currentSelectedCourse)) {
+        courseFilter.value = currentSelectedCourse;
+      }
     }
 
     // Counts

@@ -2562,10 +2562,36 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Populate Course Select dropdowns across CBT tabs
+    const updateCbtFormCourses = () => {
+      const courseSel = document.getElementById("cbt-form-course");
+      if (!courseSel) return;
+      const sess = document.getElementById("cbt-form-session")?.value || activeAcademicSession || "2026/2027";
+      const sem = document.getElementById("cbt-form-semester")?.value || activeAcademicSemester || "First Semester";
+      const myAllocations = allAllocationsState.filter(isMyAllocation);
+      const filtered = myAllocations.filter((a) => {
+        const matchSess = !sess || (a.academicSession || "2026/2027").trim() === sess.trim();
+        const matchSem = !sem || (a.semester || "First Semester").trim() === sem.trim();
+        return matchSess && matchSem;
+      });
+
+      const currentVal = courseSel.value;
+      courseSel.innerHTML = `
+        <option value="">-- Choose Assigned Course --</option>
+        ${filtered.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle}</option>`).join("")}
+      `;
+      if (currentVal && filtered.some((a) => a.courseCode === currentVal)) {
+        courseSel.value = currentVal;
+      }
+    };
+
+    const cbtFormSessEl = document.getElementById("cbt-form-session");
+    if (cbtFormSessEl) cbtFormSessEl.addEventListener("change", updateCbtFormCourses);
+    const cbtFormSemEl = document.getElementById("cbt-form-semester");
+    if (cbtFormSemEl) cbtFormSemEl.addEventListener("change", updateCbtFormCourses);
+
     const refreshCbtCourseSelects = (myAllocations) => {
       const selects = [
         document.getElementById("qbank-filter-course"),
-        document.getElementById("cbt-form-course"),
         document.getElementById("filter-scheduled-course"),
         document.getElementById("filter-completed-course"),
         document.getElementById("results-filter-course"),
@@ -2587,6 +2613,8 @@ document.addEventListener("DOMContentLoaded", () => {
           sel.value = currentVal;
         }
       });
+
+      updateCbtFormCourses();
     };
 
     // -----------------------------------------------------------------------
@@ -3332,8 +3360,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      const formSess = (document.getElementById("cbt-form-session")?.value || activeAcademicSession || "2026/2027").trim();
+      const formSem = (document.getElementById("cbt-form-semester")?.value || activeAcademicSemester || "First Semester").trim();
       const myAllocations = allAllocationsState.filter(isMyAllocation);
-      const courseObj = myAllocations.find((a) => a.courseCode === courseCode);
+      const courseObj = myAllocations.find((a) => a.courseCode === courseCode && (!a.semester || a.semester === formSem));
 
       const payload = {
         title,
@@ -3341,8 +3371,8 @@ document.addEventListener("DOMContentLoaded", () => {
         courseCode,
         courseTitle: courseObj?.courseTitle || "Theological Study",
         topic,
-        academicSession: courseObj?.academicSession || activeAcademicSession || "2026/2027",
-        semester: courseObj?.semester || activeAcademicSemester || "First Semester",
+        academicSession: formSess,
+        semester: formSem,
         studyCentre,
         instructions,
         startDate: new Date(startDate).toISOString(),
@@ -3396,13 +3426,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const myAllocations = allAllocationsState.filter(isMyAllocation);
       const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
       const filterCourse = (document.getElementById("filter-scheduled-course")?.value || "all").toUpperCase();
+      const filterSem = document.getElementById("filter-scheduled-semester")?.value || "all";
       const now = new Date();
 
       const scheduled = (allCbtAssessmentsState || []).filter((a) => {
         const matchCourse = filterCourse === "ALL" || (a.courseCode || "").toUpperCase() === filterCourse;
+        const matchSem = filterSem === "all" || (a.semester || "").trim() === filterSem.trim();
         const isMine = myCourseCodes.has((a.courseCode || "").toUpperCase()) || a.lecturerStaffId === staffId;
         const isFuture = a.status === "scheduled" || (a.status !== "closed" && new Date(a.startDate) > now);
-        return matchCourse && isMine && isFuture;
+        return matchCourse && matchSem && isMine && isFuture;
       });
 
       if (scheduled.length === 0) {
@@ -3518,12 +3550,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const myAllocations = allAllocationsState.filter(isMyAllocation);
       const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
+      const filterCourse = (document.getElementById("filter-completed-course")?.value || "all").toUpperCase();
+      const filterSem = document.getElementById("filter-completed-semester")?.value || "all";
       const now = new Date();
 
       const completed = (allCbtAssessmentsState || []).filter((a) => {
+        const matchCourse = filterCourse === "ALL" || (a.courseCode || "").toUpperCase() === filterCourse;
+        const matchSem = filterSem === "all" || (a.semester || "").trim() === filterSem.trim();
         const isMine = myCourseCodes.has((a.courseCode || "").toUpperCase()) || a.lecturerStaffId === staffId;
         const end = a.closingDate ? new Date(a.closingDate) : null;
-        return isMine && (a.status === "closed" || (end && end < now));
+        return matchCourse && matchSem && isMine && (a.status === "closed" || (end && end < now));
       });
 
       if (completed.length === 0) {
@@ -3657,6 +3693,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
 
       const sSearch = (document.getElementById("submissions-search")?.value || "").trim().toLowerCase();
+      const sSem = document.getElementById("submissions-filter-semester")?.value || "all";
       const sAsmt = document.getElementById("submissions-filter-assessment")?.value || "all";
       const sStatus = document.getElementById("submissions-filter-status")?.value || "all";
 
@@ -3674,13 +3711,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const filtered = (allCbtSubmissionsState || []).filter((s) => {
         const isMine = myCourseCodes.has((s.courseCode || "").toUpperCase()) || (allCbtAssessmentsState || []).some((a) => a.id === s.assessmentId && a.lecturerStaffId === staffId);
+        const matchSem = sSem === "all" || (s.semester || "").trim() === sSem.trim();
         const matchAsmt = sAsmt === "all" || s.assessmentId === sAsmt;
         const matchStatus = sStatus === "all" || s.markingStatus === sStatus;
         const matchSearch = !sSearch ||
           (s.studentName || "").toLowerCase().includes(sSearch) ||
           (s.matricNumber || "").toLowerCase().includes(sSearch) ||
           (s.courseCode || "").toLowerCase().includes(sSearch);
-        return isMine && matchAsmt && matchStatus && matchSearch;
+        return isMine && matchSem && matchAsmt && matchStatus && matchSearch;
       });
 
       if (filtered.length === 0) {
@@ -3729,9 +3767,11 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     const subSearchIn = document.getElementById("submissions-search");
+    const subSemFilter = document.getElementById("submissions-filter-semester");
     const subAsmtFilter = document.getElementById("submissions-filter-assessment");
     const subStatusFilter = document.getElementById("submissions-filter-status");
     if (subSearchIn) subSearchIn.addEventListener("input", renderCbtSubmissions);
+    if (subSemFilter) subSemFilter.addEventListener("change", renderCbtSubmissions);
     if (subAsmtFilter) subAsmtFilter.addEventListener("change", renderCbtSubmissions);
     if (subStatusFilter) subStatusFilter.addEventListener("change", renderCbtSubmissions);
 
@@ -3882,6 +3922,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const myCourseCodes = new Set(myAllocations.map((a) => a.courseCode.toUpperCase()));
 
       const rSearch = (document.getElementById("results-search")?.value || "").trim().toLowerCase();
+      const rSem = document.getElementById("results-filter-semester")?.value || "all";
       const rAsmt = document.getElementById("results-filter-assessment")?.value || "all";
       const rCourse = (document.getElementById("results-filter-course")?.value || "all").toUpperCase();
 
@@ -3899,12 +3940,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const filtered = (allCbtSubmissionsState || []).filter((s) => {
         const isMine = myCourseCodes.has((s.courseCode || "").toUpperCase()) || (allCbtAssessmentsState || []).some((a) => a.id === s.assessmentId && a.lecturerStaffId === staffId);
+        const matchSem = rSem === "all" || (s.semester || "").trim() === rSem.trim();
         const matchAsmt = rAsmt === "all" || s.assessmentId === rAsmt;
         const matchCourse = rCourse === "ALL" || (s.courseCode || "").toUpperCase() === rCourse;
         const matchSearch = !rSearch ||
           (s.studentName || "").toLowerCase().includes(rSearch) ||
           (s.matricNumber || "").toLowerCase().includes(rSearch);
-        return isMine && matchAsmt && matchCourse && matchSearch;
+        return isMine && matchSem && matchAsmt && matchCourse && matchSearch;
       });
 
       // Statistics calculations
@@ -3988,10 +4030,12 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     const resSearchIn = document.getElementById("results-search");
+    const resSemFilter = document.getElementById("results-filter-semester");
     const resAsmtFilter = document.getElementById("results-filter-assessment");
     const resCourseFilter = document.getElementById("results-filter-course");
     const btnExportCsv = document.getElementById("btn-export-cbt-csv");
     if (resSearchIn) resSearchIn.addEventListener("input", renderCbtResults);
+    if (resSemFilter) resSemFilter.addEventListener("change", renderCbtResults);
     if (resAsmtFilter) resAsmtFilter.addEventListener("change", renderCbtResults);
     if (resCourseFilter) resCourseFilter.addEventListener("change", renderCbtResults);
     if (btnExportCsv) {

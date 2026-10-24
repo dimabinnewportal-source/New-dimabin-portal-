@@ -1320,8 +1320,15 @@
 
             <div class="student-card-body">
               <!-- Search & Course Filter Bar -->
-              <div class="portal-filter-bar no-print" style="margin-bottom: 1.25rem;">
-                <input type="text" class="portal-search-input" id="stu-cbt-search" placeholder="Search tests by title or course code..." style="flex: 2; min-width: 200px;">
+              <div class="portal-filter-bar no-print" style="margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+                <input type="text" class="portal-search-input" id="stu-cbt-search" placeholder="Search tests by title or course code..." style="flex: 2; min-width: 180px;">
+                <select class="portal-filter-select" id="stu-cbt-semester-filter" style="flex: 1; min-width: 160px;">
+                  <option value="active">Active Semester</option>
+                  <option value="all">All Semesters</option>
+                  <option value="First Semester">First Semester</option>
+                  <option value="Second Semester">Second Semester</option>
+                  <option value="Third Semester">Third Semester</option>
+                </select>
                 <select class="portal-filter-select" id="stu-cbt-course-filter" style="flex: 1; min-width: 160px;">
                   <option value="all">All Enrolled Courses</option>
                 </select>
