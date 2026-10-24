@@ -6585,7 +6585,7 @@ export async function createCbtQuestion(data) {
     targetDocumentId: savedId
   });
 
-  return { success: true, id: savedId, ...payload };
+  return { ...payload, success: true, id: savedId };
 }
 
 export async function updateCbtQuestion(questionId, data) {
@@ -6596,6 +6596,7 @@ export async function updateCbtQuestion(questionId, data) {
   const updatedPayload = {
     ...(existing || {}),
     ...data,
+    id: questionId,
     courseCode: (data.courseCode || existing?.courseCode || "").trim().toUpperCase(),
     updatedAt: nowIso
   };

@@ -7,7 +7,7 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "lint": "vite build",
-    "test": "node --no-warnings --loader ./test-loader.mjs test-phase2-integrity.js && node --no-warnings --loader ./test-loader.mjs test-phase3-integrity.js && node test-sponsor-us.js",
+    "test": "node --no-warnings --loader ./test-loader.mjs test-phase2-integrity.js && node --no-warnings --loader ./test-loader.mjs test-phase3-integrity.js && node test-sponsor-us.js && node test-cbt-repair.js && node --no-warnings --loader ./test-loader.mjs test-cbt-crud.js",
     "preview": "vite preview"
   },
   "devDependencies": {

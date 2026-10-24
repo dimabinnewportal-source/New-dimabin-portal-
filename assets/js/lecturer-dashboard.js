@@ -303,6 +303,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let allCbtQuestionsState = [];
   let allCbtAssessmentsState = [];
   let allCbtSubmissionsState = [];
+  let cbtEngine = null;
 
   // Match course allocations for this lecturer
   const isMyAllocation = (alloc) => {
@@ -829,6 +830,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 5. Render Grade Book if course selected
     renderGradeBook(myAllocations, enrolledStudents, allResultsState);
+
+    // 6. Refresh CBT views with latest allocations
+    if (cbtEngine && typeof cbtEngine.refreshCbtViews === "function") {
+      cbtEngine.refreshCbtViews();
+    }
   };
 
   // =========================================================================
@@ -2598,6 +2604,16 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("cbt-q-course")
       ];
 
+      let optionsList = myAllocations;
+      if (!optionsList || optionsList.length === 0) {
+        optionsList = [
+          { courseCode: "BIB-101", courseTitle: "Introduction to Biblical Studies" },
+          { courseCode: "THE-201", courseTitle: "Systematic Theology I" },
+          { courseCode: "HOM-301", courseTitle: "Homiletics & Expository Preaching" },
+          { courseCode: "CHH-202", courseTitle: "Church History & Reformation" }
+        ];
+      }
+
       selects.forEach((sel) => {
         if (!sel) return;
         const currentVal = sel.value;
@@ -2606,10 +2622,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         sel.innerHTML = `
           ${defaultOption}
-          ${myAllocations.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle}</option>`).join("")}
+          ${optionsList.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle}</option>`).join("")}
         `;
 
-        if (currentVal && myAllocations.some((a) => a.courseCode === currentVal)) {
+        if (currentVal && (optionsList.some((a) => a.courseCode === currentVal) || currentVal === "all")) {
           sel.value = currentVal;
         }
       });
@@ -2990,6 +3006,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const openQuestionModal = (existingQuestion = null) => {
+      const modalQ = document.getElementById("modal-cbt-question");
+      const formQ = document.getElementById("form-cbt-question");
       if (!modalQ || !formQ) return;
       formQ.reset();
 
@@ -3003,6 +3021,21 @@ document.addEventListener("DOMContentLoaded", () => {
       const qText = document.getElementById("cbt-q-text");
       const qGuide = document.getElementById("cbt-q-marking-guide");
       const qExpl = document.getElementById("cbt-q-explanation");
+
+      // Ensure target course select options are populated
+      if (qCourse && qCourse.options.length <= 1) {
+        const myAllocations = (allAllocationsState || []).filter(isMyAllocation);
+        const courses = myAllocations.length > 0 ? myAllocations : [
+          { courseCode: "BIB-101", courseTitle: "Introduction to Biblical Studies" },
+          { courseCode: "THE-201", courseTitle: "Systematic Theology I" },
+          { courseCode: "HOM-301", courseTitle: "Homiletics & Expository Preaching" },
+          { courseCode: "CHH-202", courseTitle: "Church History & Reformation" }
+        ];
+        qCourse.innerHTML = `
+          <option value="">-- Select Course --</option>
+          ${courses.map((a) => `<option value="${a.courseCode}">${a.courseCode} — ${a.courseTitle}</option>`).join("")}
+        `;
+      }
 
       if (existingQuestion) {
         if (modalTitle) modalTitle.textContent = "✏️ Edit Question in Question Bank";
@@ -3028,15 +3061,31 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     const closeQuestionModal = () => {
+      const modalQ = document.getElementById("modal-cbt-question");
       if (modalQ) modalQ.style.display = "none";
     };
 
     const btnOpenAddQ = document.getElementById("btn-open-add-q-modal");
     const btnCloseQ = document.getElementById("btn-close-cbt-q-modal");
     const btnCancelQ = document.getElementById("btn-cancel-cbt-q-modal");
-    if (btnOpenAddQ) btnOpenAddQ.addEventListener("click", () => openQuestionModal());
+    if (btnOpenAddQ) {
+      btnOpenAddQ.addEventListener("click", () => openQuestionModal());
+    }
     if (btnCloseQ) btnCloseQ.addEventListener("click", closeQuestionModal);
     if (btnCancelQ) btnCancelQ.addEventListener("click", closeQuestionModal);
+    if (modalQ) {
+      modalQ.addEventListener("click", (e) => {
+        if (e.target === modalQ) closeQuestionModal();
+      });
+    }
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modalQ && modalQ.style.display === "flex") {
+        closeQuestionModal();
+      }
+    });
+
+    window.cbtOpenQuestionModal = openQuestionModal;
+    window.cbtCloseQuestionModal = closeQuestionModal;
 
     window.cbtEditQuestion = (qId) => {
       const q = (allCbtQuestionsState || []).find((item) => item.id === qId);
@@ -3066,14 +3115,27 @@ document.addEventListener("DOMContentLoaded", () => {
       formQ.addEventListener("submit", async (e) => {
         e.preventDefault();
         const qId = document.getElementById("cbt-q-id")?.value;
-        const courseCode = document.getElementById("cbt-q-course")?.value;
-        const topic = document.getElementById("cbt-q-topic")?.value;
+        const courseCode = (document.getElementById("cbt-q-course")?.value || "").trim();
+        const topic = (document.getElementById("cbt-q-topic")?.value || "").trim();
         const type = document.getElementById("cbt-q-type")?.value || "mcq";
         const difficulty = document.getElementById("cbt-q-difficulty")?.value || "intermediate";
         const marks = parseInt(document.getElementById("cbt-q-marks")?.value, 10) || 2;
-        const questionText = document.getElementById("cbt-q-text")?.value;
-        const markingGuide = document.getElementById("cbt-q-marking-guide")?.value || "";
-        const explanation = document.getElementById("cbt-q-explanation")?.value || "";
+        const questionText = (document.getElementById("cbt-q-text")?.value || "").trim();
+        const markingGuide = (document.getElementById("cbt-q-marking-guide")?.value || "").trim();
+        const explanation = (document.getElementById("cbt-q-explanation")?.value || "").trim();
+
+        if (!courseCode) {
+          showCbtAlert("Please select a target course for this question.", "error");
+          return;
+        }
+        if (!topic) {
+          showCbtAlert("Please enter a topic or module.", "error");
+          return;
+        }
+        if (!questionText) {
+          showCbtAlert("Please enter the question prompt text.", "error");
+          return;
+        }
 
         let options = [];
         let correctOptionId = "";
@@ -3084,16 +3146,23 @@ document.addEventListener("DOMContentLoaded", () => {
           const optInputs = formQ.querySelectorAll(".mcq-option-text");
           const selectedRadio = formQ.querySelector("input[name='mcq_correct']:checked");
           if (!selectedRadio) {
-            alert("Please select the correct MCQ option radio.");
+            showCbtAlert("Please select the radio button corresponding to the correct answer.", "error");
             return;
           }
           correctOptionId = selectedRadio.value;
+          let hasEmpty = false;
           optInputs.forEach((input) => {
+            const txt = input.value.trim();
+            if (!txt) hasEmpty = true;
             options.push({
               id: input.getAttribute("data-opt-id"),
-              text: input.value.trim()
+              text: txt
             });
           });
+          if (hasEmpty) {
+            showCbtAlert("Please provide text for all multiple choice options.", "error");
+            return;
+          }
         } else if (type === "yes_no") {
           const selectedRadio = formQ.querySelector("input[name='yn_correct']:checked");
           correctOptionId = selectedRadio?.value || "opt_yes";
@@ -3105,10 +3174,14 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (type === "short_answer") {
           expectedAnswer = (document.getElementById("cbt-q-expected-ans")?.value || "").trim();
           matchingRule = document.getElementById("cbt-q-rule")?.value || "exact_or_contains";
+          if (!expectedAnswer) {
+            showCbtAlert("Please enter the expected answer or key terms for short answer auto-evaluation.", "error");
+            return;
+          }
         }
 
-        const myAllocations = allAllocationsState.filter(isMyAllocation);
-        const courseObj = myAllocations.find((a) => a.courseCode === courseCode);
+        const myAllocations = (allAllocationsState || []).filter(isMyAllocation);
+        const courseObj = myAllocations.find((a) => (a.courseCode || "").toUpperCase() === (courseCode || "").toUpperCase());
 
         const payload = {
           courseCode,
@@ -3130,9 +3203,11 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         const submitBtn = document.getElementById("btn-submit-cbt-q-form");
-        const origText = submitBtn.textContent;
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Saving...";
+        const origText = submitBtn ? submitBtn.textContent : "Save Question";
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Saving...";
+        }
 
         try {
           if (qId) {
@@ -3143,12 +3218,18 @@ document.addEventListener("DOMContentLoaded", () => {
             showCbtAlert("Question saved to Question Bank successfully.", "success");
           }
           closeQuestionModal();
-          renderQuestionBank();
+          if (typeof cbtEngine !== "undefined" && cbtEngine && cbtEngine.refreshCbtViews) {
+            cbtEngine.refreshCbtViews();
+          } else {
+            renderQuestionBank();
+          }
         } catch (err) {
-          alert(`Failed to save question: ${err.message}`);
+          showCbtAlert(`Failed to save question: ${err.message}`, "error");
         } finally {
-          submitBtn.disabled = false;
-          submitBtn.textContent = origText;
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = origText;
+          }
         }
       });
     }
@@ -4081,7 +4162,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   };
 
-  const cbtEngine = initCbtEngineController();
+  cbtEngine = initCbtEngineController();
 
   // =========================================================================
   // 11. SUBSCRIBE TO REAL-TIME FIRESTORE DATA COLLECTIONS
@@ -4154,6 +4235,28 @@ document.addEventListener("DOMContentLoaded", () => {
       safeSetText("card-academic-semester", `${activeAcademicSemester} Active`);
       safeSetText("gradebook-academic-term-badge", `${activeAcademicSession} · ${activeAcademicSemester}`);
       refreshAllViews();
+    }
+  });
+
+  // 12. SUBSCRIBE TO CBT ENGINE REAL-TIME DATA COLLECTIONS
+  subscribeCbtQuestions((questions) => {
+    allCbtQuestionsState = questions || [];
+    if (cbtEngine && typeof cbtEngine.refreshCbtViews === "function") {
+      cbtEngine.refreshCbtViews();
+    }
+  });
+
+  subscribeCbtAssessments((assessments) => {
+    allCbtAssessmentsState = assessments || [];
+    if (cbtEngine && typeof cbtEngine.refreshCbtViews === "function") {
+      cbtEngine.refreshCbtViews();
+    }
+  });
+
+  subscribeCbtSubmissions((submissions) => {
+    allCbtSubmissionsState = submissions || [];
+    if (cbtEngine && typeof cbtEngine.refreshCbtViews === "function") {
+      cbtEngine.refreshCbtViews();
     }
   });
 });
