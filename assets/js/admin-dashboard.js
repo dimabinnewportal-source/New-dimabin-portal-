@@ -35,6 +35,10 @@ import {
   deleteCourseAllocation,
   subscribeAdmissions,
   updateAdmissionStatus,
+  detectAdmissionsDuplicates,
+  getDuplicateApplicationsReport,
+  cleanupDuplicateApplications,
+  authorizeContactException,
   subscribeStudents,
   createStudent,
   toggleStudentStatus,
@@ -788,16 +792,56 @@ export function initAdmissionManagement() {
     });
   }
 
-  // Admissions Registry Table & Live Applications Handling (with Study Centre Display)
+  // Admissions Registry Table & Live Applications Handling (with Study Centre Display & Duplicate Protection)
   const appTableBody = document.getElementById("table-all-applications-tbody");
   const searchAppInput = document.getElementById("search-applications-input");
   const filterAppSelect = document.getElementById("filter-applications-select");
   const btnRefreshApps = document.getElementById("btn-refresh-applications");
+  const dupBanner = document.getElementById("admissions-duplicates-banner");
+  const dupBannerCount = document.getElementById("banner-duplicate-count");
+  const btnOpenDupModal = document.getElementById("btn-open-duplicate-modal");
+  const dupModal = document.getElementById("modal-duplicate-applications");
+  const btnCloseDupModal = document.getElementById("btn-close-duplicate-modal");
+  const btnCancelDupModal = document.getElementById("btn-cancel-duplicate-modal");
+  const dupGroupsContainer = document.getElementById("duplicate-groups-container");
+  const btnCleanupDuplicates = document.getElementById("btn-cleanup-selected-duplicates");
+  const dupSelectedCounter = document.getElementById("dup-selected-counter");
+  const formContactException = document.getElementById("form-contact-exception");
 
   let allApplications = [];
+  let currentDuplicateGroups = [];
+  let duplicateDocIdMap = new Map(); // docId -> { group, isOriginal, isRepeat, isProtected }
+  const selectedForCleanup = new Set();
+
   const appFilters = {
     search: "",
     status: "all"
+  };
+
+  const updateDuplicateAuditing = () => {
+    currentDuplicateGroups = detectAdmissionsDuplicates(allApplications);
+    duplicateDocIdMap.clear();
+
+    let totalRedundant = 0;
+    currentDuplicateGroups.forEach((g) => {
+      totalRedundant += g.repeatCount;
+      if (g.original && g.original.id) {
+        duplicateDocIdMap.set(g.original.id, { group: g, isOriginal: true, isRepeat: false, isProtected: true });
+      }
+      g.repeats.forEach((r) => {
+        const isProt = (r.status || "").toLowerCase() === "approved" || Boolean(r.admissionNumber || r.regNo);
+        duplicateDocIdMap.set(r.id, { group: g, isOriginal: false, isRepeat: true, isProtected: isProt });
+      });
+    });
+
+    if (dupBanner && dupBannerCount) {
+      if (totalRedundant > 0) {
+        dupBanner.style.display = "block";
+        dupBannerCount.textContent = totalRedundant;
+      } else {
+        dupBanner.style.display = "none";
+      }
+    }
   };
 
   const renderApplicationsTable = () => {
@@ -818,7 +862,9 @@ export function initAdmissionManagement() {
       });
     }
 
-    if (appFilters.status !== "all") {
+    if (appFilters.status === "duplicates") {
+      filtered = filtered.filter((a) => duplicateDocIdMap.has(a.id || a.applicationId));
+    } else if (appFilters.status !== "all") {
       filtered = filtered.filter((a) => (a.status || "pending").toLowerCase() === appFilters.status.toLowerCase());
     }
 
@@ -841,13 +887,27 @@ export function initAdmissionManagement() {
       .map((app) => {
         const status = (app.status || "pending").toLowerCase();
         const statusClass = status === "approved" ? "badge-active" : status === "rejected" ? "badge-inactive" : "badge-gold";
-        const dateStr = app.createdAt ? new Date(app.createdAt).toLocaleDateString() : "Recent";
+        const dateStr = app.createdAt ? new Date(app.createdAt?.seconds ? app.createdAt.seconds * 1000 : app.createdAt).toLocaleDateString() : "Recent";
         const centreDisplay = app.studyCentre || "Unassigned Study Centre";
 
+        const docId = app.id || app.applicationId;
+        const dupInfo = duplicateDocIdMap.get(docId);
+        let dupBadgeHtml = "";
+        if (dupInfo) {
+          if (dupInfo.isOriginal) {
+            dupBadgeHtml = `<span style="background: #DCFCE7; color: #166534; font-size: 0.6875rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px;">Original Record</span>`;
+          } else {
+            dupBadgeHtml = `<span style="background: #FEF3C7; color: #92400E; font-size: 0.6875rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px;">⚠️ Repeat Submission</span>`;
+          }
+        }
+
         return `
-        <tr data-app-id="${app.id || app.applicationId}">
+        <tr data-app-id="${docId}" style="${dupInfo && dupInfo.isRepeat ? "background: #FFFDF5;" : ""}">
           <td>
-            <div style="font-weight: 700; color: var(--dark-navy);">${app.fullName || "Candidate"}</div>
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+              <span style="font-weight: 700; color: var(--dark-navy);">${app.fullName || "Candidate"}</span>
+              ${dupBadgeHtml}
+            </div>
             <div style="font-size: 0.75rem; color: var(--admin-text-muted);">${app.email || "No email"} · ${app.phone || "No phone"}</div>
           </td>
           <td>
@@ -871,12 +931,12 @@ export function initAdmissionManagement() {
             <div style="display: flex; gap: 4px;">
               ${
                 status !== "approved"
-                  ? `<button type="button" class="btn-table-action btn-approve-app" data-id="${app.id || app.applicationId}" style="color: #16A34A;" title="Approve Admission">✓ Approve</button>`
+                  ? `<button type="button" class="btn-table-action btn-approve-app" data-id="${docId}" style="color: #16A34A;" title="Approve Admission">✓ Approve</button>`
                   : ""
               }
               ${
                 status !== "rejected"
-                  ? `<button type="button" class="btn-table-action btn-reject-app" data-id="${app.id || app.applicationId}" style="color: #DC2626;" title="Reject Application">✕ Reject</button>`
+                  ? `<button type="button" class="btn-table-action btn-reject-app" data-id="${docId}" style="color: #DC2626;" title="Reject Application">✕ Reject</button>`
                   : ""
               }
             </div>
@@ -913,6 +973,239 @@ export function initAdmissionManagement() {
     });
   };
 
+  const renderDuplicateModal = () => {
+    if (!dupGroupsContainer) return;
+    selectedForCleanup.clear();
+    updateCleanupButtonState();
+
+    if (currentDuplicateGroups.length === 0) {
+      dupGroupsContainer.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem 1rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎉</div>
+          <div style="font-size: 1rem; font-weight: 700; color: var(--dark-navy);">Registry Clean: No Duplicates Detected</div>
+          <div style="font-size: 0.8125rem; color: var(--admin-text-muted); margin-top: 4px;">All admission records have unique, normalized email addresses and phone numbers.</div>
+        </div>
+      `;
+      return;
+    }
+
+    dupGroupsContainer.innerHTML = currentDuplicateGroups.map((group, gIdx) => {
+      const orig = group.original || {};
+      const origId = orig.id || orig.applicationId;
+      const origTime = orig.createdAt ? new Date(orig.createdAt?.seconds ? orig.createdAt.seconds * 1000 : orig.createdAt).toLocaleString() : "Earliest";
+
+      const rowsHtml = group.allRecords.map((rec) => {
+        const isOrig = rec.id === orig.id;
+        const isApproved = (rec.status || "").toLowerCase() === "approved" || Boolean(rec.admissionNumber || rec.regNo);
+        const timeStr = rec.createdAt ? new Date(rec.createdAt?.seconds ? rec.createdAt.seconds * 1000 : rec.createdAt).toLocaleString() : "N/A";
+        const canDelete = !isOrig && !isApproved;
+
+        let statusTag = "";
+        if (isOrig) {
+          statusTag = `<span style="background: #DCFCE7; color: #166534; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">ORIGINAL (Preserved)</span>`;
+        } else if (isApproved) {
+          statusTag = `<span style="background: #DBEAFE; color: #1E40AF; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">APPROVED (Protected)</span>`;
+        } else {
+          statusTag = `<span style="background: #FEF3C7; color: #92400E; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">REDUNDANT REPEAT</span>`;
+        }
+
+        return `
+          <tr style="${isOrig ? "background: #F0FDF4;" : isApproved ? "background: #EFF6FF;" : ""}">
+            <td style="width: 38px; text-align: center;">
+              <input type="checkbox" class="dup-record-checkbox" data-doc-id="${rec.id}" ${canDelete ? "" : "disabled"} style="${canDelete ? "cursor: pointer;" : "cursor: not-allowed; opacity: 0.4;"}">
+            </td>
+            <td>
+              <div style="font-weight: 700; color: var(--dark-navy);">${rec.applicationId || "APP"}</div>
+              <div style="font-size: 0.7rem; color: var(--admin-text-muted);">ID: ${rec.id}</div>
+            </td>
+            <td>${statusTag}</td>
+            <td style="font-size: 0.75rem; color: var(--admin-text-muted);">${timeStr}</td>
+            <td style="font-size: 0.75rem;">
+              <div>${rec.programme || "Dipl.Th."}</div>
+              <div style="color: var(--admin-text-muted);">${rec.studyCentre || "Unassigned"}</div>
+            </td>
+            <td style="font-size: 0.75rem;">
+              <span class="faculty-badge ${(rec.status || 'pending').toLowerCase() === 'approved' ? 'badge-active' : 'badge-gold'}">${(rec.status || 'pending').toUpperCase()}</span>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      return `
+        <div class="content-card" style="margin-bottom: 1.25rem; border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden;">
+          <div style="background: #F8FAFC; padding: 0.85rem 1.15rem; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-weight: 700; color: var(--dark-navy); font-size: 0.9375rem;">
+                Group ${gIdx + 1}: ${orig.fullName || "Candidate"}
+              </div>
+              <div style="font-size: 0.75rem; color: var(--admin-text-muted);">
+                ${group.type.toUpperCase()}: <strong style="color: var(--dark-navy);">${group.identifier}</strong> · ${group.totalCount} Submissions (${group.repeatCount} redundant)
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn-card-action btn-select-group-repeats" data-group-index="${gIdx}" style="font-size: 0.75rem; padding: 4px 10px;">
+                Select All Redundant in Group
+              </button>
+            </div>
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="admin-table" style="margin: 0; font-size: 0.8125rem;">
+              <thead>
+                <tr style="background: #FFFFFF;">
+                  <th style="width: 38px;"></th>
+                  <th>Application Ref</th>
+                  <th>Record Classification</th>
+                  <th>Submission Timestamp</th>
+                  <th>Details</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Wire individual checkboxes
+    dupGroupsContainer.querySelectorAll(".dup-record-checkbox").forEach((cb) => {
+      cb.addEventListener("change", (e) => {
+        const docId = e.target.getAttribute("data-doc-id");
+        if (e.target.checked) {
+          selectedForCleanup.add(docId);
+        } else {
+          selectedForCleanup.delete(docId);
+        }
+        updateCleanupButtonState();
+      });
+    });
+
+    // Wire select-all per group
+    dupGroupsContainer.querySelectorAll(".btn-select-group-repeats").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const gIdx = parseInt(btn.getAttribute("data-group-index"), 10);
+        const group = currentDuplicateGroups[gIdx];
+        if (!group) return;
+
+        group.safeToDelete.forEach((r) => {
+          if (r.id) selectedForCleanup.add(r.id);
+        });
+
+        // Update UI checkboxes
+        dupGroupsContainer.querySelectorAll(".dup-record-checkbox").forEach((cb) => {
+          const id = cb.getAttribute("data-doc-id");
+          if (selectedForCleanup.has(id)) {
+            cb.checked = true;
+          }
+        });
+        updateCleanupButtonState();
+      });
+    });
+  };
+
+  const updateCleanupButtonState = () => {
+    if (dupSelectedCounter) {
+      dupSelectedCounter.textContent = selectedForCleanup.size;
+    }
+    if (btnCleanupDuplicates) {
+      btnCleanupDuplicates.disabled = selectedForCleanup.size === 0;
+    }
+  };
+
+  // Open & Close Modal
+  if (btnOpenDupModal && dupModal) {
+    btnOpenDupModal.addEventListener("click", () => {
+      dupModal.style.display = "flex";
+      renderDuplicateModal();
+    });
+  }
+
+  const closeDupModal = () => {
+    if (dupModal) dupModal.style.display = "none";
+  };
+  if (btnCloseDupModal) btnCloseDupModal.addEventListener("click", closeDupModal);
+  if (btnCancelDupModal) btnCancelDupModal.addEventListener("click", closeDupModal);
+
+  // Perform Safe Cleanup
+  if (btnCleanupDuplicates) {
+    btnCleanupDuplicates.addEventListener("click", async () => {
+      const count = selectedForCleanup.size;
+      if (count === 0) return;
+
+      const confirmMsg = `SAFETY CONFIRMATION:\n\nYou are about to permanently delete ${count} redundant admission application record(s) resulting from duplicate submissions.\n\nAll original applications and approved student records will be strictly preserved.\n\nProceed with cleanup?`;
+      if (!confirm(confirmMsg)) return;
+
+      btnCleanupDuplicates.disabled = true;
+      btnCleanupDuplicates.textContent = "⏳ Cleaning up...";
+
+      try {
+        const removeDocIds = Array.from(selectedForCleanup);
+        // Find preserved original doc ID from current groups
+        let preservedId = null;
+        for (const g of currentDuplicateGroups) {
+          if (g.original && g.original.id) {
+            preservedId = g.original.id;
+            break;
+          }
+        }
+
+        await cleanupDuplicateApplications({
+          groupId: "admin_cleanup_batch",
+          keepDocId: preservedId || "registry_primary",
+          removeDocIds,
+          adminUser: "DIMABIN_ADMIN"
+        });
+
+        showAdminToast(`Successfully pruned ${count} redundant admission record(s). Audit record created.`, "success");
+        selectedForCleanup.clear();
+        updateDuplicateAuditing();
+        renderApplicationsTable();
+        renderDuplicateModal();
+      } catch (err) {
+        console.error("[DIMABIN Cleanup Error]:", err);
+        showAdminToast(`Cleanup error: ${err.message}`, "error");
+      } finally {
+        btnCleanupDuplicates.disabled = false;
+        btnCleanupDuplicates.textContent = "🗑️ Safely Remove Selected Records";
+      }
+    });
+  }
+
+  // Handle Contact Exception Form
+  if (formContactException) {
+    formContactException.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("exception-input-email")?.value.trim() || "";
+      const phone = document.getElementById("exception-input-phone")?.value.trim() || "";
+      const reason = document.getElementById("exception-input-reason")?.value.trim() || "";
+
+      if (!email && !phone) {
+        showAdminToast("Please provide either an email address or a phone number for the exception.", "warning");
+        return;
+      }
+
+      const submitBtn = document.getElementById("btn-submit-exception");
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        await authorizeContactException({
+          email,
+          phone,
+          reason,
+          authorizedBy: "SUPER ADMINISTRATOR"
+        });
+        showAdminToast("Contact exception successfully granted and logged in audit trail.", "success");
+        formContactException.reset();
+      } catch (err) {
+        showAdminToast(`Failed to grant exception: ${err.message}`, "error");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
   if (searchAppInput) {
     searchAppInput.addEventListener("input", (e) => {
       appFilters.search = e.target.value.trim().toLowerCase();
@@ -929,6 +1222,7 @@ export function initAdmissionManagement() {
 
   if (btnRefreshApps) {
     btnRefreshApps.addEventListener("click", () => {
+      updateDuplicateAuditing();
       renderApplicationsTable();
       showAdminToast("Admissions list refreshed.", "info");
     });
@@ -936,6 +1230,7 @@ export function initAdmissionManagement() {
 
   subscribeAdmissions((apps) => {
     allApplications = apps || [];
+    updateDuplicateAuditing();
     renderApplicationsTable();
   });
 }

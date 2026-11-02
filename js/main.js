@@ -440,8 +440,17 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    let isApplicationSubmitting = false;
+
     fullAppForm.addEventListener('submit', (e) => {
       e.preventDefault();
+
+      // In-flight submission protection: prevent double clicks or concurrent submissions
+      if (isApplicationSubmitting) {
+        console.warn('[DIMABIN Registry Service]: Form submission already in progress. Ignoring duplicate trigger.');
+        return;
+      }
+
       const decCheckbox = document.getElementById('declaration-checkbox');
       if (decCheckbox && !decCheckbox.checked) {
         if (formErrorList) {
@@ -454,8 +463,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Collect candidate details from form
       const candidateName = document.getElementById('app-fullname')?.value || 'Candidate';
-      const candidateEmail = document.getElementById('app-email')?.value || '';
-      const candidatePhone = document.getElementById('app-phone')?.value || '';
+      const candidateEmail = (document.getElementById('app-email')?.value || '').trim();
+      const candidatePhone = (document.getElementById('app-phone')?.value || '').trim();
       const candidateProgram = document.getElementById('app-intended-program')?.value || 'Diploma in Theology (Dipl.Th.)';
       const candidateGender = document.getElementById('app-gender')?.value || 'Male';
       const candidateDob = document.getElementById('app-dob')?.value || '';
@@ -482,15 +491,33 @@ document.addEventListener('DOMContentLoaded', () => {
       if (sumProgram) sumProgram.textContent = candidateProgram;
       if (sumCentre) sumCentre.textContent = candidateCentre;
 
-      // Submit button state
-      const submitBtn = document.getElementById('submit-application-btn');
-      const origSubmitText = submitBtn ? submitBtn.innerHTML : 'SUBMIT APPLICATION NOW';
+      // Immediately lock submission state and disable inputs to block multi-clicks
+      isApplicationSubmitting = true;
+      const submitBtn = document.getElementById('submit-application-btn') || fullAppForm.querySelector('button[type="submit"]');
+      const origSubmitText = submitBtn ? submitBtn.innerHTML : 'SUBMIT APPLICATION';
+      const statusMsg = document.getElementById('submission-status-msg');
+
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span>⏳ Submitting Application to Registry...</span>';
+        submitBtn.setAttribute('aria-busy', 'true');
+        submitBtn.innerHTML = '<span>⏳ Securing Application in Registry...</span>';
+      }
+      if (statusMsg) {
+        statusMsg.style.display = 'block';
+        statusMsg.style.background = '#EFF6FF';
+        statusMsg.style.color = '#1E40AF';
+        statusMsg.style.border = '1px solid #BFDBFE';
+        statusMsg.textContent = 'Processing and registering your admission application. Please do not refresh or leave this page...';
       }
 
-      // Real Firebase / Firestore submission to 'admissions' collection
+      // Generate or retrieve session idempotency key to prevent retry duplication
+      let idempotencyKey = sessionStorage.getItem('dimabin_submission_idempotency_key');
+      if (!idempotencyKey) {
+        idempotencyKey = `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        sessionStorage.setItem('dimabin_submission_idempotency_key', idempotencyKey);
+      }
+
+      // Real Firebase / Firestore submission to 'admissions' collection with atomic duplicate lock
       savePublicApplication({
         fullName: candidateName,
         email: candidateEmail,
@@ -525,16 +552,21 @@ document.addEventListener('DOMContentLoaded', () => {
         kinEmail: document.getElementById('kin-email')?.value || '',
         kinAddress: document.getElementById('kin-address')?.value || '',
         academicSession: currentAdmissionAvailability?.academicSession || '2026/2027',
-        studyCentre: candidateCentre
+        studyCentre: candidateCentre,
+        idempotencyKey: idempotencyKey
       }).then((result) => {
         console.log('[DIMABIN Registry Service]: Application recorded in Firestore.', result);
-        
+        isApplicationSubmitting = false;
+        sessionStorage.removeItem('dimabin_submission_idempotency_key');
+        sessionStorage.setItem('dimabin_last_submitted_app_id', result.applicationId);
+
         // Hide form steps and show success pane ONLY after database save has completed
         document.querySelectorAll('.form-step-pane').forEach((pane) => pane.classList.remove('active'));
         const tracker = document.querySelector('.step-progress-tracker');
         const intro = document.querySelector('.form-intro-header');
         if (tracker) tracker.style.display = 'none';
         if (intro) intro.style.display = 'none';
+        if (statusMsg) statusMsg.style.display = 'none';
         if (successPane) {
           successPane.classList.add('active');
           successPane.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -557,7 +589,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (printSuccessBtn) {
           printSuccessBtn.disabled = false;
-          // Cleanly replace old listeners if re-submitted
           printSuccessBtn.onclick = () => {
             try {
               printApplicationForm(result);
@@ -588,35 +619,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }).catch((err) => {
         console.warn('[DIMABIN Registry Service]: Application submission warning:', err);
+        isApplicationSubmitting = false;
+
         if (submitBtn) {
           submitBtn.disabled = false;
+          submitBtn.removeAttribute('aria-busy');
           submitBtn.innerHTML = origSubmitText;
         }
+        if (statusMsg) {
+          statusMsg.style.display = 'none';
+        }
 
-        // If email uniqueness error, revert to step 1
-        if (err.message && err.message.includes('already been used')) {
+        const errText = err.message || '';
+        const isDuplicateError =
+          errText.includes('already exists') ||
+          errText.includes('already been used') ||
+          errText.includes('unique email');
+
+        if (isDuplicateError) {
+          // Revert applicant to Step 1 (Personal & Contact Information) so they can correct contact details
           currentStep = 1;
           updateStepUI(currentStep);
           const tracker = document.querySelector('.step-progress-tracker');
           const intro = document.querySelector('.form-intro-header');
           if (tracker) tracker.style.display = 'flex';
           if (intro) intro.style.display = 'block';
+
+          const exactDuplicateMsg = 'An application already exists with this email address or phone number. Please contact the admissions office if you need assistance.';
+
           if (formErrorList) {
-            formErrorList.innerHTML = `<li><strong>Email Already Registered:</strong> ${err.message}</li>`;
+            formErrorList.innerHTML = `<li><strong>Duplicate Submission Blocked:</strong> ${exactDuplicateMsg}</li>`;
           }
           if (formErrorPanel) {
             formErrorPanel.classList.add('show');
             formErrorPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
+
           const emailInput = document.getElementById('app-email');
+          const phoneInput = document.getElementById('app-phone');
           if (emailInput) {
             emailInput.classList.add('input-error');
             emailInput.focus();
           }
+          if (phoneInput) {
+            phoneInput.classList.add('input-error');
+          }
         } else {
           // General submission error
           if (formErrorList) {
-            formErrorList.innerHTML = `<li><strong>Submission Error:</strong> ${err.message || 'Unable to record application. Please try again.'}</li>`;
+            formErrorList.innerHTML = `<li><strong>Submission Error:</strong> ${errText || 'Unable to record application. Please try again.'}</li>`;
           }
           if (formErrorPanel) {
             formErrorPanel.classList.add('show');
@@ -630,6 +681,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const restartBtn = document.getElementById('restart-application-btn');
     if (restartBtn) {
       restartBtn.addEventListener('click', () => {
+        isApplicationSubmitting = false;
+        sessionStorage.removeItem('dimabin_submission_idempotency_key');
+        sessionStorage.removeItem('dimabin_last_submitted_app_id');
         fullAppForm.reset();
         currentStep = 1;
         const tracker = document.querySelector('.step-progress-tracker');
@@ -637,6 +691,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tracker) tracker.style.display = 'flex';
         if (intro) intro.style.display = 'block';
         if (successPane) successPane.classList.remove('active');
+        const statusMsg = document.getElementById('submission-status-msg');
+        if (statusMsg) statusMsg.style.display = 'none';
         updateStepUI(currentStep);
       });
     }

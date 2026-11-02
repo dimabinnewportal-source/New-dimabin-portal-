@@ -146,6 +146,31 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Public Admissions Applications
+    match /admissions/{admissionId} {
+      // Public applicants can submit applications; Admins can read all and update/delete
+      allow create: if true;
+      allow read: if isAdmin() || (isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.studentUid == request.auth.uid ||
+        resource.data.email == request.auth.token.email
+      ));
+      allow update, delete: if isAdmin();
+    }
+
+    // Admissions Unique Indexes (Atomic Email & Phone Locks)
+    match /admissions_unique_index/{indexId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Admissions Contact Exceptions (Admin-authorized family exceptions)
+    match /admissions_contact_exceptions/{exceptionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

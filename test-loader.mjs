@@ -24,6 +24,12 @@ export async function resolve(specifier, context, nextResolve) {
         fromDate: (d) => ({ toDate: () => d, toMillis: () => d.getTime(), seconds: Math.floor(d.getTime() / 1000) })
       };
       export const writeBatch = () => ({ set() {}, update() {}, commit: async () => {} });
+      export const runTransaction = async (db, fn) => fn({
+        get: async () => ({ exists: () => false, data: () => ({}) }),
+        set: () => {},
+        update: () => {},
+        delete: () => {}
+      });
       export const getAuth = () => ({});
       export const onAuthStateChanged = () => () => {};
       export const signInWithEmailAndPassword = async () => {};

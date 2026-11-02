@@ -871,10 +871,12 @@
                   <span aria-hidden="true">←</span>
                   <span>BACK</span>
                 </button>
-                <button type="submit" class="btn btn-gold btn-lg" style="font-weight: 800;">
-                  SUBMIT APPLICATION
+                <button type="submit" class="btn btn-gold btn-lg" id="submit-application-btn" style="font-weight: 800;">
+                  <span id="submit-btn-spinner" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display: none;"></span>
+                  <span id="submit-btn-text">SUBMIT APPLICATION</span>
                 </button>
               </div>
+              <div id="submission-status-msg" style="display: none; margin-top: 1rem; padding: 0.85rem 1.25rem; border-radius: 8px; font-weight: 600; text-align: center; font-size: 0.95rem;"></div>
             </div>
 
           </form>

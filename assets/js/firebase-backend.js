@@ -45,13 +45,17 @@ import {
   limit,
   onSnapshot,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  runTransaction,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 // Canonical collection identifiers
 export const COLLECTIONS = Object.freeze({
   USERS: "users",
   ADMISSIONS: "admissions",
+  ADMISSIONS_UNIQUE_INDEX: "admissions_unique_index",
+  ADMISSIONS_CONTACT_EXCEPTIONS: "admissions_contact_exceptions",
   STUDENTS: "students",
   LECTURERS: "lecturers",
   COURSES: "courses",
@@ -422,110 +426,640 @@ export async function checkSystemStatus() {
  * =========================================================================
  */
 
+export const DUPLICATE_APPLICATION_ERROR_MSG =
+  "An application already exists with this email address or phone number. Please contact the admissions office if you need assistance.";
+
+// In-flight submission lock to block rapid duplicate clicks within the same runtime
+const inFlightAdmissions = new Map();
+
 /**
- * Save public application from admissions.html
- * Enforces: ONE EMAIL ADDRESS = ONE STUDENT ADMISSION RECORD.
+ * Normalize and validate an applicant's email address
  */
-export async function savePublicApplication(formData) {
-  const normalizedEmail = (formData.email || "").trim().toLowerCase();
-  if (!normalizedEmail) {
+export function normalizeEmail(rawEmail) {
+  const email = String(rawEmail || "").trim().toLowerCase();
+  if (!email) {
     throw new Error("A valid email address is required to submit an application.");
   }
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  if (!emailRegex.test(email)) {
+    throw new Error("The email address provided is not in a valid format. Please check and try again.");
+  }
+  return email;
+}
 
-  // 1. Check local cache first for duplicate email
-  const cachedAdmissions = getCachedCollection(COLLECTIONS.ADMISSIONS) || [];
-  const existingCached = cachedAdmissions.find(
-    (app) => (app.email || "").trim().toLowerCase() === normalizedEmail
-  );
-  if (existingCached) {
-    throw new Error("This email address has already been used for an admission application. Each applicant must use a unique email address.");
+/**
+ * Normalize and validate an applicant's phone number
+ * Canonicalizes Nigerian numbers (080..., 23480..., +23480...) and international formats
+ */
+export function normalizePhoneNumber(rawPhone) {
+  const original = String(rawPhone || "").trim();
+  if (!original) {
+    throw new Error("A valid phone number is required to submit an application.");
+  }
+  const digits = original.replace(/\D/g, "");
+  if (!digits || digits.length < 7 || digits.length > 15) {
+    throw new Error("The phone number provided is not valid (must contain between 7 and 15 digits).");
   }
 
-  // 2. Query Firestore collection 'admissions' for existing record with this normalized email
+  let canonical = "";
+  let key = "";
+  if (digits.startsWith("234") && digits.length === 13) {
+    const local10 = digits.slice(3);
+    canonical = `+234${local10}`;
+    key = `234${local10}`;
+  } else if (digits.startsWith("0") && digits.length === 11) {
+    const local10 = digits.slice(1);
+    canonical = `+234${local10}`;
+    key = `234${local10}`;
+  } else if (digits.length === 10) {
+    canonical = `+234${digits}`;
+    key = `234${digits}`;
+  } else {
+    canonical = `+${digits}`;
+    key = digits;
+  }
+
+  return {
+    raw: original,
+    canonical,
+    key,
+    digits
+  };
+}
+
+/**
+ * Check if an administrator has authorized an exception for this contact detail
+ */
+export async function checkContactException({ email, phoneKey }) {
   try {
-    const q = query(
-      collection(db, COLLECTIONS.ADMISSIONS),
-      where("email", "==", normalizedEmail),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      throw new Error("This email address has already been used for an admission application. Each applicant must use a unique email address.");
+    const exceptions = getCachedCollection(COLLECTIONS.ADMISSIONS_CONTACT_EXCEPTIONS) || [];
+    const found = exceptions.find((ex) => {
+      if (ex.status !== "authorized") return false;
+      if (email && ex.email && ex.email.toLowerCase() === email.toLowerCase()) return true;
+      if (phoneKey && ex.phoneKey && ex.phoneKey === phoneKey) return true;
+      return false;
+    });
+    if (found) return true;
+
+    // Also check Firestore
+    if (email) {
+      const qEmail = query(
+        collection(db, COLLECTIONS.ADMISSIONS_CONTACT_EXCEPTIONS),
+        where("email", "==", email.toLowerCase()),
+        where("status", "==", "authorized"),
+        limit(1)
+      );
+      const snapEmail = await getDocs(qEmail);
+      if (!snapEmail.empty) return true;
+    }
+    if (phoneKey) {
+      const qPhone = query(
+        collection(db, COLLECTIONS.ADMISSIONS_CONTACT_EXCEPTIONS),
+        where("phoneKey", "==", phoneKey),
+        where("status", "==", "authorized"),
+        limit(1)
+      );
+      const snapPhone = await getDocs(qPhone);
+      if (!snapPhone.empty) return true;
     }
   } catch (err) {
-    if (err.message && err.message.includes("already been used")) {
-      throw err;
+    console.warn("[DIMABIN Admissions] Contact exception lookup note:", err.message);
+  }
+  return false;
+}
+
+/**
+ * Save public application from admissions.html
+ * Enforces:
+ * - Normalized Email uniqueness
+ * - Normalized Phone number uniqueness
+ * - Server-side atomic uniqueness index
+ * - Idempotent submission retry handling
+ * - Protection against rapid concurrent clicks
+ */
+export async function savePublicApplication(formData) {
+  // 1. Strict input normalization and validation
+  const normalizedEmail = normalizeEmail(formData.email);
+  const normPhone = normalizePhoneNumber(formData.phone);
+  const idempotencyKey = formData.idempotencyKey || formData.submissionKey || null;
+
+  // In-flight concurrency lock to merge simultaneous duplicate requests
+  const flightKey = `${normalizedEmail}__${normPhone.key}`;
+  if (inFlightAdmissions.has(flightKey)) {
+    console.warn(`[DIMABIN Admissions] Attaching to in-flight submission for ${flightKey}`);
+    return await inFlightAdmissions.get(flightKey);
+  }
+
+  const submissionPromise = (async () => {
+    // 2. Check if an administrator exception has been granted
+    const isExempt = await checkContactException({ email: normalizedEmail, phoneKey: normPhone.key });
+
+    // 3. Local cache check
+    const cachedAdmissions = getCachedCollection(COLLECTIONS.ADMISSIONS) || [];
+    if (!isExempt) {
+      const existingByEmail = cachedAdmissions.find(
+        (app) => (app.email || "").trim().toLowerCase() === normalizedEmail
+      );
+      if (existingByEmail) {
+        if (idempotencyKey && existingByEmail.idempotencyKey === idempotencyKey) {
+          return { success: true, ...existingByEmail, isIdempotentRetry: true };
+        }
+        throw new Error(DUPLICATE_APPLICATION_ERROR_MSG);
+      }
+
+      const existingByPhone = cachedAdmissions.find((app) => {
+        try {
+          const p = normalizePhoneNumber(app.phone);
+          return p.key === normPhone.key;
+        } catch (_) {
+          return false;
+        }
+      });
+      if (existingByPhone) {
+        if (idempotencyKey && existingByPhone.idempotencyKey === idempotencyKey) {
+          return { success: true, ...existingByPhone, isIdempotentRetry: true };
+        }
+        throw new Error(DUPLICATE_APPLICATION_ERROR_MSG);
+      }
     }
-    console.warn(`[DIMABIN Admissions] Firestore uniqueness check warning: ${err.message}`);
-  }
 
-  // Enforce institutional award qualification policy: Diploma in Theology is the ONLY qualification awarded by DIMABIN
-  const officialProgramme = "Diploma in Theology (Dipl.Th.)";
-  const requestedProg = (formData.program || formData.programme || "").trim();
-  // Allow variants of Diploma in Theology, but reject any unsupported award qualifications
-  if (requestedProg && !requestedProg.toLowerCase().includes("diploma in theology") && !requestedProg.toLowerCase().includes("dipl.th")) {
-    throw new Error("Diploma in Theology is the only qualification awarded by DIMABIN Bible Institute upon successful completion of the programme.");
-  }
+    // 4. Verify institutional award qualification policy: Diploma in Theology is the ONLY qualification awarded by DIMABIN
+    const officialProgramme = "Diploma in Theology (Dipl.Th.)";
+    const requestedProg = (formData.program || formData.programme || "").trim();
+    if (requestedProg && !requestedProg.toLowerCase().includes("diploma in theology") && !requestedProg.toLowerCase().includes("dipl.th")) {
+      throw new Error("Diploma in Theology is the only qualification awarded by DIMABIN Bible Institute upon successful completion of the programme.");
+    }
 
-  const appId = `DIMABIN/APP/2026/${Math.floor(1000 + Math.random() * 9000)}`;
-  const record = {
-    applicationId: appId,
-    fullName: (formData.name || formData.fullName || "Candidate").trim(),
-    email: normalizedEmail,
-    phone: (formData.phone || "").trim(),
-    whatsapp: (formData.whatsapp || formData.phone || "").trim(),
-    programme: officialProgramme,
-    gender: formData.gender || "Male",
-    dob: formData.dob || "",
-    maritalStatus: formData.maritalStatus || "Single",
-    nationality: formData.nationality || "Nigerian",
-    stateOfOrigin: formData.stateOfOrigin || "Ogun State",
-    lga: formData.lga || "Abeokuta South",
-    residentialAddress: formData.residentialAddress || "Abeokuta, Ogun State",
-    qualification: formData.qualification || "SSCE / WASSCE",
-    graduationYear: formData.graduationYear || "2021",
-    institution: formData.institution || "High School / College",
-    courseOfStudy: formData.courseOfStudy || formData.academicCourse || "",
-    relevantCredentials: formData.relevantCredentials || formData.academicCredentials || "",
-    previousTheology: formData.previousTheology || formData.academicPreviousTheology || "",
-    churchName: formData.churchName || "",
-    denomination: formData.denomination || "",
-    ministryRole: formData.ministryRole || formData.churchRole || "",
-    yearsInMinistry: formData.yearsInMinistry || formData.churchYears || "",
-    pastorName: formData.pastorName || formData.churchPastorName || "",
-    pastorPhone: formData.pastorPhone || formData.churchPastorPhone || "",
-    pastorEmail: formData.pastorEmail || formData.churchPastorEmail || "",
-    briefTestimony: formData.briefTestimony || formData.churchTestimony || "",
-    kinName: formData.kinName || "",
-    kinRelationship: formData.kinRelationship || "",
-    kinPhone: formData.kinPhone || "",
-    kinWhatsapp: formData.kinWhatsapp || "",
-    kinEmail: formData.kinEmail || "",
-    kinAddress: formData.kinAddress || "",
-    studyCentre: (formData.studyCentre || "").trim(),
-    academicSession: formData.academicSession || "2026/2027",
-    status: "pending", // pending | approved | rejected
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    // 5. Atomic check & lock using Firestore unique index
+    const emailIndexId = `email_${encodeURIComponent(normalizedEmail)}`;
+    const phoneIndexId = `phone_${normPhone.key}`;
+    const emailIndexRef = doc(db, COLLECTIONS.ADMISSIONS_UNIQUE_INDEX, emailIndexId);
+    const phoneIndexRef = doc(db, COLLECTIONS.ADMISSIONS_UNIQUE_INDEX, phoneIndexId);
+
+    // Also query legacy admissions collection in case records exist without unique index
+    if (!isExempt) {
+      try {
+        const qEmail = query(
+          collection(db, COLLECTIONS.ADMISSIONS),
+          where("email", "==", normalizedEmail),
+          limit(1)
+        );
+        const snapEmail = await getDocs(qEmail);
+        if (!snapEmail.empty) {
+          const existingData = snapEmail.docs[0].data();
+          if (idempotencyKey && existingData.idempotencyKey === idempotencyKey) {
+            return { success: true, id: snapEmail.docs[0].id, ...existingData, isIdempotentRetry: true };
+          }
+          throw new Error(DUPLICATE_APPLICATION_ERROR_MSG);
+        }
+
+        // Query phone match
+        const qPhone = query(
+          collection(db, COLLECTIONS.ADMISSIONS),
+          where("phone", "==", normPhone.canonical),
+          limit(1)
+        );
+        const snapPhone = await getDocs(qPhone);
+        if (!snapPhone.empty) {
+          const existingData = snapPhone.docs[0].data();
+          if (idempotencyKey && existingData.idempotencyKey === idempotencyKey) {
+            return { success: true, id: snapPhone.docs[0].id, ...existingData, isIdempotentRetry: true };
+          }
+          throw new Error(DUPLICATE_APPLICATION_ERROR_MSG);
+        }
+      } catch (queryErr) {
+        if (queryErr.message === DUPLICATE_APPLICATION_ERROR_MSG) {
+          throw queryErr;
+        }
+        console.warn("[DIMABIN Admissions] Firestore query check notice:", queryErr.message);
+      }
+    }
+
+    // 6. Generate deterministically secured record
+    const appId = `DIMABIN/APP/2026/${Math.floor(1000 + Math.random() * 9000)}`;
+    const record = {
+      applicationId: appId,
+      fullName: (formData.name || formData.fullName || "Candidate").trim(),
+      email: normalizedEmail,
+      phone: normPhone.canonical,
+      phoneKey: normPhone.key,
+      whatsapp: (formData.whatsapp || normPhone.canonical).trim(),
+      programme: officialProgramme,
+      gender: formData.gender || "Male",
+      dob: formData.dob || "",
+      maritalStatus: formData.maritalStatus || "Single",
+      nationality: formData.nationality || "Nigerian",
+      stateOfOrigin: formData.stateOfOrigin || "Ogun State",
+      lga: formData.lga || "Abeokuta South",
+      residentialAddress: formData.residentialAddress || "Abeokuta, Ogun State",
+      qualification: formData.qualification || "SSCE / WASSCE",
+      graduationYear: formData.graduationYear || "2021",
+      institution: formData.institution || "High School / College",
+      courseOfStudy: formData.courseOfStudy || formData.academicCourse || "",
+      relevantCredentials: formData.relevantCredentials || formData.academicCredentials || "",
+      previousTheology: formData.previousTheology || formData.academicPreviousTheology || "",
+      churchName: formData.churchName || "",
+      denomination: formData.denomination || "",
+      ministryRole: formData.ministryRole || formData.churchRole || "",
+      yearsInMinistry: formData.yearsInMinistry || formData.churchYears || "",
+      pastorName: formData.pastorName || formData.churchPastorName || "",
+      pastorPhone: formData.pastorPhone || formData.churchPastorPhone || "",
+      pastorEmail: formData.pastorEmail || formData.churchPastorEmail || "",
+      briefTestimony: formData.briefTestimony || formData.churchTestimony || "",
+      kinName: formData.kinName || "",
+      kinRelationship: formData.kinRelationship || "",
+      kinPhone: formData.kinPhone || "",
+      kinWhatsapp: formData.kinWhatsapp || "",
+      kinEmail: formData.kinEmail || "",
+      kinAddress: formData.kinAddress || "",
+      studyCentre: (formData.studyCentre || "").trim(),
+      academicSession: formData.academicSession || "2026/2027",
+      status: "pending", // pending | approved | rejected
+      idempotencyKey: idempotencyKey,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // 7. Atomic transaction to ensure atomic index lock
+    try {
+      const result = await runTransaction(db, async (transaction) => {
+        // Read index records
+        let emailIdxSnap = null;
+        let phoneIdxSnap = null;
+
+        if (!isExempt) {
+          emailIdxSnap = await transaction.get(emailIndexRef);
+          phoneIdxSnap = await transaction.get(phoneIndexRef);
+
+          if (emailIdxSnap.exists()) {
+            const data = emailIdxSnap.data();
+            if (idempotencyKey && data.idempotencyKey === idempotencyKey) {
+              return { isExisting: true, applicationId: data.applicationId, id: data.admissionDocId };
+            }
+            throw new Error(DUPLICATE_APPLICATION_ERROR_MSG);
+          }
+
+          if (phoneIdxSnap.exists()) {
+            const data = phoneIdxSnap.data();
+            if (idempotencyKey && data.idempotencyKey === idempotencyKey) {
+              return { isExisting: true, applicationId: data.applicationId, id: data.admissionDocId };
+            }
+            throw new Error(DUPLICATE_APPLICATION_ERROR_MSG);
+          }
+        }
+
+        // Create new admission doc reference
+        const newDocRef = doc(collection(db, COLLECTIONS.ADMISSIONS));
+        transaction.set(newDocRef, {
+          ...record,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        // Set unique indexes
+        if (!isExempt) {
+          transaction.set(emailIndexRef, {
+            applicationId: appId,
+            admissionDocId: newDocRef.id,
+            email: normalizedEmail,
+            idempotencyKey: idempotencyKey,
+            createdAt: serverTimestamp()
+          });
+          transaction.set(phoneIndexRef, {
+            applicationId: appId,
+            admissionDocId: newDocRef.id,
+            phone: normPhone.canonical,
+            phoneKey: normPhone.key,
+            idempotencyKey: idempotencyKey,
+            createdAt: serverTimestamp()
+          });
+        }
+
+        return { isExisting: false, id: newDocRef.id, applicationId: appId, ...record };
+      });
+
+      if (result.isExisting) {
+        return { success: true, ...result, isIdempotentRetry: true };
+      }
+
+      // Cache locally
+      upsertCachedItem(COLLECTIONS.ADMISSIONS, { id: result.id, ...record });
+      console.log(`[DIMABIN Admissions] Application ${appId} atomically committed to Firestore (ID: ${result.id}).`);
+      return { success: true, ...result };
+    } catch (txErr) {
+      if (txErr.message === DUPLICATE_APPLICATION_ERROR_MSG) {
+        throw txErr;
+      }
+      console.warn(`[DIMABIN Admissions] Transaction fallback note: ${txErr.message}`);
+
+      // Standalone atomic write fallback if transactions are constrained
+      const newDocRef = await addDoc(collection(db, COLLECTIONS.ADMISSIONS), {
+        ...record,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // Best effort index write
+      if (!isExempt) {
+        try {
+          await setDoc(emailIndexRef, {
+            applicationId: appId,
+            admissionDocId: newDocRef.id,
+            email: normalizedEmail,
+            idempotencyKey: idempotencyKey,
+            createdAt: serverTimestamp()
+          });
+          await setDoc(phoneIndexRef, {
+            applicationId: appId,
+            admissionDocId: newDocRef.id,
+            phone: normPhone.canonical,
+            phoneKey: normPhone.key,
+            idempotencyKey: idempotencyKey,
+            createdAt: serverTimestamp()
+          });
+        } catch (_) {}
+      }
+
+      upsertCachedItem(COLLECTIONS.ADMISSIONS, { id: newDocRef.id, ...record });
+      return { success: true, id: newDocRef.id, applicationId: appId, ...record };
+    }
+  })();
+
+  inFlightAdmissions.set(flightKey, submissionPromise);
+  try {
+    return await submissionPromise;
+  } finally {
+    inFlightAdmissions.delete(flightKey);
+  }
+}
+
+/**
+ * Detect duplicate admission applications from any admissions array
+ * Identifies groups by normalized email, normalized phone, and candidate name
+ */
+export function detectAdmissionsDuplicates(admissionsList = []) {
+  const emailMap = new Map();
+  const phoneMap = new Map();
+
+  // Normalize item format whether flat SDK doc or Firestore REST API format
+  const normalizedList = (admissionsList || []).map((item) => {
+    if (item && item.fields) {
+      const f = item.fields;
+      const getVal = (val) =>
+        val?.stringValue !== undefined
+          ? val.stringValue
+          : val?.timestampValue !== undefined
+          ? val.timestampValue
+          : val?.integerValue !== undefined
+          ? val.integerValue
+          : "";
+      const docId = item.name ? item.name.split("/").pop() : item.id;
+      return {
+        id: docId,
+        applicationId: getVal(f.applicationId),
+        fullName: getVal(f.fullName) || getVal(f.name),
+        email: getVal(f.email),
+        phone: getVal(f.phone),
+        programme: getVal(f.programme) || getVal(f.program),
+        studyCentre: getVal(f.studyCentre),
+        status: getVal(f.status) || "pending",
+        admissionNumber: getVal(f.admissionNumber),
+        regNo: getVal(f.regNo),
+        createdAt: getVal(f.createdAt)
+      };
+    }
+    return item;
+  });
+
+  normalizedList.forEach((app) => {
+    // Group by email
+    const email = (app.email || "").trim().toLowerCase();
+    if (email) {
+      if (!emailMap.has(email)) emailMap.set(email, []);
+      emailMap.get(email).push(app);
+    }
+
+    // Group by phone
+    try {
+      const p = normalizePhoneNumber(app.phone);
+      if (p.key) {
+        if (!phoneMap.has(p.key)) phoneMap.set(p.key, []);
+        phoneMap.get(p.key).push(app);
+      }
+    } catch (_) {}
+  });
+
+  const duplicateGroups = [];
+  const processedDocIds = new Set();
+
+  // Helper to compile group details
+  const buildGroup = (identifier, type, items) => {
+    // Sort chronologically ascending
+    const sorted = [...items].sort((a, b) => {
+      const tA = new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt || 0)).getTime();
+      const tB = new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt || 0)).getTime();
+      return tA - tB;
+    });
+
+    const original = sorted[0];
+    const repeats = sorted.slice(1);
+
+    // Identify protected records (approved, enrolled, or has admission number)
+    const protectedRecords = sorted.filter((r) => {
+      const status = (r.status || "").toLowerCase();
+      return status === "approved" || r.admissionNumber || r.regNo;
+    });
+
+    // Redundant records that can safely be cleaned up
+    const safeToDelete = repeats.filter((r) => {
+      const status = (r.status || "").toLowerCase();
+      return status !== "approved" && !r.admissionNumber && !r.regNo;
+    });
+
+    sorted.forEach((item) => {
+      if (item.id) processedDocIds.add(item.id);
+    });
+
+    return {
+      groupId: `grp_${type}_${identifier.replace(/[^a-zA-Z0-9]/g, "_")}`,
+      type, // 'email' | 'phone'
+      identifier,
+      totalCount: sorted.length,
+      repeatCount: repeats.length,
+      original,
+      repeats,
+      protectedRecords,
+      safeToDelete,
+      allRecords: sorted
+    };
   };
 
-  // Cache locally
-  const localId = `adm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-  upsertCachedItem(COLLECTIONS.ADMISSIONS, { id: localId, ...record });
+  // Process email duplicate groups
+  emailMap.forEach((items, email) => {
+    if (items.length > 1) {
+      duplicateGroups.push(buildGroup(email, "email", items));
+    }
+  });
 
-  // Save to Firestore
+  // Process phone duplicate groups (excluding items already completely grouped)
+  phoneMap.forEach((items, phoneKey) => {
+    if (items.length > 1) {
+      const allAlreadyGrouped = items.every((i) => processedDocIds.has(i.id));
+      if (!allAlreadyGrouped) {
+        duplicateGroups.push(buildGroup(phoneKey, "phone", items));
+      }
+    }
+  });
+
+  return duplicateGroups;
+}
+
+/**
+ * Fetch all admissions and return a comprehensive duplicate audit report
+ */
+export async function getDuplicateApplicationsReport() {
+  let list = getCachedCollection(COLLECTIONS.ADMISSIONS) || [];
   try {
-    const docRef = await addDoc(collection(db, COLLECTIONS.ADMISSIONS), {
-      ...record,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    console.log(`[DIMABIN Admissions] Application ${appId} submitted to Firestore (ID: ${docRef.id}).`);
-    return { success: true, id: docRef.id, applicationId: appId, ...record };
+    const snap = await getDocs(collection(db, COLLECTIONS.ADMISSIONS));
+    if (!snap.empty) {
+      list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    }
   } catch (err) {
-    console.warn(`[DIMABIN Admissions] Firestore application save note: ${err.message}`);
-    return { success: true, id: localId, applicationId: appId, ...record };
+    console.warn("[DIMABIN Admissions] Duplicate audit report using cache:", err.message);
   }
+
+  const groups = detectAdmissionsDuplicates(list);
+  const totalDuplicates = groups.reduce((acc, g) => acc + g.repeatCount, 0);
+
+  return {
+    totalApplications: list.length,
+    duplicateGroupsCount: groups.length,
+    redundantRecordsCount: totalDuplicates,
+    groups
+  };
+}
+
+/**
+ * Administrator Safe Cleanup Action:
+ * Preserves keepDocId, strictly guards approved records, and deletes redundant repeats
+ */
+export async function cleanupDuplicateApplications({ groupId, keepDocId, removeDocIds = [], adminUser = "ADMIN" }) {
+  if (!keepDocId) {
+    throw new Error("A valid original document ID to keep is required.");
+  }
+  if (!removeDocIds.length) {
+    throw new Error("No duplicate records selected for removal.");
+  }
+
+  // Safety check: Never delete the kept document
+  const safeRemoveIds = removeDocIds.filter((id) => id !== keepDocId);
+  if (!safeRemoveIds.length) {
+    throw new Error("Cannot delete the preserved original document.");
+  }
+
+  // Fetch current documents to verify none of the targets are approved
+  const admissionsColl = collection(db, COLLECTIONS.ADMISSIONS);
+  const removedDetails = [];
+
+  for (const docId of safeRemoveIds) {
+    try {
+      const docRef = doc(db, COLLECTIONS.ADMISSIONS, docId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if ((data.status || "").toLowerCase() === "approved" || data.admissionNumber) {
+          throw new Error(`SAFETY RESTRICTION: Document ${docId} (${data.applicationId}) is an APPROVED student record and CANNOT be deleted.`);
+        }
+        removedDetails.push({ id: docId, applicationId: data.applicationId, email: data.email, phone: data.phone });
+        await deleteDoc(docRef);
+      }
+    } catch (err) {
+      if (err.message.includes("SAFETY RESTRICTION")) throw err;
+      console.warn(`[DIMABIN Admissions] Note deleting doc ${docId}:`, err.message);
+    }
+  }
+
+  // Update local cache
+  const cached = getCachedCollection(COLLECTIONS.ADMISSIONS) || [];
+  const updatedCache = cached.filter((c) => !safeRemoveIds.includes(c.id));
+  setCachedCollection(COLLECTIONS.ADMISSIONS, updatedCache);
+
+  // Log in hgs_activity_logs
+  try {
+    await addDoc(collection(db, COLLECTIONS.ACTIVITY_LOGS), {
+      module: "ADMISSIONS",
+      action: "CLEANUP_DUPLICATE_APPLICATIONS",
+      groupId: groupId || "unknown",
+      preservedDocId: keepDocId,
+      removedDocIds: safeRemoveIds,
+      removedDetails,
+      countRemoved: safeRemoveIds.length,
+      performedBy: adminUser,
+      performedAt: serverTimestamp(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (logErr) {
+    console.warn("[DIMABIN Admissions] Activity log notice:", logErr.message);
+  }
+
+  return {
+    success: true,
+    preservedDocId: keepDocId,
+    removedCount: safeRemoveIds.length,
+    removedDocIds: safeRemoveIds
+  };
+}
+
+/**
+ * Authorize an administrator contact exception for shared family details
+ */
+export async function authorizeContactException({ email = "", phone = "", reason = "", authorizedBy = "ADMIN" }) {
+  if (!email && !phone) {
+    throw new Error("Either an email address or a phone number must be specified for the exception.");
+  }
+
+  let normPhoneKey = "";
+  let canonicalPhone = "";
+  if (phone) {
+    const p = normalizePhoneNumber(phone);
+    normPhoneKey = p.key;
+    canonicalPhone = p.canonical;
+  }
+  const normEmail = email ? normalizeEmail(email) : "";
+
+  const payload = {
+    email: normEmail,
+    phone: canonicalPhone,
+    phoneKey: normPhoneKey,
+    reason: reason || "Administrator authorized contact exception for family/shared access",
+    authorizedBy,
+    status: "authorized",
+    createdAt: serverTimestamp(),
+    timestamp: new Date().toISOString()
+  };
+
+  const docRef = await addDoc(collection(db, COLLECTIONS.ADMISSIONS_CONTACT_EXCEPTIONS), payload);
+
+  // Update cache
+  const cachedExceptions = getCachedCollection(COLLECTIONS.ADMISSIONS_CONTACT_EXCEPTIONS) || [];
+  cachedExceptions.push({ id: docRef.id, ...payload });
+  setCachedCollection(COLLECTIONS.ADMISSIONS_CONTACT_EXCEPTIONS, cachedExceptions);
+
+  // Log activity
+  try {
+    await addDoc(collection(db, COLLECTIONS.ACTIVITY_LOGS), {
+      module: "ADMISSIONS",
+      action: "AUTHORIZE_CONTACT_EXCEPTION",
+      email: normEmail,
+      phone: canonicalPhone,
+      reason: payload.reason,
+      authorizedBy,
+      performedAt: serverTimestamp(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (_) {}
+
+  return { success: true, id: docRef.id, ...payload };
 }
 
 /**
