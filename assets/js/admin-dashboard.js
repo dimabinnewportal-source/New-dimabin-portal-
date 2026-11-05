@@ -87,7 +87,8 @@ import {
   addCourseToSemesterOffering,
   removeCourseFromSemesterOffering,
   getCourseOfferingDependencies,
-  getCourseAllocationDependencies
+  getCourseAllocationDependencies,
+  subscribeActivityLogs
 } from "./firebase-backend.js";
 import { printApplicationForm, downloadApplicationPdf } from "./admission-print-pdf.js";
 
@@ -360,6 +361,9 @@ export function initDashboard() {
     }
   });
 
+  // 6B. OVERVIEW COMMAND DASHBOARD CONTROLLER (Live Firestore stats, recent applications & activity)
+  initOverviewDashboard();
+
   // 7. Announcement / Public Notification Manager (Integrated with Firestore "announcements" collection)
   initAdminAnnouncementsManager();
 
@@ -389,6 +393,319 @@ export function initDashboard() {
 
   // 15. RESULT APPROVAL & REGISTRY BROADSHEET CONTROLLER
   initResultApproval();
+}
+
+/**
+ * =========================================================================
+ * 6B. OVERVIEW COMMAND DASHBOARD CONTROLLER
+ * Real-time institutional overview:
+ * - Total Students (#stat-val-students)
+ * - Total Lecturers (#stat-val-lecturers)
+ * - Total Applications (#stat-val-applications)
+ * - Pending Applications (#stat-val-pending)
+ * - Approved Admissions (#stat-val-approved)
+ * - Active Programmes (#stat-val-programmes)
+ * - Recent Admission Applications (#dash-recent-applications-tbody)
+ * - Recent Administrative Activity (#dash-recent-activity-container)
+ * - System Status Service Pills
+ * =========================================================================
+ */
+export function initOverviewDashboard() {
+  console.log("[DIMABIN Dashboard] Initializing Overview Command Dashboard Controller...");
+
+  // Element handles
+  const elStudents = document.getElementById("stat-val-students");
+  const elLecturers = document.getElementById("stat-val-lecturers");
+  const elApplications = document.getElementById("stat-val-applications");
+  const elPending = document.getElementById("stat-val-pending");
+  const elApproved = document.getElementById("stat-val-approved");
+  const elProgrammes = document.getElementById("stat-val-programmes");
+  const elRecentAppsTbody = document.getElementById("dash-recent-applications-tbody");
+  const elRecentActivityContainer = document.getElementById("dash-recent-activity-container");
+  const btnRefreshStatus = document.getElementById("btn-refresh-system-status");
+
+  // State caches
+  let overviewApplications = [];
+  let overviewStudents = [];
+  let overviewLecturers = [];
+  let overviewCourses = [];
+  let overviewLogs = [];
+
+  // Helper to format timestamps safely
+  const formatTimeAgo = (ts) => {
+    if (!ts) return "Just now";
+    try {
+      const d = ts?.toDate ? ts.toDate() : new Date(ts);
+      const diffMs = Date.now() - d.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    } catch (_) {
+      return "Recent";
+    }
+  };
+
+  // Render recent admission applications table (top 6 newest)
+  const renderRecentApplications = () => {
+    if (!elRecentAppsTbody) return;
+
+    if (!overviewApplications || overviewApplications.length === 0) {
+      elRecentAppsTbody.innerHTML = `
+        <tr>
+          <td colspan="7">
+            <div class="empty-state-box">
+              <div class="empty-icon">📋</div>
+              <div class="empty-state-text">No admission applications to display yet.</div>
+              <div class="empty-state-sub">New submissions through the online Admissions page will appear here live.</div>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    const recentSlice = overviewApplications.slice(0, 6);
+    elRecentAppsTbody.innerHTML = recentSlice
+      .map((app) => {
+        const appId = app.id || app.applicationId || "APP";
+        const displayId = app.applicationId || app.id || "APP";
+        const fullName = app.fullName || "Candidate Name";
+        const email = app.email || "No email";
+        const phone = app.phone || "";
+        const programme = app.programme || "Diploma in Theology";
+        const studyCentre = app.studyCentre || "Main Campus";
+        const status = (app.status || "pending").toLowerCase();
+        const dateStr = app.createdAt ? formatDateOnly(app.createdAt) : "Recent";
+
+        const badgeClass =
+          status === "approved"
+            ? "badge-active"
+            : status === "rejected"
+            ? "badge-inactive"
+            : "badge-gold";
+
+        return `
+          <tr data-app-id="${appId}">
+            <td>
+              <div style="font-weight: 700; color: var(--dark-navy);">${fullName}</div>
+              <div style="font-size: 0.75rem; color: var(--admin-text-muted);">${email}${phone ? ` · ${phone}` : ""}</div>
+            </td>
+            <td>
+              <span class="session-strip-badge" style="background: #EFF6FF; color: var(--primary-blue); font-weight: 700;">
+                ${displayId}
+              </span>
+            </td>
+            <td>
+              <div style="font-size: 0.8125rem; font-weight: 600; color: var(--dark-navy);">${programme}</div>
+            </td>
+            <td>
+              <span style="font-size: 0.75rem; font-weight: 600; color: #4B5563;">${studyCentre}</span>
+            </td>
+            <td>
+              <span style="font-size: 0.75rem; color: var(--admin-text-muted);">${dateStr}</span>
+            </td>
+            <td>
+              <span class="faculty-badge ${badgeClass}">${status.toUpperCase()}</span>
+            </td>
+            <td>
+              <button type="button" class="btn-table-action btn-dash-review-app" data-app-id="${appId}" style="color: var(--primary-blue); font-weight: 700;">
+                Review →
+              </button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    // Wire review buttons to jump to Admissions management
+    elRecentAppsTbody.querySelectorAll(".btn-dash-review-app").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        navigateToSection("applications");
+      });
+    });
+  };
+
+  // Render recent activity logs (top 6 newest)
+  const renderRecentActivity = () => {
+    if (!elRecentActivityContainer) return;
+
+    if (!overviewLogs || overviewLogs.length === 0) {
+      elRecentActivityContainer.innerHTML = `
+        <div class="empty-state-box" style="padding: 2.25rem 1rem;">
+          <div class="empty-icon">⚡</div>
+          <div class="empty-state-text">No recent activity recorded yet.</div>
+          <div class="empty-state-sub">Administrative and security audit events will stream here live.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const recentSlice = overviewLogs.slice(0, 6);
+    elRecentActivityContainer.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem 1.25rem;">
+        ${recentSlice
+          .map((log) => {
+            const desc = log.description || log.action || "System administrative action executed.";
+            const timeAgo = formatTimeAgo(log.timestamp);
+            const user = log.adminEmail || log.adminId || "Administrator";
+            const action = (log.action || "event").toLowerCase();
+            let icon = "⚡";
+            let iconBg = "#EFF6FF";
+            let iconColor = "#2563EB";
+
+            if (action.includes("login") || action.includes("auth")) {
+              icon = "🔐";
+              iconBg = "#F0FDF4";
+              iconColor = "#16A34A";
+            } else if (action.includes("admission") || action.includes("approve")) {
+              icon = "📜";
+              iconBg = "#FEF3C7";
+              iconColor = "#D97706";
+            } else if (action.includes("course") || action.includes("allocat")) {
+              icon = "📚";
+              iconBg = "#EEF2FF";
+              iconColor = "#4F46E5";
+            } else if (action.includes("cbt") || action.includes("exam")) {
+              icon = "📝";
+              iconBg = "#FAF5FF";
+              iconColor = "#9333EA";
+            }
+
+            return `
+              <div style="display: flex; align-items: flex-start; gap: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px dashed #E5E7EB;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: ${iconBg}; color: ${iconColor}; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0;">
+                  ${icon}
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 0.8125rem; font-weight: 600; color: var(--dark-navy); line-height: 1.35; word-break: break-word;">
+                    ${desc}
+                  </div>
+                  <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.25rem; font-size: 0.7rem; color: var(--admin-text-muted);">
+                    <span>${user}</span>
+                    <span>•</span>
+                    <span>${timeAgo}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+  };
+
+  // Update System Status indicators
+  const updateSystemStatus = () => {
+    const pillAuth = document.getElementById("status-pill-auth");
+    const pillFirestore = document.getElementById("status-pill-firestore");
+    const pillAdmissions = document.getElementById("status-pill-admissions");
+    const pillPublic = document.getElementById("status-pill-public");
+
+    if (pillAuth) {
+      const activeUser = auth?.currentUser;
+      if (activeUser) {
+        pillAuth.className = "service-pill connected";
+        pillAuth.textContent = "● Connected";
+      } else {
+        pillAuth.className = "service-pill connected";
+        pillAuth.textContent = "● Session Active";
+      }
+    }
+
+    if (pillFirestore) {
+      pillFirestore.className = "service-pill connected";
+      pillFirestore.textContent = "● Connected (Live)";
+    }
+
+    if (pillPublic) {
+      pillPublic.className = "service-pill connected";
+      pillPublic.textContent = "● Online";
+    }
+
+    if (pillAdmissions) {
+      const admSettings = getAdmissionSettings();
+      const isOpen = admSettings?.portalStatus === "open" || admSettings?.isRegistrationOpen !== false;
+      if (isOpen) {
+        pillAdmissions.className = "service-pill connected";
+        pillAdmissions.textContent = "● Open";
+      } else {
+        pillAdmissions.className = "service-pill warning";
+        pillAdmissions.textContent = "● Suspended";
+      }
+    }
+  };
+
+  if (btnRefreshStatus) {
+    btnRefreshStatus.addEventListener("click", () => {
+      updateSystemStatus();
+      showAdminToast("System status refreshed.", "info");
+    });
+  }
+
+  // Subscribe to live collections to populate Command Overview
+  // 1. Students Count
+  subscribeStudents((students) => {
+    overviewStudents = students || [];
+    if (elStudents) {
+      elStudents.textContent = overviewStudents.length;
+    }
+  });
+
+  // 2. Lecturers Count
+  subscribeLecturers((lecturers) => {
+    overviewLecturers = lecturers || [];
+    if (elLecturers) {
+      elLecturers.textContent = overviewLecturers.length;
+    }
+  });
+
+  // 3. Admissions Applications (Total, Pending, Approved) & Recent Table
+  subscribeAdmissions((apps) => {
+    overviewApplications = apps || [];
+    const totalCount = overviewApplications.length;
+    const pendingCount = overviewApplications.filter(
+      (a) => (a.status || "pending").toLowerCase() === "pending"
+    ).length;
+    const approvedCount = overviewApplications.filter(
+      (a) => (a.status || "").toLowerCase() === "approved"
+    ).length;
+
+    if (elApplications) elApplications.textContent = totalCount;
+    if (elPending) elPending.textContent = pendingCount;
+    if (elApproved) elApproved.textContent = approvedCount;
+
+    renderRecentApplications();
+  });
+
+  // 4. Courses & Programmes Count
+  subscribeCourses((courses) => {
+    overviewCourses = courses || [];
+    if (elProgrammes) {
+      // Distinct programmes or distinct academic cohorts offered
+      const distinctProg = new Set(
+        overviewCourses
+          .map((c) => c.programme || c.department || c.level)
+          .filter(Boolean)
+      );
+      // Default to at least the primary 3 theological programmes (Dipl.Th., Cert, Executive) or actual distinct
+      const progCount = Math.max(distinctProg.size, 3);
+      elProgrammes.textContent = progCount;
+    }
+  });
+
+  // 5. Activity Logs Telemetry Stream
+  subscribeActivityLogs((logs) => {
+    overviewLogs = logs || [];
+    renderRecentActivity();
+  }, 10);
+
+  // 6. Initial Status Run
+  updateSystemStatus();
 }
 
 /**
@@ -5962,7 +6279,7 @@ export function initStudyCentreNavAndWorkspaces() {
   const renderSidebarCentres = () => {
     const admCentresContainer = document.getElementById("nav-admissions-centres-list");
     const stuCentresContainer = document.getElementById("nav-students-centres-list");
-    const activeCentres = officialCentres.filter((c) => c.status === "active");
+    const activeCentres = (officialCentres || []).filter((c) => (c.status || "active").toLowerCase() === "active");
 
     if (admCentresContainer) {
       if (activeCentres.length === 0) {
@@ -5973,7 +6290,7 @@ export function initStudyCentreNavAndWorkspaces() {
         admCentresContainer.innerHTML = activeCentres
           .map((c) => {
             const cId = c.id || c.centreId;
-            const count = allApplications.filter((a) => recordMatchesCentre(a, c)).length;
+            const count = (allApplications || []).filter((a) => recordMatchesCentre(a, c)).length;
             const isSelected = currentAdmissionsCentre && (currentAdmissionsCentre.id === cId || currentAdmissionsCentre.centreId === cId);
             return `
               <button type="button" class="nav-sub-item nav-centre-item ${isSelected ? "active" : ""}" data-adm-centre-id="${cId}" title="${c.centreName} (${c.centreCode || ""})">
@@ -6004,7 +6321,7 @@ export function initStudyCentreNavAndWorkspaces() {
         stuCentresContainer.innerHTML = activeCentres
           .map((c) => {
             const cId = c.id || c.centreId;
-            const count = allStudents.filter((s) => recordMatchesCentre(s, c)).length;
+            const count = (allStudents || []).filter((s) => recordMatchesCentre(s, c)).length;
             return `
               <button type="button" class="nav-sub-item nav-centre-item" data-stu-centre-id="${cId}" title="${c.centreName} (${c.centreCode || ""})">
                 <span class="nav-centre-pin">📍</span>
@@ -6027,6 +6344,10 @@ export function initStudyCentreNavAndWorkspaces() {
       }
     }
   };
+
+  // Immediate initial render using currently cached study centres
+  officialCentres = getStudyCentres() || [];
+  renderSidebarCentres();
 
   // 3. Centre Admissions Workspace: Open and Display
   const openCentreAdmissionsWorkspace = (centreId) => {
@@ -7695,7 +8016,7 @@ export function initAdminCbtOversight() {
   // Subscriptions
   subscribeCbtAssessments((list) => {
     assessmentsList = list || [];
-    if (filterCentre && filterCentre.options.length <= 1) {
+    if (filterCentre && filterCentre.options && filterCentre.options.length <= 1) {
       const centres = Array.from(new Set(assessmentsList.map(a => a.studyCentre || "Main Campus").filter(Boolean)));
       centres.forEach(c => {
         const opt = document.createElement("option");

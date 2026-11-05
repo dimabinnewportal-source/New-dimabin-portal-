@@ -140,8 +140,36 @@ service cloud.firestore {
       allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
     }
 
-    // Study Centres
+    // Study Centres (both camelCase and snake_case aliases)
     match /studyCentres/{centreId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /study_centres/{centreId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Students Directory
+    match /students/{studentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Lecturers Directory
+    match /lecturers/{lecturerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Question Bank (CBT)
+    match /question_bank/{questionId} {
+      allow read: if isAuthenticated() && (isAdmin() || isLecturer());
+      allow write: if isAuthenticated() && (isAdmin() || isLecturer());
+    }
+
+    // Announcements & Broadcasts
+    match /announcements/{announcementId} {
       allow read: if true;
       allow write: if isAdmin();
     }
@@ -176,3 +204,4 @@ service cloud.firestore {
     }
   }
 }
+
